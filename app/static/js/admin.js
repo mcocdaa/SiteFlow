@@ -1,0 +1,136 @@
+(function () {
+  "use strict";
+
+  var csrfMeta = document.querySelector('meta[name="csrf"]');
+  var CSRF = csrfMeta ? csrfMeta.getAttribute("content") : "";
+
+  function api(method, path, body) {
+    var options = { method: method, headers: { "X-CSRF-Token": CSRF } };
+    if (body !== undefined) {
+      options.body = JSON.stringify(body);
+      options.headers["Content-Type"] = "application/json";
+    }
+    return fetch("/api/admin" + path, options).then(function (response) {
+      return response.json().then(function (data) {
+        if (!response.ok || data.ok === false) {
+          throw new Error(data.error || "请求失败");
+        }
+        return data;
+      });
+    });
+  }
+
+  function refresh() { location.reload(); }
+
+  function onError(error) { alert(error.message || String(error)); }
+
+  var dropzone = document.getElementById("dropzone");
+  var fileInput = document.getElementById("file-input");
+
+  if (dropzone) {
+    dropzone.addEventListener("click", function () { fileInput.click(); });
+    dropzone.addEventListener("dragover", function (event) {
+      event.preventDefault();
+      dropzone.classList.add("active");
+    });
+    dropzone.addEventListener("dragleave", function () { dropzone.classList.remove("active"); });
+    dropzone.addEventListener("drop", function (event) {
+      event.preventDefault();
+      dropzone.classList.remove("active");
+      if (event.dataTransfer.files.length) uploadFile(event.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener("change", function () {
+      if (fileInput.files.length) uploadFile(fileInput.files[0]);
+    });
+  }
+
+  function uploadFile(file) {
+    var form = new FormData();
+    form.append("file", file);
+    var xhr = new XMLHttpRequest();
+    xhr.open("POST", "/api/admin/projects/upload");
+    xhr.setRequestHeader("X-CSRF-Token", CSRF);
+    xhr.onload = function () {
+      try {
+        var data = JSON.parse(xhr.responseText);
+        if (xhr.status >= 400 || data.ok === false) throw new Error(data.error || "上传失败");
+        refresh();
+      } catch (error) { onError(error); }
+    };
+    xhr.onerror = function () { onError(new Error("网络错误")); };
+    xhr.send(form);
+  }
+
+  var linkUrl = document.getElementById("link-url");
+  if (linkUrl) {
+    var addLink = document.querySelector('[data-action="add-link"]');
+    addLink.addEventListener("click", function () {
+      var url = linkUrl.value.trim();
+      if (!url) return;
+      api("POST", "/projects/link", { url: url })
+        .then(refresh)
+        .catch(onError);
+    });
+  }
+
+  document.addEventListener("click", function (event) {
+    var button = event.target.closest("[data-action]");
+    if (!button) return;
+    var action = button.getAttribute("data-action");
+    var row = button.closest(".row");
+    var id = row ? row.getAttribute("data-id") : null;
+
+    if (action === "logout") {
+      fetch("/logout", {
+        method: "POST",
+        headers: { "X-CSRF-Token": CSRF },
+        redirect: "follow"
+      })
+        .then(refresh)
+        .catch(onError);
+      return;
+    }
+    if (!row) return;
+
+    if (action === "edit") {
+      var editor = row.querySelector(".editor");
+      editor.hidden = !editor.hidden;
+    } else if (action === "save") {
+      var payload = {
+        title: row.querySelector('[name="title"]').value,
+        description: row.querySelector('[name="description"]').value
+      };
+      var urlInput = row.querySelector('[name="url"]');
+      if (urlInput) payload.url = urlInput.value;
+      api("PATCH", "/projects/" + id, payload)
+        .then(function () {
+          var coverInput = row.querySelector('[name="cover"]');
+          if (coverInput.files.length) {
+            var coverForm = new FormData();
+            coverForm.append("file", coverInput.files[0]);
+            return fetch("/api/admin/projects/" + id + "/cover", {
+              method: "POST",
+              headers: { "X-CSRF-Token": CSRF },
+              body: coverForm
+            });
+          }
+        })
+        .then(refresh)
+        .catch(onError);
+    } else if (action === "toggle-pin") {
+      var pinned = row.querySelector('[data-action="toggle-pin"]').textContent.trim() === "取消置顶";
+      api("PATCH", "/projects/" + id, { pinned: !pinned }).then(refresh).catch(onError);
+    } else if (action === "toggle-visible") {
+      var hidden = row.querySelector('[data-action="toggle-visible"]').textContent.trim() === "显示";
+      api("PATCH", "/projects/" + id, { visible: !hidden }).then(refresh).catch(onError);
+    } else if (action === "move-up") {
+      api("POST", "/projects/" + id + "/move", { direction: "up" }).then(refresh).catch(onError);
+    } else if (action === "move-down") {
+      api("POST", "/projects/" + id + "/move", { direction: "down" }).then(refresh).catch(onError);
+    } else if (action === "delete") {
+      if (confirm("确定删除该作品？文件将一并删除，不可恢复。")) {
+        api("DELETE", "/projects/" + id).then(refresh).catch(onError);
+      }
+    }
+  });
+})();

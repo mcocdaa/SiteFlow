@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ site_title }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a class="brand" href="/">{{ site_title }}</a>
+      <p class="tagline">{{ site_description }}</p>
+    </div>
+  </header>
+  <main class="wrap">
+    {% if projects %}
+    <div class="grid">
+      {% for project in projects %}
+      <a class="card" href="{{ project.url if project.type == 'link' else '/projects/' + project.slug + '/' }}"
+         {% if project.type == 'link' %}target="_blank" rel="noopener noreferrer"{% endif %}>
+        <div class="cover">
+          {% if project.cover %}
+          <img src="/media/covers/{{ project.cover }}" alt="">
+          {% else %}
+          <div class="placeholder" style="--hue: {{ hue(project.slug) }}"><span>{{ project.title[0] }}</span></div>
+          {% endif %}
+          <span class="badge badge-{{ project.type }}">{{ 'LINK' if project.type == 'link' else project.type | upper }}</span>
+          {% if project.pinned %}<span class="pin" title="置顶">★</span>{% endif %}
+        </div>
+        <div class="card-body">
+          <h3>{{ project.title }}</h3>
+          {% if project.description %}<p>{{ project.description }}</p>{% endif %}
+        </div>
+      </a>
+      {% endfor %}
+    </div>
+    {% else %}
+    <div class="empty">
+      <h2>还没有作品</h2>
+      <p>这里将展示你的 HTML、静态网站和外链作品。</p>
+    </div>
+    {% endif %}
+  </main>
+  <footer class="site-footer">
+    <div class="wrap"><span>Powered by SiteFlow</span></div>
+  </footer>
+</body>
+</html>

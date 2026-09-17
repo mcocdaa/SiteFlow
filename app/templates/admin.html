@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>管理 - {{ site_title }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <meta name="csrf" content="{{ csrf }}">
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap row-between">
+      <a class="brand" href="/">← {{ site_title }}</a>
+      <button class="btn ghost" data-action="logout">退出登录</button>
+    </div>
+  </header>
+  <main class="wrap">
+    <section class="dropzone" id="dropzone">
+      <p><strong>拖拽 HTML 或 ZIP 到这里</strong></p>
+      <p class="muted">或点击选择文件 · 也可以在下方添加外链</p>
+      <input type="file" id="file-input" accept=".html,.htm,.zip" hidden>
+    </section>
+    <section class="link-row">
+      <input type="url" id="link-url" placeholder="https://example.com 作品链接">
+      <button class="btn" data-action="add-link">添加链接</button>
+    </section>
+    <section class="list" id="project-list">
+      {% for project in projects %}
+      <div class="row" data-id="{{ project.id }}">
+        <img class="thumb" src="{% if project.cover %}/media/covers/{{ project.cover}}{% else %}/static/img/placeholder.svg{% endif %}" alt="">
+        <div class="row-main">
+          <strong>{{ project.title }}</strong>
+          <span class="muted">{{ project.type | upper }}{% if project.pinned %} · 置顶{% endif %}{% if not project.visible %} · 已隐藏{% endif %}</span>
+        </div>
+        <div class="row-actions">
+          <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">查看</a>
+          <button class="btn ghost" data-action="edit">编辑</button>
+          <button class="btn ghost" data-action="toggle-pin">{{ '取消置顶' if project.pinned else '置顶' }}</button>
+          <button class="btn ghost" data-action="move-up">↑</button>
+          <button class="btn ghost" data-action="move-down">↓</button>
+          <button class="btn ghost" data-action="toggle-visible">{{ '显示' if not project.visible else '隐藏' }}</button>
+          <button class="btn danger" data-action="delete">删除</button>
+        </div>
+        <div class="editor" hidden>
+          <label>标题 <input name="title" value="{{ project.title }}"></label>
+          <label>描述 <input name="description" value="{{ project.description }}"></label>
+          {% if project.type == 'link' %}<label>链接 <input name="url" value="{{ project.url }}"></label>{% endif %}
+          <label>封面 <input type="file" name="cover" accept="image/*"></label>
+          <button class="btn" data-action="save">保存</button>
+        </div>
+      </div>
+      {% endfor %}
+    </section>
+  </main>
+  <script src="/static/js/admin.js" defer></script>
+</body>
+</html>
