@@ -55,6 +55,8 @@ server {
 
 ## 本地开发
 
+协作与安全约定见 [AGENTS.md](AGENTS.md)。
+
 ```bash
 python3.12 -m venv .venv && . .venv/bin/activate
 pip install -r requirements-dev.txt

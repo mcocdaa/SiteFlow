@@ -4,6 +4,7 @@ import secrets
 import time
 from collections import defaultdict, deque
 from typing import Any
+from urllib.parse import urlparse
 
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
@@ -45,10 +46,14 @@ def verify_password(config: Config, password: str) -> bool:
         return False
 
 
-def create_session(config: Config, response: Response, authenticated: bool = True) -> str:
-    token = secrets.token_urlsafe(32)
-    serializer = _get_serializer(config)
-    signed = serializer.dumps({"csrf": token, "admin": authenticated, "version": password_version(config)})
+def new_session_token() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def apply_session(config: Config, response: Response, token: str, authenticated: bool = True) -> None:
+    signed = _get_serializer(config).dumps(
+        {"csrf": token, "admin": authenticated, "version": password_version(config)}
+    )
     response.set_cookie(
         SESSION_COOKIE,
         signed,
@@ -58,6 +63,11 @@ def create_session(config: Config, response: Response, authenticated: bool = Tru
         secure=config.secure,
         path="/",
     )
+
+
+def create_session(config: Config, response: Response, authenticated: bool = True) -> str:
+    token = new_session_token()
+    apply_session(config, response, token, authenticated)
     return token
 
 
@@ -135,8 +145,6 @@ def require_same_origin(request: Request) -> None:
     host = request.headers.get("host")
     if not origin or not host:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "缺少 Origin 或 Host")
-    from urllib.parse import urlparse
-
     parsed = urlparse(origin)
     if parsed.netloc != host:
         raise HTTPException(status.HTTP_403_FORBIDDEN, "跨站请求被拒绝")

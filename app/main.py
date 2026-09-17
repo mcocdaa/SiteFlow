@@ -6,6 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from app import store
 from app.config import Config
 from app.routes import router
+from app.views import SANDBOX_CSP
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -21,12 +22,10 @@ def create_app(config: Config | None = None) -> FastAPI:
     async def security_headers(request: Request, call_next):
         response = await call_next(request)
         response.headers.setdefault("X-Frame-Options", "DENY")
+        response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "same-origin")
         if request.url.path.startswith("/projects/"):
-            response.headers.setdefault(
-                "Content-Security-Policy",
-                "sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads",
-            )
+            response.headers.setdefault("Content-Security-Policy", SANDBOX_CSP)
         if request.url.path.startswith("/admin") or request.url.path.startswith("/api/admin"):
             response.headers.setdefault("Cache-Control", "no-store")
         return response

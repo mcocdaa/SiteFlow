@@ -90,3 +90,13 @@ def make_cover(raw: bytes, destination: Path) -> None:
 def remove_tree(path: Path) -> None:
     if path.exists():
         shutil.rmtree(path)
+
+
+def save_cover(config: Config, raw: bytes, slug: str) -> str:
+    destination = config.data / "media" / "covers" / f"{slug}.webp"
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        make_cover(raw, destination)
+    except InvalidUpload:
+        return ""
+    return destination.name

@@ -332,29 +332,30 @@ Content-Security-Policy: sandbox allow-scripts allow-forms allow-modals allow-po
 SiteFlow/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py              # FastAPI 实例、中间件、生命周期、路由挂载
+│   ├── main.py              # FastAPI 实例、安全响应头中间件、路由挂载
 │   ├── config.py            # 环境变量解析与校验
-│   ├── db.py                # engine/session、PRAGMA、建表
 │   ├── models.py            # SQLAlchemy 模型
-│   ├── auth.py              # 会话、CSRF、限流、启动同步密码
-│   ├── routers/
-│   │   ├── public.py        # /, /projects/*, /media/*, /healthz
-│   │   ├── auth_routes.py   # /login, /logout
-│   │   └── admin.py         # /admin, /api/admin/*
-│   ├── services/
-│   │   ├── projects.py      # CRUD、slug、排序交换
-│   │   ├── uploads.py       # HTML/ZIP 管线编排
-│   │   ├── ziputil.py       # 安全解压、入口定位
-│   │   ├── covers.py        # Pillow 处理与占位色生成
-│   │   └── og.py            # Open Graph 抓取
-│   ├── templates/           # base.html, gallery.html, login.html, admin.html, 404.html
+│   ├── store.py             # engine/session、PRAGMA、建表与全部查询/排序
+│   ├── auth.py              # 会话、CSRF、限流、密码校验与失效
+│   ├── deps.py              # DbSession / AdminConfig 依赖、api_error
+│   ├── routes.py            # 聚合 router（views + admin）
+│   ├── views.py             # /、/projects/*、/media/*、/login、/logout、/healthz
+│   ├── admin.py             # /admin、/api/admin/*
+│   ├── uploads.py           # ZIP 安全解压、封面处理、清理
+│   ├── og.py                # Open Graph 与封面图抓取（含私网校验）
+│   ├── templating.py        # Jinja2 环境
+│   ├── templates/           # gallery.html, login.html, admin.html
 │   └── static/
 │       ├── css/app.css
+│       ├── img/placeholder.svg
 │       └── js/admin.js
-├── tests/                   # pytest
+├── tests/                   # pytest（smoke / flow / security）
+├── .opencode/skills/        # siteflow-dev 项目 skill
 ├── Dockerfile
 ├── docker-compose.yml
 ├── requirements.txt
+├── requirements-dev.txt
+├── AGENTS.md
 ├── DESIGN.md
 └── README.md
 ```

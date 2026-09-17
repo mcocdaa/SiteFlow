@@ -79,21 +79,18 @@ def next_sort_order(db: Session) -> int:
 
 
 def move(db: Session, project: Project, direction: str) -> bool:
-    siblings = [
+    ordered = [
         row
         for row in all_projects(db)
-        if row.pinned == project.pinned and row.id != project.id
+        if row.pinned == project.pinned
     ]
-    siblings.sort(key=lambda row: (row.sort_order, row.created_at))
-    ordered = [project] + siblings
-    ordered.sort(key=lambda row: (row.sort_order, row.created_at, row.id))
     index = ordered.index(project)
     target = index - 1 if direction == "up" else index + 1
     if not 0 <= target < len(ordered):
         return False
-    project.sort_order, ordered[target].sort_order = ordered[target].sort_order, project.sort_order
-    if project.sort_order == ordered[target].sort_order:
-        project.sort_order += 1 if direction == "down" else -1
+    ordered[index], ordered[target] = ordered[target], ordered[index]
+    for position, row in enumerate(ordered):
+        row.sort_order = position
     return True
 
 

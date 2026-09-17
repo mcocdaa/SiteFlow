@@ -1,11 +1,12 @@
 import os
 import shutil
+import tempfile
 from pathlib import Path
 
 import pytest
 
 os.environ.setdefault("ADMIN_PASSWORD", "test-password")
-os.environ.setdefault("DATA_DIR", "/tmp/opencode/siteflow-test-data")
+os.environ.setdefault("DATA_DIR", tempfile.mkdtemp(prefix="siteflow-test-data-"))
 os.environ.setdefault("COOKIE_SECURE", "false")
 
 

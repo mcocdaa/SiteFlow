@@ -68,7 +68,10 @@
       var url = linkUrl.value.trim();
       if (!url) return;
       api("POST", "/projects/link", { url: url })
-        .then(refresh)
+        .then(function () {
+          linkUrl.value = "";
+          refresh();
+        })
         .catch(onError);
     });
   }
@@ -105,15 +108,16 @@
       api("PATCH", "/projects/" + id, payload)
         .then(function () {
           var coverInput = row.querySelector('[name="cover"]');
-          if (coverInput.files.length) {
-            var coverForm = new FormData();
-            coverForm.append("file", coverInput.files[0]);
-            return fetch("/api/admin/projects/" + id + "/cover", {
-              method: "POST",
-              headers: { "X-CSRF-Token": CSRF },
-              body: coverForm
-            });
-          }
+          if (!coverInput.files.length) return;
+          var coverForm = new FormData();
+          coverForm.append("file", coverInput.files[0]);
+          return fetch("/api/admin/projects/" + id + "/cover", {
+            method: "POST",
+            headers: { "X-CSRF-Token": CSRF },
+            body: coverForm
+          }).then(function (response) {
+            if (!response.ok) throw new Error("封面上传失败");
+          });
         })
         .then(refresh)
         .catch(onError);

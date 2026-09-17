@@ -89,3 +89,40 @@ def test_password_change_invalidates_session(monkeypatch) -> None:
             follow_redirects=False,
         )
     assert response.status_code == 303
+
+
+def test_link_requires_http_url() -> None:
+    from tests.test_flow import auth_headers
+
+    with TestClient(app) as client:
+        csrf = login(client)
+        empty = client.post(
+            "/api/admin/projects/link",
+            json={"url": ""},
+            headers=auth_headers(csrf),
+        )
+    assert empty.status_code == 400
+
+
+def test_move_boundary_reports_not_moved() -> None:
+    from tests.test_flow import auth_headers
+
+    with TestClient(app) as client:
+        csrf = login(client)
+        html = upload(client, csrf, "唯一条目.html", b"<h1>one</h1>")
+        pid = html.json()["project"]["id"]
+        response = client.post(
+            f"/api/admin/projects/{pid}/move",
+            json={"direction": "up"},
+            headers=auth_headers(csrf),
+        )
+    assert response.status_code == 200
+    assert response.json()["ok"] is False
+
+
+def test_fetch_image_blocks_private_and_non_http() -> None:
+    from app.og import fetch_image
+
+    assert fetch_image("http://127.0.0.1:9/cover.png") is None
+    assert fetch_image("http://169.254.169.254/latest/meta-data") is None
+    assert fetch_image("file:///etc/passwd") is None
