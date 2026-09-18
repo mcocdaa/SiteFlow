@@ -47,7 +47,14 @@
           <label>标题 <input name="title" value="{{ project.title }}"></label>
           <label>描述 <input name="description" value="{{ project.description }}"></label>
           {% if project.type == 'link' %}<label>链接 <input name="url" value="{{ project.url }}"></label>{% endif %}
-          <label>封面 <input type="file" name="cover" accept="image/*"></label>
+          <div class="field">
+            <span>封面</span>
+            <span class="file-picker">
+              <input type="file" name="cover" accept="image/*" hidden>
+              <button type="button" class="file-button">{{ icons.icon("image", 14) }}选择图片</button>
+              <span class="file-name">未选择</span>
+            </span>
+          </div>
           <button class="btn primary" data-action="save">{{ icons.icon("check") }}保存</button>
         </div>
       </div>

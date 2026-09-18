@@ -232,3 +232,17 @@ main.wrap { padding: 48px 24px 96px; }
 }
 [data-tip]:hover::after, [data-tip]:hover::before,
 [data-tip]:focus-visible::after, [data-tip]:focus-visible::before { opacity: 1; }
+
+.editor .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
+.file-picker { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.file-button {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  padding: 9px 12px; border: 1px dashed var(--border); border-radius: var(--radius-btn);
+  background: var(--surface); color: var(--text); font-size: 13px; font-weight: 500;
+  font-family: inherit; cursor: pointer; transition: border-color .15s, color .15s, background .15s;
+}
+.file-button:hover { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 6%, var(--surface)); }
+.file-name {
+  font-size: 12px; color: var(--text-muted);
+  max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}

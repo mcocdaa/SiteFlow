@@ -256,3 +256,14 @@ def test_admin_icon_buttons_have_tooltips() -> None:
         admin = client.get("/admin")
     for tip in ("查看", "编辑", "置顶", "上移", "下移", "隐藏", "删除"):
         assert f'data-tip="{tip}"' in admin.text
+
+
+def test_editor_cover_uses_styled_picker() -> None:
+    with TestClient(app) as client:
+        csrf = login(client)
+        upload(client, csrf, "封面对话框.html", b"<h1>C</h1>")
+        admin = client.get("/admin")
+    assert 'class="file-picker"' in admin.text
+    assert 'class="file-button"' in admin.text
+    assert 'name="cover" accept="image/*" hidden' in admin.text
+    assert 'class="file-name"' in admin.text

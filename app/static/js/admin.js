@@ -61,6 +61,14 @@
     xhr.send(form);
   }
 
+  document.addEventListener("change", function (event) {
+    var input = event.target;
+    if (!input.matches('input[type="file"][name="cover"]')) return;
+    var picker = input.closest(".file-picker");
+    var label = picker ? picker.querySelector(".file-name") : null;
+    if (label) label.textContent = input.files.length ? input.files[0].name : "未选择";
+  });
+
   var linkUrl = document.getElementById("link-url");
   if (linkUrl) {
     var addLink = document.querySelector('[data-action="add-link"]');
@@ -77,6 +85,12 @@
   }
 
   document.addEventListener("click", function (event) {
+    var fileButton = event.target.closest(".file-button");
+    if (fileButton) {
+      var fileInput = fileButton.closest(".file-picker").querySelector('input[type="file"]');
+      if (fileInput) fileInput.click();
+      return;
+    }
     var button = event.target.closest("[data-action]");
     if (!button) return;
     var action = button.getAttribute("data-action");
