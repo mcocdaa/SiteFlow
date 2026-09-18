@@ -94,11 +94,19 @@ def project_file(request: Request, slug: str, path: str, db: DbSession):
     project = store.by_slug(db, slug)
     if project is None or project.type == "link" or not project.visible:
         raise HTTPException(404)
+    if not path:
+        if not project.entry:
+            raise HTTPException(404)
+        return RedirectResponse(f"/projects/{slug}/{project.entry}", status_code=302)
     if any(part.startswith(".") for part in Path(path).parts):
         raise HTTPException(404)
     root = (config.data / "projects" / slug).resolve()
     target = (root / path).resolve()
-    if not target.is_relative_to(root) or not target.is_file():
+    if not target.is_relative_to(root):
+        raise HTTPException(404)
+    if target.is_dir():
+        target = target / "index.html"
+    if not target.is_file():
         raise HTTPException(404)
     media_type = MEDIA_TYPES.get(target.suffix.lower(), "application/octet-stream")
     if media_type == "text/html":

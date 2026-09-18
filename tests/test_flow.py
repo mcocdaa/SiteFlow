@@ -76,6 +76,10 @@ def test_upload_html_and_view_with_sandbox() -> None:
         assert root.status_code == 302
         assert root.headers["location"] == f"/projects/{slug}/index.html"
 
+        card_link = client.get(f"/projects/{slug}/", follow_redirects=False)
+        assert card_link.status_code == 302
+        assert card_link.headers["location"] == f"/projects/{slug}/index.html"
+
         page = client.get(f"/projects/{slug}/index.html")
         assert page.status_code == 200
         assert page.text == "<h1>Hello</h1>"
@@ -99,8 +103,15 @@ def test_upload_zip_with_wrapper_and_macosx() -> None:
         assert project["entry"] == "site/index.html"
         slug = project["slug"]
 
+        card_link = client.get(f"/projects/{slug}/", follow_redirects=False)
+        assert card_link.status_code == 302
+        assert card_link.headers["location"] == f"/projects/{slug}/site/index.html"
+
         page = client.get(f"/projects/{slug}/site/index.html")
         assert page.status_code == 200
+        directory = client.get(f"/projects/{slug}/site/")
+        assert directory.status_code == 200
+        assert directory.text == page.text
         asset = client.get(f"/projects/{slug}/site/app.css")
         assert asset.status_code == 200
         assert asset.headers["content-type"].startswith("text/css")
