@@ -1,4 +1,6 @@
 from app.plugins.base import AppPlugin
+from app.plugins.blog.plugin import BlogApp
+from app.plugins.resume.plugin import ResumeApp
 from app.plugins.space import SpaceApp
 
 _apps: dict[str, AppPlugin] = {}
@@ -17,3 +19,5 @@ def all_apps() -> list[AppPlugin]:
 
 
 register(SpaceApp())
+register(ResumeApp())
+register(BlogApp())

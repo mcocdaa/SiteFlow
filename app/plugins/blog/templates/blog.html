@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ blog.title or project.title }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="blog-body">
+  {% import "icons.html" as icons %}
+  <div class="blog-actions">
+    <a class="btn ghost" href="/">{{ icons.icon("arrow-left") }}返回</a>
+  </div>
+  <main class="blog">
+    <header class="blog-head">
+      <h1>{{ blog.title or project.title }}</h1>
+      {% if blog.description %}<p>{{ blog.description }}</p>{% endif %}
+    </header>
+    {% if posts %}
+    <ul class="post-list">
+      {% for post in posts %}
+      <li>
+        <a class="post-link" href="/projects/{{ project.slug }}/posts/{{ post.slug }}">
+          <h2>{{ post.title }}</h2>
+        </a>
+        <p class="post-meta">
+          {% if post.date %}<span>{{ post.date }}</span>{% endif %}
+          {% for tag in post.tags %}<span class="chip">{{ tag }}</span>{% endfor %}
+        </p>
+        {% if post.summary %}<p class="post-summary">{{ post.summary }}</p>{% endif %}
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <div class="empty">
+      <p>还没有文章。</p>
+    </div>
+    {% endif %}
+  </main>
+</body>
+</html>

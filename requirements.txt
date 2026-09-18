@@ -8,3 +8,4 @@ argon2-cffi>=25.1.0,<26
 pillow>=11,<13
 httpx>=0.28.1,<1
 beautifulsoup4>=4.13,<5
+markdown-it-py>=3,<5

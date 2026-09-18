@@ -129,6 +129,9 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
         "app_choices": app_choices(),
         "plugin_types": plugin_types(),
     }
+    if plugin.admin_template:
+        context["content"] = plugin.validate_content(project.content)
+        return templates.TemplateResponse(request, plugin.admin_template, context)
     return templates.TemplateResponse(request, "admin_app.html", context)
 
 
