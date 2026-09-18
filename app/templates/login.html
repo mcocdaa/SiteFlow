@@ -11,6 +11,7 @@
     <h1>{{ site_title }}</h1>
     <input type="password" name="password" placeholder="管理员密码" required autofocus autocomplete="current-password">
     <input type="hidden" name="csrf" value="{{ csrf }}">
+    <input type="hidden" name="next" value="{{ next }}">
     {% if error %}<p class="login-error">{{ error }}</p>{% endif %}
     <button type="submit">登录</button>
   </form>
