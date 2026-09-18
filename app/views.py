@@ -113,6 +113,12 @@ def project_file(request: Request, slug: str, path: str, db: DbSession):
     project = find_public_project(db, slug)
     if not path:
         return project_home(request, config, project, db)
+    plugin = registry.get(project.type)
+    if plugin is not None:
+        response = plugin.route(request, project, path, db)
+        if response is None:
+            raise HTTPException(404)
+        return response
     if project.type not in ("html", "zip"):
         raise HTTPException(404)
     if any(part.startswith(".") for part in Path(path).parts):

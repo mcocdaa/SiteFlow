@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ project.title }} - 博客编辑 - {{ site_title }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <meta name="csrf" content="{{ csrf }}">
+</head>
+<body data-plugin-id="{{ project.id }}" data-preview-url="/projects/{{ project.slug }}/">
+  {% import "icons.html" as icons %}
+  <header class="site-header">
+    <div class="wrap row-between">
+      <div>
+        <p class="crumbs"><a href="/admin">管理</a>{% if parent %} <span class="muted">/</span> <a href="/admin/projects/{{ parent.id }}">{{ parent.title }}</a>{% endif %} <span class="muted">/</span> <span>{{ project.title }}</span></p>
+        <p class="brand">{{ project.title }}</p>
+      </div>
+      <div class="row-actions">
+        <a class="btn ghost" href="{{ project.slug and '/projects/' + project.slug + '/' }}" target="_blank">{{ icons.icon("external-link") }}预览</a>
+        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}退出登录</button>
+      </div>
+    </div>
+  </header>
+  <main class="wrap">
+    <section class="plugin-block">
+      <h2>博客信息</h2>
+      <div class="editor-grid">
+        <label>标题 <input id="f-title" autocomplete="off"></label>
+        <label>描述 <input id="f-description" autocomplete="off"></label>
+      </div>
+    </section>
+    <section class="plugin-block" data-section="posts">
+      <div class="block-head">
+        <h2>文章（<span id="post-count">0</span>）</h2>
+        <button type="button" class="btn ghost" data-add-post>{{ icons.icon("plus") }}添加文章</button>
+      </div>
+      <div class="entry-list"></div>
+    </section>
+    <div class="form-actions">
+      <button type="button" class="btn primary" data-action="save-content">{{ icons.icon("check") }}保存</button>
+      <button type="button" class="btn" data-action="save-preview">保存并查看</button>
+      <span class="muted" id="save-state"></span>
+    </div>
+  </main>
+  <script id="plugin-data" type="application/json">{{ content | tojson }}</script>
+  <script>
+(function () {
+  "use strict";
+  var CSRF = document.querySelector('meta[name="csrf"]').getAttribute("content");
+  var body = document.body;
+  var projectId = body.getAttribute("data-plugin-id");
+  var previewUrl = body.getAttribute("data-preview-url");
+  var state = JSON.parse(document.getElementById("plugin-data").textContent);
+  var ICONS = {
+    up: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>',
+    down: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>',
+    trash: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>',
+    collapse: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>',
+    expand: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
+    open: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>'
+  };
+  var POST_FIELDS = [
+    ["slug", "Slug（URL，可中文）", "text"],
+    ["title", "标题", "text"],
+    ["date", "日期（YYYY-MM-DD）", "text"],
+    ["tags", "标签（逗号分隔）", "tags"],
+    ["summary", "摘要", "text"],
+    ["body", "正文（Markdown）", "body"]
+  ];
+
+  function el(tag, className, text) {
+    var node = document.createElement(tag);
+    if (className) node.className = className;
+    if (text !== undefined) node.textContent = text;
+    return node;
+  }
+  function valueOf(post, field, kind) {
+    var value = post[field];
+    if (kind === "tags") return Array.isArray(value) ? value.join(", ") : "";
+    return typeof value === "string" ? value : "";
+  }
+  function readValue(input, kind) {
+    var text = input.value.trim();
+    if (kind === "tags") return text ? text.split(",").map(function (part) { return part.trim(); }).filter(Boolean) : [];
+    return text;
+  }
+  function postUrl(slug) {
+    return slug ? previewUrl + "posts/" + encodeURIComponent(slug) : null;
+  }
+  function renderPost(post, index, expanded) {
+    var card = el("div", "entry-card" + (expanded ? "" : " collapsed"));
+    card.setAttribute("data-index", String(index));
+    var head = el("div", "entry-head");
+    var title = el("span", "entry-title", post.title || "（未命名）");
+    var toggle = el("button", "btn ghost icon-btn entry-toggle");
+    toggle.type = "button";
+    toggle.setAttribute("aria-label", expanded ? "折叠" : "展开");
+    toggle.setAttribute("data-tip", expanded ? "折叠" : "展开");
+    toggle.innerHTML = expanded ? ICONS.collapse : ICONS.expand;
+    var left = el("span", "entry-head-left");
+    left.append(toggle, el("span", "entry-order", "第 " + (index + 1) + " 篇"), title);
+    head.append(left);
+    var actions = el("div", "entry-actions");
+    var url = postUrl(post.slug);
+    if (url) {
+      var link = el("a", "btn ghost icon-btn");
+      link.href = url;
+      link.target = "_blank";
+      link.setAttribute("aria-label", "预览这篇");
+      link.setAttribute("data-tip", "预览这篇");
+      link.innerHTML = ICONS.open;
+      actions.append(link);
+    }
+    [["entry-up", ICONS.up, "上移"], ["entry-down", ICONS.down, "下移"], ["entry-remove", ICONS.trash, "删除"]].forEach(function (item) {
+      var button = el("button", "btn ghost icon-btn");
+      button.type = "button";
+      button.setAttribute("data-entry-action", item[0]);
+      button.setAttribute("aria-label", item[2]);
+      button.setAttribute("data-tip", item[2]);
+      button.innerHTML = item[1];
+      actions.append(button);
+    });
+    head.append(actions);
+    card.append(head);
+    var grid = el("div", "entry-grid");
+    POST_FIELDS.forEach(function (field) {
+      var label = el("label");
+      if (field[2] === "body") label.className = "full";
+      label.append(el("span", undefined, field[1]));
+      var singleLine = field[2] === "text" || field[2] === "tags";
+      var input = el(singleLine ? "input" : "textarea");
+      if (singleLine) { input.type = "text"; input.autocomplete = "off"; }
+      else { input.rows = field[2] === "body" ? 10 : 3; if (field[2] === "body") input.className = "mono"; }
+      input.value = valueOf(post, field[0], field[2]);
+      input.setAttribute("data-field", field[0]);
+      input.setAttribute("data-kind", field[2]);
+      label.append(input);
+      grid.append(label);
+    });
+    grid.querySelector('[data-field="title"]').addEventListener("input", function (event) {
+      title.textContent = event.target.value.trim() || "（未命名）";
+    });
+    card.append(grid);
+    return card;
+  }
+  function renderPosts() {
+    var container = document.querySelector('[data-section="posts"] .entry-list');
+    container.textContent = "";
+    (state.posts || []).forEach(function (post, index) {
+      container.append(renderPost(post, index, index === expandedIndex));
+    });
+    document.getElementById("post-count").textContent = String((state.posts || []).length);
+  }
+  function collectPosts() {
+    var rows = [];
+    document.querySelectorAll('[data-section="posts"] .entry-card').forEach(function (card) {
+      var post = {};
+      card.querySelectorAll("[data-field]").forEach(function (input) {
+        post[input.getAttribute("data-field")] = readValue(input, input.getAttribute("data-kind"));
+      });
+      rows.push(post);
+    });
+    return rows;
+  }
+  var expandedIndex = -1;
+  function collect() {
+    return {
+      title: document.getElementById("f-title").value.trim(),
+      description: document.getElementById("f-description").value.trim(),
+      posts: collectPosts()
+    };
+  }
+  function save(thenView) {
+    var status = document.getElementById("save-state");
+    status.textContent = "保存中…";
+    fetch("/api/admin/projects/" + projectId, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "X-CSRF-Token": CSRF },
+      body: JSON.stringify({ content: JSON.stringify(collect()) })
+    }).then(function (response) {
+      return response.json().then(function (data) {
+        if (!response.ok || data.ok === false) throw new Error(data.error || "保存失败");
+        state = collect();
+        var stamp = new Date().toLocaleTimeString();
+        status.innerHTML = "已保存 " + stamp + ' · <a href="' + previewUrl + '" target="_blank">查看博客</a>';
+        if (thenView) window.location.href = previewUrl;
+      });
+    }).catch(function (error) {
+      status.textContent = "";
+      alert(error.message || String(error));
+    });
+  }
+  document.getElementById("f-title").value = state.title || "";
+  document.getElementById("f-description").value = state.description || "";
+  renderPosts();
+  document.addEventListener("click", function (event) {
+    if (event.target.closest("[data-add-post]")) {
+      state.posts = collectPosts();
+      state.posts.push({});
+      expandedIndex = state.posts.length - 1;
+      renderPosts();
+      return;
+    }
+    var toggle = event.target.closest(".entry-toggle");
+    if (toggle) {
+      var card = toggle.closest(".entry-card");
+      card.classList.toggle("collapsed");
+      var collapsed = card.classList.contains("collapsed");
+      toggle.innerHTML = collapsed ? ICONS.expand : ICONS.collapse;
+      toggle.setAttribute("aria-label", collapsed ? "展开" : "折叠");
+      toggle.setAttribute("data-tip", collapsed ? "展开" : "折叠");
+      return;
+    }
+    var entryButton = event.target.closest("[data-entry-action]");
+    if (entryButton) {
+      var entryCard = entryButton.closest(".entry-card");
+      var action = entryButton.getAttribute("data-entry-action");
+      if (action === "entry-remove") {
+        entryCard.remove();
+      } else {
+        var sibling = action === "entry-up" ? entryCard.previousElementSibling : entryCard.nextElementSibling;
+        if (sibling) {
+          if (action === "entry-up") entryCard.parentNode.insertBefore(entryCard, sibling);
+          else entryCard.parentNode.insertBefore(sibling, entryCard);
+        }
+      }
+      state.posts = collectPosts();
+      renderPosts();
+      return;
+    }
+    if (event.target.closest('[data-action="save-content"]')) save(false);
+    if (event.target.closest('[data-action="save-preview"]')) save(true);
+  });
+})();
+  </script>
+</body>
+</html>

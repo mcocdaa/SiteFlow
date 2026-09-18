@@ -76,7 +76,7 @@ def test_depth_and_leaf_rules() -> None:
 def test_unknown_app_type_rejected() -> None:
     with TestClient(app) as client:
         csrf = login(client)
-        response = create_app(client, csrf, "resume", "未注册类型")
+        response = create_app(client, csrf, "podcast", "未注册类型")
     assert response.status_code == 400
     assert "不支持" in response.json()["error"]
 
@@ -144,8 +144,9 @@ def test_admin_pages_use_registered_app_list() -> None:
 
         root = client.get("/admin")
         assert "新建空间" in root.text
+        assert "新建简历" in root.text
+        assert "新建博客" in root.text
         assert "上传静态站点" not in root.text
-        assert "新建简历" not in root.text
         assert 'id="app-type"' not in root.text
 
         space_page = client.get(f"/admin/projects/{space['id']}")
@@ -215,9 +216,10 @@ def test_space_is_registered_in_app_list() -> None:
     from app.plugins import registry
 
     types = [plugin.type for plugin in registry.all_apps()]
-    assert "space" in types
+    assert types == ["space", "resume", "blog"]
     assert registry.get("space") is not None
-    assert registry.get("resume") is None
+    assert registry.get("resume") is not None
+    assert registry.get("podcast") is None
 
 
 def test_login_roundtrip_for_app_management() -> None:
@@ -258,3 +260,133 @@ def test_login_next_rejects_external_targets() -> None:
         )
     assert response.status_code == 303
     assert response.headers["location"] == "/admin"
+
+
+def test_resume_plugin_render_and_escape() -> None:
+    import json
+
+    from tests.test_flow import auth_headers
+
+    with TestClient(app) as client:
+        csrf = login(client)
+        resume = create_app(client, csrf, "resume", "张三的简历").json()["project"]
+        content = {
+            "basics": {
+                "name": "<script>alert(1)</script>",
+                "label": "工程师",
+                "summary": "第一行\n第二行",
+                "location": {"city": "深圳", "region": "", "countryCode": "CN"},
+                "profiles": [{"network": "GitHub", "username": "x", "url": "https://github.com/x"}],
+            },
+            "work": [
+                {
+                    "name": "某公司",
+                    "position": "后端",
+                    "startDate": "2022-07",
+                    "endDate": "至今",
+                    "highlights": ["要点一"],
+                }
+            ],
+            "skills": [{"name": "Python", "keywords": ["FastAPI"]}],
+        }
+        patched = client.patch(
+            f"/api/admin/projects/{resume['id']}",
+            json={"content": json.dumps(content, ensure_ascii=False)},
+            headers=auth_headers(csrf),
+        )
+        assert patched.status_code == 200
+
+        page = client.get(f"/projects/{resume['slug']}/")
+        assert page.status_code == 200
+        assert "<script>alert(1)</script>" not in page.text
+        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in page.text
+        assert "后端" in page.text and "FastAPI" in page.text
+
+        admin_page = client.get(f"/admin/projects/{resume['id']}")
+        assert admin_page.status_code == 200
+        assert 'id="plugin-data"' in admin_page.text
+        assert 'id="f-name"' in admin_page.text
+        assert 'data-section="work"' in admin_page.text
+        assert "保存并查看" in admin_page.text
+
+
+def test_blog_plugin_index_detail_and_markdown_safety() -> None:
+    import json
+
+    from tests.test_flow import auth_headers
+
+    with TestClient(app) as client:
+        csrf = login(client)
+        blog = create_app(client, csrf, "blog", "我的博客").json()["project"]
+        content = {
+            "title": "我的博客",
+            "description": "记录",
+            "posts": [
+                {
+                    "slug": "hello",
+                    "title": "第一篇",
+                    "date": "2026-09-01",
+                    "tags": ["生活"],
+                    "summary": "摘要一",
+                    "body": "**粗体**\n\n<script>alert(1)</script>\n\n[坏链接](javascript:alert(1))",
+                },
+                {"slug": "second", "title": "第二篇", "date": "2026-09-18", "body": "正文二"},
+            ],
+        }
+        patched = client.patch(
+            f"/api/admin/projects/{blog['id']}",
+            json={"content": json.dumps(content, ensure_ascii=False)},
+            headers=auth_headers(csrf),
+        )
+        assert patched.status_code == 200
+
+        index = client.get(f"/projects/{blog['slug']}/")
+        assert index.status_code == 200
+        assert "第一篇" in index.text and "第二篇" in index.text
+        assert index.text.index("第二篇") < index.text.index("第一篇")
+
+        detail = client.get(f"/projects/{blog['slug']}/posts/hello")
+        assert detail.status_code == 200
+        assert "文章列表" in detail.text
+        assert "上一篇" in detail.text and "第二篇" in detail.text
+        assert "<strong>粗体</strong>" in detail.text
+        assert "<script>alert(1)</script>" not in detail.text
+        assert "&lt;script&gt;" in detail.text
+        assert 'href="javascript:' not in detail.text
+
+        missing = client.get(f"/projects/{blog['slug']}/posts/nope")
+        assert missing.status_code == 404
+        assert client.get(f"/projects/{blog['slug']}/posts/").status_code == 404
+
+        admin_page = client.get(f"/admin/projects/{blog['id']}")
+        assert admin_page.status_code == 200
+        assert 'id="plugin-data"' in admin_page.text
+        assert "添加文章" in admin_page.text
+        assert "保存并查看" in admin_page.text
+        assert 'data-preview-url="/projects/' in admin_page.text
+        assert 'id="post-count"' in admin_page.text
+
+
+def test_plugin_pages_show_admin_entry() -> None:
+    import json
+
+    from tests.test_flow import auth_headers
+
+    with TestClient(app) as client:
+        csrf = login(client)
+        resume = create_app(client, csrf, "resume", "入口简历").json()["project"]
+        blog = create_app(client, csrf, "blog", "入口博客").json()["project"]
+        client.patch(
+            f"/api/admin/projects/{blog['id']}",
+            json={"content": json.dumps({"posts": [{"slug": "p1", "title": "文一", "body": "x"}]})},
+            headers=auth_headers(csrf),
+        )
+
+        resume_page = client.get(f"/projects/{resume['slug']}/")
+        assert f'href="/admin/projects/{resume["id"]}"' in resume_page.text
+
+        blog_page = client.get(f"/projects/{blog['slug']}/")
+        assert f'href="/admin/projects/{blog["id"]}"' in blog_page.text
+
+        post_page = client.get(f"/projects/{blog['slug']}/posts/p1")
+        assert f'href="/admin/projects/{blog["id"]}"' in post_page.text

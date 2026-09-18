@@ -267,3 +267,119 @@ main.wrap { padding: 48px 24px 96px; }
   font-size: 13px; font-weight: 600; letter-spacing: .08em;
   color: var(--text-muted); text-transform: uppercase; margin: 0 0 12px;
 }
+
+.plugin-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 20px; margin-bottom: 20px; }
+.plugin-block h2 { margin: 0 0 14px; font-size: 17px; }
+.block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.block-head h2 { margin: 0; }
+.editor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.editor-grid label, .stack { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
+.plugin-block input, .plugin-block textarea {
+  padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-btn);
+  background: var(--bg); color: var(--text); font-size: 14px; font-family: inherit; width: 100%; resize: vertical;
+}
+.stack { margin-top: 12px; }
+.entry-card { border: 1px solid var(--border); border-radius: var(--radius-btn); padding: 14px; margin-bottom: 12px; background: var(--bg); }
+.entry-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.entry-order { font-size: 12px; color: var(--text-muted); }
+.entry-actions { display: flex; gap: 4px; }
+.entry-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.entry-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-muted); }
+.entry-grid label.full { grid-column: 1 / -1; }
+.form-actions { display: flex; align-items: center; gap: 12px; margin: 8px 0 48px; }
+
+.resume-actions, .blog-actions { max-width: 800px; margin: 0 auto; padding: 24px 24px 0; display: flex; justify-content: space-between; gap: 12px; }
+.resume, .blog { max-width: 800px; margin: 0 auto; padding: 24px 24px 96px; }
+.resume-head { display: flex; gap: 24px; align-items: flex-start; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+.resume-avatar { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; flex: none; }
+.resume-head h1 { margin: 0; font-size: 30px; letter-spacing: -.03em; }
+.resume-label { margin: 6px 0 0; color: var(--accent); font-weight: 600; }
+.resume-summary { margin: 10px 0 0; color: var(--text-muted); white-space: pre-line; }
+.resume-contact { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; }
+.resume-contact li { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); }
+.resume-contact a { color: var(--text); text-decoration: none; }
+.resume-contact a:hover { color: var(--accent); }
+.resume-section { margin-top: 32px; }
+.resume-section h2 { display: flex; align-items: center; gap: 8px; font-size: 18px; margin: 0 0 14px; }
+.resume-entry { padding: 12px 0; border-top: 1px dashed var(--border); }
+.resume-entry:first-of-type { border-top: none; padding-top: 0; }
+.resume-entry-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.resume-entry p { margin: 6px 0 0; color: var(--text-muted); white-space: pre-line; }
+.resume-entry ul { margin: 6px 0 0; padding-left: 20px; color: var(--text-muted); }
+.skill-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.skill-list li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; padding: 2px 8px; border: 1px solid var(--border); border-radius: 99px; font-size: 12px; color: var(--text-muted); }
+
+.blog-head h1 { margin: 0; font-size: 32px; letter-spacing: -.03em; }
+.blog-head p { margin: 8px 0 0; color: var(--text-muted); }
+.post-list { list-style: none; margin: 32px 0 0; padding: 0; display: flex; flex-direction: column; gap: 28px; }
+.post-list h2 { margin: 0; font-size: 20px; }
+.post-link { text-decoration: none; color: inherit; }
+.post-link:hover h2 { color: var(--accent); }
+.post-meta { display: flex; gap: 8px; align-items: center; color: var(--text-muted); font-size: 13px; margin: 6px 0 0; flex-wrap: wrap; }
+.post-summary { color: var(--text-muted); margin: 8px 0 0; }
+.post-head h1 { margin: 0 0 6px; font-size: 32px; letter-spacing: -.03em; }
+.post-body { margin-top: 24px; line-height: 1.8; }
+.post-body h2 { font-size: 22px; margin: 32px 0 12px; }
+.post-body h3 { font-size: 18px; margin: 24px 0 10px; }
+.post-body pre { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px; overflow: auto; }
+.post-body code { background: var(--surface); border-radius: 6px; padding: 2px 6px; font-size: .92em; }
+.post-body pre code { background: none; padding: 0; }
+.post-body blockquote { margin: 16px 0; padding: 4px 16px; border-left: 3px solid var(--accent); color: var(--text-muted); }
+.post-body a { color: var(--accent); }
+.post-body img { max-width: 100%; border-radius: 10px; }
+
+@media print {
+  @page { margin: 16mm 14mm; }
+  body { background: #fff; color: #000; }
+  .resume-actions, .blog-actions, .admin-entry { display: none !important; }
+  .resume { max-width: none; margin: 0; padding: 0; font-size: 10.5pt; }
+  .resume-head { gap: 16px; padding-bottom: 10px; border-bottom: 1px solid #999; }
+  .resume-head h1 { font-size: 22pt; letter-spacing: -.02em; }
+  .resume-avatar { width: 72px; height: 72px; }
+  .resume-label { color: #000; font-size: 11pt; }
+  .resume-summary { color: #222; margin-top: 8px; }
+  .resume-contact { gap: 4px 14px; margin-top: 8px; font-size: 9.5pt; }
+  .resume-contact li, .resume-contact a { color: #222; text-decoration: none; }
+  .resume-section { margin-top: 14px; break-inside: avoid-page; }
+  .resume-section h2 { font-size: 12.5pt; margin: 0 0 6px; }
+  .resume-entry { padding: 8px 0; border-top: 1px solid #ddd; break-inside: avoid; page-break-inside: avoid; }
+  .resume-entry-head strong { font-size: 11pt; }
+  .resume-entry p, .resume-entry ul { color: #222; margin-top: 4px; }
+  .resume-entry ul { padding-left: 16px; }
+  .skill-list { gap: 4px; }
+  .skill-list li { break-inside: avoid; }
+  .chip { border-color: #999; color: #333; }
+  a { color: #000; }
+}
+
+.post-item { padding: 22px 0; border-bottom: 1px solid var(--border); }
+.post-item:first-child { padding-top: 0; }
+.post-item:last-child { border-bottom: none; }
+.post-link { display: block; text-decoration: none; color: inherit; }
+.post-link h2 { transition: color .15s; }
+.post-link:hover h2 { color: var(--accent); }
+.post-more { display: inline-flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 13px; font-weight: 500; color: var(--accent); opacity: .85; transition: opacity .15s, gap .15s; }
+.post-link:hover .post-more { opacity: 1; gap: 8px; }
+.post-length { color: var(--text-muted); font-size: 12px; }
+.post-body p { margin: 0 0 18px; }
+.post-body ul, .post-body ol { margin: 0 0 18px; padding-left: 22px; }
+.post-body li { margin: 6px 0; }
+.post-body hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+.post-nav { display: flex; justify-content: space-between; gap: 16px; margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
+.post-nav-link { display: flex; flex-direction: column; gap: 4px; max-width: 46%; text-decoration: none; color: inherit; }
+.post-nav-link.next { text-align: right; margin-left: auto; }
+.post-nav-link strong { font-size: 14px; font-weight: 600; }
+.post-nav-link:hover strong { color: var(--accent); }
+.post-nav-link .muted { font-size: 12px; }
+
+.entry-head-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.entry-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+.entry-toggle { flex: none; }
+.entry-card.collapsed .entry-grid { display: none; }
+.entry-card.collapsed { padding: 10px 14px; }
+.entry-card.collapsed .entry-head { margin-bottom: 0; }
+.entry-card textarea.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.6; }
+#save-state a { color: var(--accent); }
+
+.actions-right { display: flex; align-items: center; gap: 12px; }

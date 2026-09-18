@@ -9,17 +9,21 @@ from app.templating import placeholder_hue, templates
 
 
 class SpaceApp:
-    type = "space"
-    label = "空间"
-    icon = "layers"
-    leaf = False
-    content_editable = False
+    type: str = "space"
+    label: str = "空间"
+    icon: str = "layers"
+    leaf: bool = False
+    content_editable: bool = False
+    admin_template: str | None = None
 
     def default_content(self) -> dict:
         return {}
 
     def validate_content(self, raw: str) -> dict:
         return {}
+
+    def route(self, request: Request, project: Project, path: str, db: Session):
+        return None
 
     def render(self, request: Request, project: Project, db: Session) -> HTMLResponse:
         config = request.app.state.config

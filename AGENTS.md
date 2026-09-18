@@ -31,7 +31,7 @@ ADMIN_PASSWORD=dev DATA_DIR=./data COOKIE_SECURE=false \
 | `app/deps.py` | `DbSession` / `AdminConfig` 依赖、`api_error` |
 | `app/auth.py` | 会话签名、CSRF、登录限流、密码校验与失效 |
 | `app/store.py` | SQLite 会话工厂与全部查询/排序 |
-| `app/plugins/` | 应用注册表（space 为注册的第一个应用）+ base 协议；插件自带模板目录 |
+| `app/plugins/` | 应用注册表（space/resume/blog）+ base 协议；插件自带模板目录 |
 | `app/og.py` | OG 元数据与封面图抓取（私网校验、大小/重定向上限） |
 | `app/uploads.py` | ZIP 安全解压、封面处理、文件清理 |
 | `app/templating.py` | Jinja2 环境 |

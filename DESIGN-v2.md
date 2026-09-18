@@ -1,6 +1,6 @@
 # SiteFlow v2 设计：应用（Application）与插件
 
-> 状态：v2.0 已实施（2026-09-18）：插件框架 + 内置空间；简历/博客为 v2.1 插件。
+> 状态：v2.0（框架+空间）与 v2.1（简历/博客插件）已实施（2026-09-18）；主题与 2FA 待做。
 > v1 方案见 [DESIGN.md](DESIGN.md)，本文件只描述 v2 增量。
 
 ## 1. 主题与目标
@@ -126,16 +126,31 @@ class AppPlugin(Protocol):
    管理台即通过通用 `PATCH /api/admin/projects/{id}` 的 `content` 字段保存；
 5. 需要专属管理界面时：新增自身管理页模板与（可选）管理路由，由注册表信息接入入口。
 
-## 6. 简历/博客插件（v2.1 规划）
+## 6. 简历/博客插件（已实施）
 
-本节保留 v2.1 设计意图，v2.0 不包含任何插件实现。
+### 简历插件 `app/plugins/resume/`
 
-简历数据采用开源标准 [JSON Resume](https://jsonresume.org/schema/) 的子集（字段名兼容，
-便于未来复用开源主题与导出），存于 `projects.content`。
+数据采用开源标准 [JSON Resume](https://jsonresume.org/schema/) 的子集（字段名兼容，便于复用开源主题与导出），存于 `projects.content`：
 
-- 字段全部纯文本，Jinja 转义输出；URL 只允许 http(s) 或站内相对路径。
-- 管理台编辑：基本信息表单 + 区段条目增删改/上下移；头像走封面管线。
-- 博客同理：文章列表/详情 + 管理台编辑，作为独立插件实现。
+- 区段：`basics`（含 location/profiles）、`work`、`education`、`projects`、`skills`；
+- 字段全部纯文本，Jinja 转义输出；URL 只允许 http(s) 或站内路径；头像走封面管线；
+- 渲染：单页时间线 + 打印/导出 PDF（`@media print`）；
+- 管理台：`resume_admin.html` 编辑器（基本信息 + 区段条目增删改/上下移），内联 JS，无构建。
+
+### 博客插件 `app/plugins/blog/`
+
+内容存于 `projects.content`：
+
+```json
+{"title": "", "description": "", "posts": [
+  {"slug": "hello", "title": "标题", "date": "2026-09-01", "tags": ["标签"], "summary": "摘要", "body": "Markdown 正文"}
+]}
+```
+
+- 正文用开源 [markdown-it-py](https://github.com/executablebooks/markdown-it-py)（MIT，CommonMark）；
+- **安全**：`MarkdownIt("commonmark", {"html": False})` —— 原始 HTML 转义、`javascript:`/`data:` 链接被拒（内置 validateLink）；
+- 路由：`/projects/{slug}/` 文章列表（按日期倒序）；`/projects/{slug}/posts/{post_slug}` 详情；
+- 管理台：`blog_admin.html` 编辑器（博客信息 + 文章增删改/上下移，正文 Markdown）。
 
 ## 7. 管理台
 
@@ -170,5 +185,5 @@ class AppPlugin(Protocol):
 | 版本 | 内容 |
 |------|------|
 | v2.0 | 应用模型（space）、插件框架与注册表、管理台嵌套（不含任何具体插件） |
-| v2.1 | 简历插件、博客插件（作为独立插件接入应用列表）、主题与外观 |
-| v2.2 | 2FA 登录（TOTP）、管理台增强（全局搜索/审计信息等） |
+| v2.1 | 简历插件、博客插件（已实施）；主题与外观（待做） |
+| v2.2 | 主题与外观、2FA 登录（TOTP）、管理台增强（全局搜索/审计信息等） |
