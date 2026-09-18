@@ -122,11 +122,11 @@
         .then(refresh)
         .catch(onError);
     } else if (action === "toggle-pin") {
-      var pinned = row.querySelector('[data-action="toggle-pin"]').textContent.trim() === "取消置顶";
+      var pinned = button.getAttribute("data-pinned") === "true";
       api("PATCH", "/projects/" + id, { pinned: !pinned }).then(refresh).catch(onError);
     } else if (action === "toggle-visible") {
-      var hidden = row.querySelector('[data-action="toggle-visible"]').textContent.trim() === "显示";
-      api("PATCH", "/projects/" + id, { visible: !hidden }).then(refresh).catch(onError);
+      var visible = button.getAttribute("data-visible") === "true";
+      api("PATCH", "/projects/" + id, { visible: !visible }).then(refresh).catch(onError);
     } else if (action === "move-up") {
       api("POST", "/projects/" + id + "/move", { direction: "up" }).then(refresh).catch(onError);
     } else if (action === "move-down") {

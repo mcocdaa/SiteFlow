@@ -234,3 +234,16 @@ def test_gallery_shows_admin_entry_and_guide() -> None:
         login(client)
         logged_in = client.get("/")
         assert "去管理台上传第一个作品" in logged_in.text
+
+
+def test_admin_uses_svg_icons_not_text_glyphs() -> None:
+    with TestClient(app) as client:
+        csrf = login(client)
+        upload(client, csrf, "图标测试.html", b"<h1>Icon</h1>")
+        admin = client.get("/admin")
+    assert '<svg class="icon"' in admin.text
+    assert "data-pinned=" in admin.text
+    assert "data-visible=" in admin.text
+    assert "↑" not in admin.text
+    assert "↓" not in admin.text
+    assert "★" not in admin.text
