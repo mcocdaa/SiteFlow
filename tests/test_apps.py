@@ -365,3 +365,28 @@ def test_blog_plugin_index_detail_and_markdown_safety() -> None:
         assert "保存并查看" in admin_page.text
         assert 'data-preview-url="/projects/' in admin_page.text
         assert 'id="post-count"' in admin_page.text
+
+
+def test_plugin_pages_show_admin_entry() -> None:
+    import json
+
+    from tests.test_flow import auth_headers
+
+    with TestClient(app) as client:
+        csrf = login(client)
+        resume = create_app(client, csrf, "resume", "入口简历").json()["project"]
+        blog = create_app(client, csrf, "blog", "入口博客").json()["project"]
+        client.patch(
+            f"/api/admin/projects/{blog['id']}",
+            json={"content": json.dumps({"posts": [{"slug": "p1", "title": "文一", "body": "x"}]})},
+            headers=auth_headers(csrf),
+        )
+
+        resume_page = client.get(f"/projects/{resume['slug']}/")
+        assert f'href="/admin/projects/{resume["id"]}"' in resume_page.text
+
+        blog_page = client.get(f"/projects/{blog['slug']}/")
+        assert f'href="/admin/projects/{blog["id"]}"' in blog_page.text
+
+        post_page = client.get(f"/projects/{blog['slug']}/posts/p1")
+        assert f'href="/admin/projects/{blog["id"]}"' in post_page.text

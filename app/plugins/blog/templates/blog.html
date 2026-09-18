@@ -10,6 +10,7 @@
   {% import "icons.html" as icons %}
   <div class="blog-actions">
     <a class="btn ghost" href="/">{{ icons.icon("arrow-left") }}返回</a>
+    <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" aria-label="管理入口">{{ icons.icon("settings") }}</a>
   </div>
   <main class="blog">
     <header class="blog-head">

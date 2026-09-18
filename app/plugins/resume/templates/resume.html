@@ -10,7 +10,10 @@
   {% import "icons.html" as icons %}
   <div class="resume-actions">
     <a class="btn ghost" href="/">{{ icons.icon("arrow-left") }}返回</a>
-    <button class="btn" onclick="window.print()">{{ icons.icon("printer") }}打印 / 导出 PDF</button>
+    <span class="actions-right">
+      <button class="btn" onclick="window.print()">{{ icons.icon("printer") }}打印 / 导出 PDF</button>
+      <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" aria-label="管理入口">{{ icons.icon("settings") }}</a>
+    </span>
   </div>
   <main class="resume">
     <header class="resume-head">

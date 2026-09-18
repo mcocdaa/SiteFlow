@@ -363,3 +363,5 @@ main.wrap { padding: 48px 24px 96px; }
 .entry-card.collapsed .entry-head { margin-bottom: 0; }
 .entry-card textarea.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.6; }
 #save-state a { color: var(--accent); }
+
+.actions-right { display: flex; align-items: center; gap: 12px; }
