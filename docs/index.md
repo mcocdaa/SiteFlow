@@ -8,3 +8,4 @@
 | [CHANGELOG.md](../CHANGELOG.md) | 版本记录 |
 | [deployment.md](deployment.md) | Docker 部署、反向代理、HTTPS |
 | [operations.md](operations.md) | 备份、升级、排障 |
+| [../deploy/README.md](../deploy/README.md) | 服务器镜像部署（无源码） |

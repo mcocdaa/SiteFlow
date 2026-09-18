@@ -26,6 +26,8 @@ docker compose up -d --build
 
 访问 `http://127.0.0.1:8000`（仅监听本机，由宿主反向代理对外）。管理员入口 `/login`。
 
+服务器无源码部署（仅 `init.sh` + `.env`）见 [deploy/README.md](deploy/README.md)。
+
 ## 环境变量
 
 | 变量 | 默认 | 说明 |
