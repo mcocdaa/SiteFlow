@@ -24,7 +24,7 @@
     </div>
   </header>
   <main class="wrap">
-    {% if project.type == 'space' %}
+    {% if not plugin_leaf %}
     <section class="dropzone" id="dropzone">
       <span class="dropzone-icon">{{ icons.icon("upload", 28) }}</span>
       <p><strong>拖拽 HTML 或 ZIP 到这里</strong></p>
@@ -36,6 +36,7 @@
       <button class="btn primary" data-action="add-link">{{ icons.icon("plus") }}添加链接</button>
     </section>
     {% if can_nest %}
+    <h2 class="section-title">应用</h2>
     <section class="app-create">
       {% for app in app_choices %}
       <button class="btn" data-action="create-app" data-type="{{ app.type }}">{{ icons.icon(app.icon) }}新建{{ app.label }}</button>
@@ -45,9 +46,9 @@
     {{ rows.rows(children, plugin_types) }}
     {% else %}
     <section class="info-panel">
-      <p>静态站点应用，入口：<code>{{ project.entry }}</code></p>
-      <p class="muted">如需替换内容，请删除后重新上传（数据无版本历史）。封面与标题可在上级列表的编辑面板修改。</p>
-      <p><a class="btn" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}打开站点</a></p>
+      <p>「{{ project.title }}」暂无可编辑内容。</p>
+      <p class="muted">插件应用可按插件提供的内容编辑器扩展。</p>
+      <p><a class="btn" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}打开应用</a></p>
     </section>
     {% endif %}
   </main>

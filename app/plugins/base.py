@@ -15,6 +15,7 @@ class AppPlugin(Protocol):
     label: str
     icon: str
     leaf: bool
+    content_editable: bool
 
     def default_content(self) -> dict: ...
 

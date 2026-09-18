@@ -17,6 +17,13 @@
     </div>
   </header>
   <main class="wrap">
+    <h2 class="section-title">应用</h2>
+    <section class="app-create">
+      {% for app in app_choices %}
+      <button class="btn" data-action="create-app" data-type="{{ app.type }}">{{ icons.icon(app.icon) }}新建{{ app.label }}</button>
+      {% endfor %}
+    </section>
+    <h2 class="section-title">项目</h2>
     <section class="dropzone" id="dropzone">
       <span class="dropzone-icon">{{ icons.icon("upload", 28) }}</span>
       <p><strong>拖拽 HTML 或 ZIP 到这里</strong></p>
@@ -26,11 +33,6 @@
     <section class="link-row">
       <input type="url" id="link-url" placeholder="https://example.com 作品链接">
       <button class="btn primary" data-action="add-link">{{ icons.icon("plus") }}添加链接</button>
-    </section>
-    <section class="app-create">
-      {% for app in app_choices %}
-      <button class="btn" data-action="create-app" data-type="{{ app.type }}">{{ icons.icon(app.icon) }}新建{{ app.label }}</button>
-      {% endfor %}
     </section>
     {{ rows.rows(projects, plugin_types) }}
   </main>

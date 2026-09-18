@@ -208,3 +208,12 @@ def test_old_database_migration() -> None:
     assert project is not None
     assert project.parent_id is None
     assert project.content == "{}"
+
+
+def test_space_is_registered_in_app_list() -> None:
+    from app.plugins import registry
+
+    types = [plugin.type for plugin in registry.all_apps()]
+    assert "space" in types
+    assert registry.get("space") is not None
+    assert registry.get("resume") is None
