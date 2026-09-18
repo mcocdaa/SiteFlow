@@ -2,6 +2,15 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [Unreleased]
+
+### 新增
+
+- 应用（Application）：`space` 空间 / `site` 静态站点 / `resume` 简历，统一 `/projects/` 路由
+- 插件框架 `app/plugins/`（内置注册表，预留外部 entry_points），首个插件：简历（JSON Resume 子集）
+- 管理台：新建应用、应用管理页（子项与深度限制）、简历编辑器（基本信息 + 章节条目增删改/排序）
+- 嵌套上限 3 层；叶子类型禁止包含子项；删除级联清理文件；可见性沿祖先继承
+
 ## [1.0.1] - 2026-09-18
 
 修复版本：依赖与部署工具链更新，无界面行为变化。

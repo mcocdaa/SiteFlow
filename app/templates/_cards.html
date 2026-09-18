@@ -1,0 +1,28 @@
+{% import "icons.html" as icons %}
+{% set app_icons = {"space": "layers", "site": "archive", "resume": "file-text", "link": "external-link"} %}
+{% macro cards(projects, hue) -%}
+<div class="grid">
+  {% for project in projects %}
+  <a class="card" href="{{ project.url if project.type == 'link' else '/projects/' + project.slug + '/' }}"
+     {% if project.type == 'link' %}target="_blank" rel="noopener noreferrer"{% endif %}>
+    {% if project.type == 'link' %}<span class="card-external">{{ icons.icon("external-link", 14) }}</span>{% endif %}
+    <div class="cover">
+      {% if project.cover %}
+      <img src="/media/covers/{{ project.cover }}" alt="">
+      {% else %}
+      <div class="placeholder" style="--hue: {{ hue(project.slug) }}"><span>{{ project.title[0] }}</span></div>
+      {% endif %}
+      <span class="badge badge-{{ project.type }}">
+        {% if project.type in app_icons %}{{ icons.icon(app_icons[project.type], 12) }}{% endif %}
+        {{ project.type | upper }}
+      </span>
+      {% if project.pinned %}<span class="pin" title="置顶">{{ icons.icon("pin", 14) }}</span>{% endif %}
+    </div>
+    <div class="card-body">
+      <h3>{{ project.title }}</h3>
+      {% if project.description %}<p>{{ project.description }}</p>{% endif %}
+    </div>
+  </a>
+  {% endfor %}
+</div>
+{%- endmacro %}

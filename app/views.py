@@ -20,6 +20,7 @@ from app.auth import (
     verify_password,
 )
 from app.deps import DbSession, get_config
+from app.plugins import registry
 from app.templating import templates
 
 router = APIRouter()
@@ -80,24 +81,53 @@ def gallery(request: Request, db: DbSession):
     )
 
 
-@router.get("/projects/{slug}", include_in_schema=False)
-def project_root(slug: str, db: DbSession):
-    project = store.by_slug(db, slug)
-    if project is None or project.type == "link" or not project.visible or not project.entry:
+def project_home(request: Request, config, project, db):
+    if project.type == "space":
+        session = read_session(config, request)
+        return templates.TemplateResponse(
+            request,
+            "space.html",
+            {
+                "site_title": config.site_title,
+                "project": project,
+                "projects": store.visible_projects(db, project.id),
+                "hue": placeholder_hue,
+                "is_admin": bool(session and session.get("admin") is True),
+            },
+        )
+    if project.type == "resume":
+        plugin = registry.get(project.type)
+        if plugin is None:
+            raise HTTPException(404)
+        return plugin.render(request, project, db)
+    if not project.entry:
         raise HTTPException(404)
-    return RedirectResponse(f"/projects/{slug}/{project.entry}", status_code=302)
+    return RedirectResponse(f"/projects/{project.slug}/{project.entry}", status_code=302)
+
+
+def find_public_project(db, slug: str):
+    project = store.by_slug(db, slug)
+    if project is None or project.type == "link" or not store.is_visible(db, project):
+        raise HTTPException(404)
+    return project
+
+
+@router.get("/projects/{slug}", include_in_schema=False)
+def project_root(request: Request, slug: str, db: DbSession):
+    config = get_config(request)
+    project = find_public_project(db, slug)
+    return project_home(request, config, project, db)
+
 
 
 @router.get("/projects/{slug}/{path:path}")
 def project_file(request: Request, slug: str, path: str, db: DbSession):
     config = get_config(request)
-    project = store.by_slug(db, slug)
-    if project is None or project.type == "link" or not project.visible:
-        raise HTTPException(404)
+    project = find_public_project(db, slug)
     if not path:
-        if not project.entry:
-            raise HTTPException(404)
-        return RedirectResponse(f"/projects/{slug}/{project.entry}", status_code=302)
+        return project_home(request, config, project, db)
+    if project.type not in ("html", "zip", "site"):
+        raise HTTPException(404)
     if any(part.startswith(".") for part in Path(path).parts):
         raise HTTPException(404)
     root = (config.data / "projects" / slug).resolve()
