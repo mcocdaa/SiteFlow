@@ -5,6 +5,7 @@ set -euo pipefail
 
 TAG="${TAG:-v1.0.0}"
 PORT="${SITEFLOW_PORT:-8003}"
+NAME="${SITEFLOW_NAME:-siteflow}"
 IMAGE="ghcr.io/mcocdaa/siteflow:${TAG}"
 
 cd "$(dirname "$0")"
@@ -24,11 +25,11 @@ chown 1000:1000 data
 chmod 0750 data
 
 docker pull "$IMAGE"
-docker rm -f siteflow >/dev/null 2>&1 || true
-docker run -d --name siteflow --restart unless-stopped \
+docker rm -f "$NAME" >/dev/null 2>&1 || true
+docker run -d --name "$NAME" --restart unless-stopped \
     -p "127.0.0.1:${PORT}:8000" \
     -v "$PWD/data:/data" \
     --env-file ./.env \
     "$IMAGE"
 
-echo "✓ SiteFlow 已启动: 127.0.0.1:${PORT}（管理员入口 /login）"
+echo "✓ SiteFlow 已启动: 容器 ${NAME} → 127.0.0.1:${PORT}（管理员入口 /login）"
