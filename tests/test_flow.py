@@ -208,7 +208,7 @@ def test_admin_requires_auth_and_csrf() -> None:
     with TestClient(app) as client:
         anonymous = client.get("/admin", follow_redirects=False)
         assert anonymous.status_code == 303
-        assert anonymous.headers["location"] == "/login"
+        assert anonymous.headers["location"] == "/login?next=/admin"
 
         no_session = client.post(
             "/api/admin/projects/link",

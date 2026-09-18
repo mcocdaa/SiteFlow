@@ -16,7 +16,7 @@
         <a class="brand" href="/projects/{{ project.slug }}/">{{ project.title }}</a>
         {% if project.description %}<p class="tagline">{{ project.description }}</p>{% endif %}
       </div>
-      <a class="admin-entry" href="/login" data-tip="管理入口" aria-label="管理入口">{{ icons.icon("settings") }}</a>
+      <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" aria-label="管理入口">{{ icons.icon("settings") }}</a>
     </div>
   </header>
   <main class="wrap">

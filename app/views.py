@@ -77,6 +77,12 @@ def gallery(request: Request, db: DbSession):
     )
 
 
+def safe_next(value: str | None) -> str:
+    if value and value.startswith("/") and not value.startswith("//"):
+        return value
+    return "/admin"
+
+
 def project_home(request: Request, config, project, db):
     plugin = registry.get(project.type)
     if plugin is not None:
@@ -151,7 +157,7 @@ def login_page(request: Request):
     response = templates.TemplateResponse(
         request,
         "login.html",
-        {"site_title": config.site_title, "csrf": token, "error": None},
+        {"site_title": config.site_title, "csrf": token, "error": None, "next": safe_next(request.query_params.get("next"))},
     )
     apply_session(config, response, token, authenticated=False)
     response.headers["Cache-Control"] = "no-store"
@@ -159,14 +165,20 @@ def login_page(request: Request):
 
 
 @router.post("/login")
-def login_submit(request: Request, password: str = Form(""), csrf: str = Form("")):
+def login_submit(
+    request: Request,
+    password: str = Form(""),
+    csrf: str = Form(""),
+    next_url: str = Form("", alias="next"),
+):
     config = get_config(request)
     require_same_origin(request)
+    target = safe_next(next_url)
     if not login_allowed(request):
         return templates.TemplateResponse(
             request,
             "login.html",
-            {"site_title": config.site_title, "csrf": csrf_for(request), "error": "尝试次数过多，请稍后再试"},
+            {"site_title": config.site_title, "csrf": csrf_for(request), "error": "尝试次数过多，请稍后再试", "next": target},
             status_code=429,
         )
     submitted = request.headers.get("x-csrf-token") or csrf
@@ -174,7 +186,7 @@ def login_submit(request: Request, password: str = Form(""), csrf: str = Form(""
         return templates.TemplateResponse(
             request,
             "login.html",
-            {"site_title": config.site_title, "csrf": csrf_for(request), "error": "会话校验失败，请重试"},
+            {"site_title": config.site_title, "csrf": csrf_for(request), "error": "会话校验失败，请重试", "next": target},
             status_code=403,
         )
     if not verify_password(config, password):
@@ -182,11 +194,11 @@ def login_submit(request: Request, password: str = Form(""), csrf: str = Form(""
         return templates.TemplateResponse(
             request,
             "login.html",
-            {"site_title": config.site_title, "csrf": csrf_for(request), "error": "密码不正确"},
+            {"site_title": config.site_title, "csrf": csrf_for(request), "error": "密码不正确", "next": target},
             status_code=401,
         )
     clear_login_failures(request)
-    response = RedirectResponse("/admin", status_code=303)
+    response = RedirectResponse(target, status_code=303)
     create_session(config, response)
     return response
 

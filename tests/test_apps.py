@@ -1,3 +1,4 @@
+import re
 import sqlite3
 import tempfile
 from pathlib import Path
@@ -7,7 +8,7 @@ from fastapi.testclient import TestClient
 from app import store
 from app.config import Config
 from app.main import app
-from tests.test_flow import auth_headers, login, upload
+from tests.test_flow import ORIGIN, auth_headers, login, upload
 
 
 def create_app(client: TestClient, csrf: str, app_type: str, title: str, parent_id: int | None = None):
@@ -217,3 +218,43 @@ def test_space_is_registered_in_app_list() -> None:
     assert "space" in types
     assert registry.get("space") is not None
     assert registry.get("resume") is None
+
+
+def test_login_roundtrip_for_app_management() -> None:
+    with TestClient(app) as client:
+        csrf = login(client)
+        space = create_app(client, csrf, "space", "回跳空间").json()["project"]
+        path = f"/admin/projects/{space['id']}"
+        client.cookies.clear()
+
+        anonymous = client.get(path, follow_redirects=False)
+        assert anonymous.status_code == 303
+        assert anonymous.headers["location"] == f"/login?next={path}"
+
+        page = client.get(anonymous.headers["location"])
+        token = re.search(r'name="csrf" value="(.+?)"', page.text)
+        assert token is not None
+        response = client.post(
+            "/login",
+            data={"password": app.state.config.password, "csrf": token.group(1), "next": path},
+            headers=ORIGIN,
+            follow_redirects=False,
+        )
+        assert response.status_code == 303
+        assert response.headers["location"] == path
+        assert client.get(path).status_code == 200
+
+
+def test_login_next_rejects_external_targets() -> None:
+    with TestClient(app) as client:
+        page = client.get("/login")
+        token = re.search(r'name="csrf" value="(.+?)"', page.text)
+        assert token is not None
+        response = client.post(
+            "/login",
+            data={"password": app.state.config.password, "csrf": token.group(1), "next": "//evil.example"},
+            headers=ORIGIN,
+            follow_redirects=False,
+        )
+    assert response.status_code == 303
+    assert response.headers["location"] == "/admin"

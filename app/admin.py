@@ -2,7 +2,7 @@ import json
 import shutil
 from datetime import UTC, datetime
 from typing import Annotated
-from urllib.parse import urlparse
+from urllib.parse import quote, urlparse
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
@@ -84,7 +84,7 @@ def admin_scope(request: Request, db):
     config = get_config(request)
     data = read_session(config, request)
     if data is None or data.get("admin") is not True:
-        return None, None, RedirectResponse("/login", status_code=303)
+        return None, None, RedirectResponse(f"/login?next={quote(request.url.path)}", status_code=303)
     request.scope["siteflow_csrf"] = data.get("csrf")
     return config, data, None
 

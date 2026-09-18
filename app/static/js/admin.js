@@ -112,7 +112,13 @@
         type: appType,
         title: appType === "space" ? "新空间" : "",
         parent_id: parentId()
-      }).then(refresh).catch(onError);
+      }).then(function (data) {
+        if (data.project && data.project.id) {
+          location.href = "/admin/projects/" + data.project.id;
+          return;
+        }
+        refresh();
+      }).catch(onError);
       return;
     }
     if (action === "logout") {
