@@ -15,12 +15,8 @@ TAG=v1.0.0 ./init.sh         # 默认监听 127.0.0.1:8003
 
 容器以 uid 1000 运行，`init.sh` 会自动把 `./data` 属主改为 1000:1000。
 
-## 反向代理
+## 说明
 
-nginx 参考 `nginx.conf.example`；HTTPS 终止在代理层，因此 `.env` 保持
-`COOKIE_SECURE=true`。升级：修改 `TAG` 后重跑 `./init.sh`（数据在 `./data`，不受影响）。
-
-## 真实验例
-
-服务器 `mcocdaa-newapi.xin` 上的部署：`/root/workspace/siteflow/init.sh`，
-反代 `siteflow.mcocdaa-newapi.xin` → `127.0.0.1:8003`。
+- 反向代理与 HTTPS 由部署者按自己的方案配置，本项目只负责容器。
+- HTTPS 代理后 `.env` 保持 `COOKIE_SECURE=true`；纯本机调试可设 `false`。
+- 升级：修改 `TAG` 后重跑 `./init.sh`（数据在 `./data`，不受影响）。

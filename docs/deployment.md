@@ -71,5 +71,4 @@ cp deploy/.env.example deploy/.env    # 设置 ADMIN_PASSWORD
 cd deploy && TAG=v1.0.0 ./init.sh     # 默认监听 127.0.0.1:8003
 ```
 
-真实部署实例：`siteflow.mcocdaa-newapi.xin`（nginx → `127.0.0.1:8003`，
-证书由 acme.sh 自动续期）。`.env` 中 `COOKIE_SECURE=true`，由反代终止 TLS。
+反向代理与 HTTPS 由部署者自行配置，容器只监听 `127.0.0.1`。
