@@ -2,6 +2,22 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [1.0.1] - 2026-09-18
+
+修复版本：依赖与部署工具链更新，无界面行为变化。
+
+### 修复
+
+- 依赖升级：httpx ≥0.28.1、python-multipart ≥0.0.32、sqlalchemy ≥2.0.53、argon2-cffi ≥25.1.0、mypy ≥2.3.1（开发依赖）
+- 构建基础镜像升级 `python:3.14-slim`（CI 构建与 healthz 冒烟、本地测试均通过）
+
+### 变更
+
+- `deploy/`：新增无源码镜像部署（`init.sh`/`stop.sh`/`.env.example`），支持 `TAG` / `SITEFLOW_PORT` / `SITEFLOW_NAME`
+- `docker-compose.yml` 镜像指向 `ghcr.io/mcocdaa/siteflow`
+- Release 工作流同时发布 `v{{version}}` 与 `{{version}}` 镜像 tag
+- 新增 Dependabot 配置（docker / pip）
+
 ## [1.0.0] - 2026-09-18
 
 首个正式版本。
