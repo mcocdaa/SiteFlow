@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>{{ site_title }}</title>
+  <title>{{ project.title }}{% if site_title and site_title != project.title %} - {{ site_title }}{% endif %}</title>
   <link rel="stylesheet" href="/static/css/app.css">
 </head>
 <body>
@@ -12,8 +12,9 @@
   <header class="site-header">
     <div class="wrap row-between">
       <div>
-        <a class="brand" href="/">{{ site_title }}</a>
-        <p class="tagline">{{ site_description }}</p>
+        <p class="crumbs"><a href="/">{{ site_title }}</a> <span class="muted">/</span> <span>{{ project.title }}</span></p>
+        <a class="brand" href="/projects/{{ project.slug }}/">{{ project.title }}</a>
+        {% if project.description %}<p class="tagline">{{ project.description }}</p>{% endif %}
       </div>
       <a class="admin-entry" href="/login" data-tip="管理入口" aria-label="管理入口">{{ icons.icon("settings") }}</a>
     </div>
@@ -23,9 +24,8 @@
     {{ cards.cards(projects, hue) }}
     {% else %}
     <div class="empty">
-      <h2>还没有作品</h2>
-      <p>这里将展示你的 HTML、静态网站、外链作品与个人应用。</p>
-      {% if is_admin %}<p><a class="btn" href="/admin">去管理台上传第一个作品</a></p>{% endif %}
+      <h2>这个空间还是空的</h2>
+      <p>{% if is_admin %}去管理台添加内容吧。{% else %}稍后再来看看。{% endif %}</p>
     </div>
     {% endif %}
   </main>

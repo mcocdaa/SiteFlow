@@ -9,6 +9,7 @@
 </head>
 <body>
   {% import "icons.html" as icons %}
+  {% import "_admin_rows.html" as rows %}
   <header class="site-header">
     <div class="wrap row-between">
       <a class="brand" href="/">{{ icons.icon("arrow-left") }}{{ site_title }}</a>
@@ -19,51 +20,22 @@
     <section class="dropzone" id="dropzone">
       <span class="dropzone-icon">{{ icons.icon("upload", 28) }}</span>
       <p><strong>拖拽 HTML 或 ZIP 到这里</strong></p>
-      <p class="muted">或点击选择文件 · 也可以在下方添加外链</p>
+      <p class="muted">或点击选择文件 · 也可以在下方添加外链 / 新建应用</p>
       <input type="file" id="file-input" accept=".html,.htm,.zip" hidden>
     </section>
     <section class="link-row">
       <input type="url" id="link-url" placeholder="https://example.com 作品链接">
       <button class="btn primary" data-action="add-link">{{ icons.icon("plus") }}添加链接</button>
     </section>
-    <section class="list" id="project-list">
-      {% for project in projects %}
-      <div class="row" data-id="{{ project.id }}">
-        <img class="thumb" src="{% if project.cover %}/media/covers/{{ project.cover}}{% else %}/static/img/placeholder.svg{% endif %}" alt="">
-        <div class="row-main">
-          <strong>{{ project.title }}</strong>
-          <span class="muted">{{ project.type | upper }}{% if project.pinned %} · 置顶{% endif %}{% if not project.visible %} · 已隐藏{% endif %}</span>
-        </div>
-        <div class="row-actions">
-          <a class="btn ghost icon-btn" href="/projects/{{ project.slug }}/" target="_blank" data-tip="查看" aria-label="查看">{{ icons.icon("external-link") }}</a>
-          <button class="btn ghost icon-btn" data-action="edit" data-tip="编辑" aria-label="编辑">{{ icons.icon("pencil") }}</button>
-          <button class="btn ghost icon-btn{{ ' is-active' if project.pinned }}" data-action="toggle-pin" data-pinned="{{ 'true' if project.pinned else 'false' }}" data-tip="{{ '取消置顶' if project.pinned else '置顶' }}" aria-label="{{ '取消置顶' if project.pinned else '置顶' }}">{{ icons.icon("pin") }}</button>
-          <button class="btn ghost icon-btn" data-action="move-up" data-tip="上移" aria-label="上移">{{ icons.icon("arrow-up") }}</button>
-          <button class="btn ghost icon-btn" data-action="move-down" data-tip="下移" aria-label="下移">{{ icons.icon("arrow-down") }}</button>
-          <button class="btn ghost icon-btn" data-action="toggle-visible" data-visible="{{ 'true' if project.visible else 'false' }}" data-tip="{{ '隐藏' if project.visible else '显示' }}" aria-label="{{ '隐藏' if project.visible else '显示' }}">{% if project.visible %}{{ icons.icon("eye") }}{% else %}{{ icons.icon("eye-off") }}{% endif %}</button>
-          <button class="btn danger icon-btn" data-action="delete" data-tip="删除" aria-label="删除">{{ icons.icon("trash") }}</button>
-        </div>
-        <div class="editor" hidden>
-          <label>标题 <input name="title" value="{{ project.title }}"></label>
-          <label>描述 <input name="description" value="{{ project.description }}"></label>
-          {% if project.type == 'link' %}<label>链接 <input name="url" value="{{ project.url }}"></label>{% endif %}
-          <div class="field">
-            <span>封面</span>
-            <span class="file-picker">
-              <input type="file" name="cover" accept="image/*" hidden>
-              <button type="button" class="file-button">{{ icons.icon("image", 14) }}选择图片</button>
-              <span class="file-name">未选择</span>
-            </span>
-          </div>
-          <button class="btn primary" data-action="save">{{ icons.icon("check") }}保存</button>
-        </div>
-      </div>
-      {% else %}
-      <div class="empty small">
-        <p>还没有作品，拖拽上方区域上传第一个吧。</p>
-      </div>
-      {% endfor %}
+    <section class="app-create">
+      <select id="app-type" aria-label="应用类型">
+        {% for app in app_types %}{% if app.type != 'site' %}<option value="{{ app.type }}">{{ app.label }}</option>{% endif %}{% endfor %}
+      </select>
+      <input id="app-title" placeholder="应用标题（可选）">
+      <button class="btn" data-action="create-app">{{ icons.icon("layers") }}新建应用</button>
+      <button class="btn ghost" data-action="upload-app">{{ icons.icon("archive") }}上传静态站点应用</button>
     </section>
+    {{ rows.rows(projects) }}
   </main>
   <script src="/static/js/admin.js" defer></script>
 </body>

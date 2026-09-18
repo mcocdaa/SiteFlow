@@ -26,6 +26,7 @@
 
   var dropzone = document.getElementById("dropzone");
   var fileInput = document.getElementById("file-input");
+  var appUploadMode = false;
 
   if (dropzone) {
     dropzone.addEventListener("click", function () { fileInput.click(); });
@@ -40,13 +41,29 @@
       if (event.dataTransfer.files.length) uploadFile(event.dataTransfer.files[0]);
     });
     fileInput.addEventListener("change", function () {
-      if (fileInput.files.length) uploadFile(fileInput.files[0]);
+      if (!fileInput.files.length) return;
+      uploadFile(fileInput.files[0], { asApp: appUploadMode });
+      appUploadMode = false;
+      fileInput.value = "";
     });
   }
 
-  function uploadFile(file) {
+  function parentId() {
+    var value = document.body.getAttribute("data-parent-id");
+    return value ? parseInt(value, 10) : null;
+  }
+
+  function uploadFile(file, options) {
+    options = options || {};
     var form = new FormData();
     form.append("file", file);
+    var parent = parentId();
+    if (parent) form.append("parent_id", String(parent));
+    if (options.asApp) {
+      form.append("as_app", "true");
+      var titleInput = document.getElementById("app-title");
+      if (titleInput && titleInput.value.trim()) form.append("title", titleInput.value.trim());
+    }
     var xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/admin/projects/upload");
     xhr.setRequestHeader("X-CSRF-Token", CSRF);
@@ -75,7 +92,7 @@
     addLink.addEventListener("click", function () {
       var url = linkUrl.value.trim();
       if (!url) return;
-      api("POST", "/projects/link", { url: url })
+      api("POST", "/projects/link", { url: url, parent_id: parentId() })
         .then(function () {
           linkUrl.value = "";
           refresh();
@@ -97,6 +114,21 @@
     var row = button.closest(".row");
     var id = row ? row.getAttribute("data-id") : null;
 
+    if (action === "create-app") {
+      var typeSelect = document.getElementById("app-type");
+      var titleInput = document.getElementById("app-title");
+      api("POST", "/projects/app", {
+        type: typeSelect ? typeSelect.value : "space",
+        title: titleInput ? titleInput.value.trim() : "",
+        parent_id: parentId()
+      }).then(refresh).catch(onError);
+      return;
+    }
+    if (action === "upload-app") {
+      appUploadMode = true;
+      if (fileInput) fileInput.click();
+      return;
+    }
     if (action === "logout") {
       fetch("/logout", {
         method: "POST",

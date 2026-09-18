@@ -246,3 +246,64 @@ main.wrap { padding: 48px 24px 96px; }
   font-size: 12px; color: var(--text-muted);
   max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
 }
+
+.crumbs { margin: 0 0 6px; font-size: 13px; color: var(--text-muted); }
+.crumbs a { color: var(--text-muted); text-decoration: none; }
+.crumbs a:hover { color: var(--accent); }
+.badge { display: inline-flex; align-items: center; gap: 4px; }
+.badge .icon { width: 12px; height: 12px; }
+
+.resume-actions { max-width: 800px; margin: 0 auto; padding: 24px 24px 0; display: flex; justify-content: space-between; gap: 12px; }
+.resume { max-width: 800px; margin: 0 auto; padding: 24px 24px 96px; }
+.resume-head { display: flex; gap: 24px; align-items: flex-start; padding-bottom: 24px; border-bottom: 1px solid var(--border); }
+.resume-avatar { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; flex: none; }
+.resume-head h1 { margin: 0; font-size: 30px; letter-spacing: -.03em; }
+.resume-label { margin: 6px 0 0; color: var(--accent); font-weight: 600; }
+.resume-summary { margin: 10px 0 0; color: var(--text-muted); white-space: pre-line; }
+.resume-contact { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 14px; }
+.resume-contact li { display: inline-flex; align-items: center; gap: 6px; color: var(--text-muted); }
+.resume-contact a { color: var(--text); text-decoration: none; }
+.resume-contact a:hover { color: var(--accent); }
+.resume-section { margin-top: 32px; }
+.resume-section h2 { display: flex; align-items: center; gap: 8px; font-size: 18px; margin: 0 0 14px; }
+.resume-entry { padding: 12px 0; border-top: 1px dashed var(--border); }
+.resume-entry:first-of-type { border-top: none; padding-top: 0; }
+.resume-entry-head { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.resume-entry p { margin: 6px 0 0; color: var(--text-muted); white-space: pre-line; }
+.resume-entry ul { margin: 6px 0 0; padding-left: 20px; color: var(--text-muted); }
+.skill-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.skill-list li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; padding: 2px 8px; border: 1px solid var(--border); border-radius: 99px; font-size: 12px; color: var(--text-muted); }
+@media print {
+  .resume-actions { display: none; }
+  .resume { max-width: none; padding: 0; }
+  .resume-contact a { color: inherit; }
+}
+
+.app-create { display: flex; gap: 12px; flex-wrap: wrap; margin: 0 0 40px; }
+.app-create select, .app-create input {
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-btn);
+  background: var(--surface); color: var(--text); font-size: 14px; font-family: inherit;
+}
+.app-create input { flex: 1; min-width: 180px; }
+.info-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 24px; }
+.info-panel code { background: var(--bg); padding: 2px 6px; border-radius: 6px; }
+
+.resume-block { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); padding: 20px; margin-bottom: 20px; }
+.resume-block h2 { margin: 0 0 14px; font-size: 17px; }
+.block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.block-head h2 { margin: 0; }
+.editor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px; }
+.editor-grid label, .stack { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
+.resume-block input, .resume-block textarea {
+  padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-btn);
+  background: var(--bg); color: var(--text); font-size: 14px; font-family: inherit; width: 100%; resize: vertical;
+}
+.stack { margin-top: 12px; }
+.entry-card { border: 1px solid var(--border); border-radius: var(--radius-btn); padding: 14px; margin-bottom: 12px; background: var(--bg); }
+.entry-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.entry-order { font-size: 12px; color: var(--text-muted); }
+.entry-actions { display: flex; gap: 4px; }
+.entry-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px; }
+.entry-grid label { display: flex; flex-direction: column; gap: 4px; font-size: 12px; color: var(--text-muted); }
+.form-actions { display: flex; align-items: center; gap: 12px; margin: 8px 0 48px; }

@@ -3,15 +3,28 @@ import secrets
 import shutil
 from pathlib import Path
 
-from sqlalchemy import create_engine, select
+from sqlalchemy import Engine, create_engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Config
 from app.models import Base, Project
 
-_engine: object = None
+_engine: Engine | None = None
 _factory: sessionmaker[Session] | None = None
 _current: Config | None = None
+
+
+def _migrate(engine: Engine) -> None:
+    with engine.connect() as conn:
+        columns = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(projects)")}
+        if "parent_id" not in columns:
+            conn.exec_driver_sql(
+                "ALTER TABLE projects ADD COLUMN parent_id INTEGER REFERENCES projects(id) ON DELETE CASCADE"
+            )
+        if "content" not in columns:
+            conn.exec_driver_sql("ALTER TABLE projects ADD COLUMN content TEXT NOT NULL DEFAULT '{}'")
+        conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_projects_parent_id ON projects (parent_id)")
+        conn.commit()
 
 
 def init(config: Config) -> sessionmaker[Session]:
@@ -26,6 +39,7 @@ def init(config: Config) -> sessionmaker[Session]:
             conn.exec_driver_sql("PRAGMA foreign_keys=ON")
             conn.exec_driver_sql("PRAGMA busy_timeout=5000")
         Base.metadata.create_all(_engine)
+        _migrate(_engine)
         _factory = sessionmaker(bind=_engine)
         _current = config
     return _factory
@@ -36,22 +50,22 @@ def session() -> Session:
     return _factory()
 
 
-def visible_projects(db: Session) -> list[Project]:
-    return list(
-        db.execute(
-            select(Project)
-            .where(Project.visible.is_(True))
-            .order_by(Project.pinned.desc(), Project.sort_order.asc(), Project.created_at.desc())
-        ).scalars()
-    )
+def _scope(stmt, parent_id: int | None):
+    return stmt.where(Project.parent_id.is_(None)) if parent_id is None else stmt.where(Project.parent_id == parent_id)
 
 
-def all_projects(db: Session) -> list[Project]:
-    return list(
-        db.execute(
-            select(Project).order_by(Project.pinned.desc(), Project.sort_order.asc(), Project.created_at.desc())
-        ).scalars()
+def visible_projects(db: Session, parent_id: int | None = None) -> list[Project]:
+    stmt = _scope(select(Project).where(Project.visible.is_(True)), parent_id).order_by(
+        Project.pinned.desc(), Project.sort_order.asc(), Project.created_at.desc()
     )
+    return list(db.execute(stmt).scalars())
+
+
+def all_projects(db: Session, parent_id: int | None = None) -> list[Project]:
+    stmt = _scope(select(Project), parent_id).order_by(
+        Project.pinned.desc(), Project.sort_order.asc(), Project.created_at.desc()
+    )
+    return list(db.execute(stmt).scalars())
 
 
 def by_slug(db: Session, slug: str) -> Project | None:
@@ -60,6 +74,34 @@ def by_slug(db: Session, slug: str) -> Project | None:
 
 def by_id(db: Session, project_id: int) -> Project | None:
     return db.execute(select(Project).where(Project.id == project_id)).scalar_one_or_none()
+
+
+def ancestors(db: Session, project: Project) -> list[Project]:
+    chain: list[Project] = []
+    current = by_id(db, project.parent_id) if project.parent_id else None
+    while current is not None:
+        chain.append(current)
+        current = by_id(db, current.parent_id) if current.parent_id else None
+    return chain
+
+
+def descendants(db: Session, project: Project) -> list[Project]:
+    found: list[Project] = []
+    pending = [project.id]
+    while pending:
+        parent = pending.pop()
+        rows = list(db.execute(select(Project).where(Project.parent_id == parent)).scalars())
+        found.extend(rows)
+        pending.extend(row.id for row in rows)
+    return found
+
+
+def depth(db: Session, project: Project) -> int:
+    return len(ancestors(db, project)) + 1
+
+
+def is_visible(db: Session, project: Project) -> bool:
+    return bool(project.visible) and all(ancestor.visible for ancestor in ancestors(db, project))
 
 
 def unique_slug(db: Session, title: str) -> str:
@@ -73,17 +115,14 @@ def unique_slug(db: Session, title: str) -> str:
     return slug
 
 
-def next_sort_order(db: Session) -> int:
-    rows = db.execute(select(Project.sort_order)).scalars().all()
+def next_sort_order(db: Session, parent_id: int | None = None) -> int:
+    stmt = _scope(select(Project.sort_order), parent_id)
+    rows = db.execute(stmt).scalars().all()
     return (min(rows) - 1) if rows else 0
 
 
 def move(db: Session, project: Project, direction: str) -> bool:
-    ordered = [
-        row
-        for row in all_projects(db)
-        if row.pinned == project.pinned
-    ]
+    ordered = [row for row in all_projects(db, project.parent_id) if row.pinned == project.pinned]
     index = ordered.index(project)
     target = index - 1 if direction == "up" else index + 1
     if not 0 <= target < len(ordered):

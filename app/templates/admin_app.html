@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ project.title }} - 管理 - {{ site_title }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <meta name="csrf" content="{{ csrf }}">
+</head>
+<body data-parent-id="{{ project.id }}">
+  {% import "icons.html" as icons %}
+  {% import "_admin_rows.html" as rows %}
+  <header class="site-header">
+    <div class="wrap row-between">
+      <div>
+        <p class="crumbs"><a href="/admin">管理</a>{% if parent %} <span class="muted">/</span> <a href="/admin/projects/{{ parent.id }}">{{ parent.title }}</a>{% endif %} <span class="muted">/</span> <span>{{ project.title }}</span></p>
+        <p class="brand">{{ project.title }}</p>
+        {% if project.description %}<p class="tagline">{{ project.description }}</p>{% endif %}
+      </div>
+      <div class="row-actions">
+        <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}查看</a>
+        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}退出登录</button>
+      </div>
+    </div>
+  </header>
+  <main class="wrap">
+    {% if project.type == 'space' %}
+    <section class="dropzone" id="dropzone">
+      <span class="dropzone-icon">{{ icons.icon("upload", 28) }}</span>
+      <p><strong>拖拽 HTML 或 ZIP 到这里</strong></p>
+      <p class="muted">添加到「{{ project.title }}」 · 也可以在下方添加外链 / 新建子应用</p>
+      <input type="file" id="file-input" accept=".html,.htm,.zip" hidden>
+    </section>
+    <section class="link-row">
+      <input type="url" id="link-url" placeholder="https://example.com 链接">
+      <button class="btn primary" data-action="add-link">{{ icons.icon("plus") }}添加链接</button>
+    </section>
+    {% if app_types %}
+    <section class="app-create">
+      <select id="app-type" aria-label="应用类型">
+        {% for app in app_types %}{% if app.type != 'site' %}<option value="{{ app.type }}">{{ app.label }}</option>{% endif %}{% endfor %}
+      </select>
+      <input id="app-title" placeholder="应用标题（可选）">
+      <button class="btn" data-action="create-app">{{ icons.icon("layers") }}新建子应用</button>
+      <button class="btn ghost" data-action="upload-app">{{ icons.icon("archive") }}上传静态站点应用</button>
+    </section>
+    {% endif %}
+    {{ rows.rows(children) }}
+    {% else %}
+    <section class="info-panel">
+      <p>静态站点应用，入口：<code>{{ project.entry }}</code></p>
+      <p class="muted">如需替换内容，请删除后重新上传（数据无版本历史）。封面与标题可在上级列表的编辑面板修改。</p>
+      <p><a class="btn" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}打开站点</a></p>
+    </section>
+    {% endif %}
+  </main>
+  <script src="/static/js/admin.js" defer></script>
+</body>
+</html>
