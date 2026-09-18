@@ -9,7 +9,7 @@ SiteFlow：Docker 化个人作品画廊（FastAPI + SQLite + Jinja2，无前端�
 # 首次准备
 python3.13 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
 
-# 提交前必须全绿
+# 提交前必须全绿（或直接 ./scripts/check.sh）
 .venv/bin/python -m pytest -q
 .venv/bin/ruff check app tests
 .venv/bin/mypy app tests

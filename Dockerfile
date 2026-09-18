@@ -1,5 +1,10 @@
 FROM python:3.12-slim
 
+LABEL org.opencontainers.image.title="SiteFlow" \
+      org.opencontainers.image.description="Docker 化的个人作品画廊：上传 HTML / ZIP / 外链，CSP sandbox 隔离" \
+      org.opencontainers.image.source="https://github.com/mcocdaa/SiteFlow" \
+      org.opencontainers.image.licenses="MIT"
+
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     DATA_DIR=/data

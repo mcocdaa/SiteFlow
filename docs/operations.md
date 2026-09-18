@@ -33,3 +33,21 @@ git pull
 | 容器 unhealthy | `docker logs siteflow`；检查 `/data` 是否可写（uid 1000） |
 | 上传报 413 | 调大 `MAX_UPLOAD_MB`，同时同步反代 `client_max_body_size` |
 | 页面样式/JS 404 | 静态文件随镜像发布，重建镜像 |
+
+## 发布
+
+```bash
+git tag -a vX.Y.Z -m "SiteFlow vX.Y.Z"
+git push origin vX.Y.Z
+```
+
+推送 tag 会触发 `.github/workflows/release.yml`：测试 → 构建并推送镜像到
+`ghcr.io/mcocdaa/siteflow`（semver + latest）→ 自动创建 GitHub Release。
+版本记录维护在 [CHANGELOG.md](../CHANGELOG.md)。
+
+用户侧升级：
+
+```bash
+docker pull ghcr.io/mcocdaa/siteflow:latest
+./scripts/stop.sh && ./scripts/start.sh
+```

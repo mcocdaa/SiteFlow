@@ -3,6 +3,10 @@ name: CI
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".opencode/**"
   pull_request:
 
 concurrency:
@@ -35,13 +39,20 @@ jobs:
         run: node --check app/static/js/admin.js
 
   docker:
-    name: Docker (build + healthz smoke)
+    name: Docker (buildx + healthz smoke)
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v7
+      - uses: docker/setup-buildx-action@v4
       - name: Build image
-        run: docker build -t siteflow:ci .
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          load: true
+          tags: siteflow:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
       - name: Run container and smoke test
         run: |
           docker run -d --name siteflow-ci -p 18000:8000 \

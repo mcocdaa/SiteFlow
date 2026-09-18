@@ -1,0 +1,30 @@
+# Changelog
+
+本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
+
+## [1.0.0] - 2026-09-18
+
+首个正式版本。
+
+### 新增
+
+- 三类作品：单 HTML、ZIP 静态站点（站内全屏查看）、外链（卡片新标签跳转）
+- 画廊页：卡片网格、置顶、空状态、深浅色自适应、无构建无 CDN
+- 管理台：拖拽上传、外链 OG 自动填充、封面、Pin、上移/下移、显隐、删除
+- Docker 单容器部署：健康检查、非 root（uid 1000）运行、`/data` 数据卷
+- `scripts/start.sh`（docker/local）、`stop.sh`、`check.sh`
+- CI（pytest + ruff + mypy + JS 语法 + Docker 冒烟）与 Release 工作流（GHCR 发布）
+
+### 安全
+
+- 作品统一 `CSP: sandbox` 不透明源隔离，无法触达主站会话与 `/api/admin/*`
+- ZIP 解压拒绝 `..`、绝对路径、符号链接、加密条目、超量条目与超限解压
+- 平台外呼（OG/封面图）私网校验 + 超时 + 大小与重定向上限（SSRF 防护）
+- 管理写操作三重校验：登录会话 + 同源（Origin/Host）+ CSRF
+- 登录限流（5 次/15 分钟），修改 `ADMIN_PASSWORD` 后旧会话立即失效
+- `PROJECTS_SANDBOX=false` 时拒绝启动
+
+### 测试
+
+- 23 项 pytest：冒烟、流程（上传/外链/排序/封面/入口）、安全（zip-slip、符号链接、
+  解压限制、SSRF、CSRF、限流、改密失效、路径穿越）
