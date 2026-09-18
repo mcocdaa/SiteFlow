@@ -28,11 +28,12 @@
       <button class="btn primary" data-action="add-link">{{ icons.icon("plus") }}添加链接</button>
     </section>
     <section class="app-create">
-      <button class="btn" data-action="create-space">{{ icons.icon("layers") }}新建空间</button>
-      <button class="btn" data-action="create-resume">{{ icons.icon("file-text") }}新建简历</button>
+      {% for app in app_choices %}
+      <button class="btn" data-action="create-app" data-type="{{ app.type }}">{{ icons.icon(app.icon) }}新建{{ app.label }}</button>
+      {% endfor %}
       <button class="btn ghost" data-action="upload-app">{{ icons.icon("archive") }}上传静态站点</button>
     </section>
-    {{ rows.rows(projects) }}
+    {{ rows.rows(projects, plugin_types) }}
   </main>
   <script src="/static/js/admin.js" defer></script>
 </body>

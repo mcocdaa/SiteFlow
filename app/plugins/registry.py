@@ -1,5 +1,4 @@
 from app.plugins.base import AppPlugin
-from app.plugins.resume.plugin import ResumePlugin
 
 _apps: dict[str, AppPlugin] = {}
 
@@ -14,6 +13,3 @@ def get(app_type: str) -> AppPlugin | None:
 
 def all_apps() -> list[AppPlugin]:
     return list(_apps.values())
-
-
-register(ResumePlugin())

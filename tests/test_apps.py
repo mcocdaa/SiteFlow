@@ -1,4 +1,5 @@
 import sqlite3
+import tempfile
 from pathlib import Path
 
 from fastapi.testclient import TestClient
@@ -16,6 +17,15 @@ def create_app(client: TestClient, csrf: str, app_type: str, title: str, parent_
     return client.post("/api/admin/projects/app", json=payload, headers=auth_headers(csrf))
 
 
+def upload_to(client: TestClient, csrf: str, filename: str, content: bytes, parent_id: int):
+    return client.post(
+        "/api/admin/projects/upload",
+        files={"file": (filename, content, "text/html")},
+        data={"parent_id": str(parent_id)},
+        headers=auth_headers(csrf),
+    )
+
+
 def test_space_with_children() -> None:
     with TestClient(app) as client:
         csrf = login(client)
@@ -24,25 +34,17 @@ def test_space_with_children() -> None:
         space_id = space.json()["project"]["id"]
         assert space.json()["project"]["type"] == "space"
 
-        child = upload(client, csrf, "子作品.html", b"<h1>child</h1>")
-        assert child.status_code == 200
-        assert child.json()["project"]["parent_id"] is None
-
-        moved_child = client.post(
-            "/api/admin/projects/upload",
-            files={"file": ("空间子作品.html", b"<h1>in space</h1>", "text/html")},
-            data={"parent_id": str(space_id)},
-            headers=auth_headers(csrf),
-        )
-        assert moved_child.status_code == 200, moved_child.text
-        child_slug = moved_child.json()["project"]["slug"]
-        assert moved_child.json()["project"]["parent_id"] == space_id
+        child = upload_to(client, csrf, "空间子作品.html", b"<h1>in space</h1>", space_id)
+        assert child.status_code == 200, child.text
+        child_slug = child.json()["project"]["slug"]
+        assert child.json()["project"]["parent_id"] == space_id
 
         root = client.get("/")
         assert "空间子作品" not in root.text
         assert "我的空间" in root.text
+        assert 'target="_blank"' not in root.text
 
-        page = client.get("/projects/我的空间".replace("我的空间", space.json()["project"]["slug"]) + "/")
+        page = client.get(f"/projects/{space.json()['project']['slug']}/")
         assert page.status_code == 200
         assert "空间子作品" in page.text
         assert client.get(f"/projects/{child_slug}/", follow_redirects=False).status_code == 302
@@ -59,55 +61,35 @@ def test_depth_and_leaf_rules() -> None:
 
         third = create_app(client, csrf, "space", "第三层", parent_id=sub_id)
         assert third.status_code == 200
+        third_id = third.json()["project"]["id"]
 
-        too_deep = create_app(client, csrf, "space", "太深", parent_id=third.json()["project"]["id"])
+        too_deep = create_app(client, csrf, "space", "太深", parent_id=third_id)
         assert too_deep.status_code == 400
+        assert "深度" in too_deep.json()["error"]
 
-        resume = create_app(client, csrf, "resume", "我的简历", parent_id=root_space["id"])
-        assert resume.status_code == 200
-        resume_id = resume.json()["project"]["id"]
+        site = client.post(
+            "/api/admin/projects/upload",
+            files={"file": ("站点.zip", make_zip({"index.html": b"ok"}), "application/zip")},
+            data={"as_app": "true", "parent_id": str(root_space["id"])},
+            headers=auth_headers(csrf),
+        ).json()["project"]
+        under_site = create_app(client, csrf, "space", "站点下", parent_id=site["id"])
+        assert under_site.status_code == 400
 
-        under_resume = create_app(client, csrf, "space", "简历下", parent_id=resume_id)
-        assert under_resume.status_code == 400
-
-        html = upload(client, csrf, "普通作品.html", b"<h1>x</h1>")
-        under_item = create_app(client, csrf, "space", "作品下", parent_id=html.json()["project"]["id"])
+        html = upload(client, csrf, "普通作品.html", b"<h1>x</h1>").json()["project"]
+        under_item = create_app(client, csrf, "space", "作品下", parent_id=html["id"])
         assert under_item.status_code == 400
 
 
-def test_resume_render_and_escaping() -> None:
+def test_unknown_app_type_rejected() -> None:
     with TestClient(app) as client:
         csrf = login(client)
-        created = create_app(client, csrf, "resume", "张三的简历")
-        project = created.json()["project"]
-        content = {
-            "basics": {
-                "name": "<script>alert(1)</script>",
-                "label": "工程师",
-                "summary": "第一行\n第二行",
-                "location": {"city": "深圳", "region": "", "countryCode": "CN"},
-                "profiles": [{"network": "GitHub", "username": "x", "url": "https://github.com/x"}],
-            },
-            "work": [{"name": "某公司", "position": "后端", "startDate": "2022-07", "endDate": "至今", "highlights": ["要点一"]}],
-            "skills": [{"name": "Python", "keywords": ["FastAPI"]}],
-        }
-        import json
-
-        patched = client.patch(
-            f"/api/admin/projects/{project['id']}",
-            json={"content": json.dumps(content, ensure_ascii=False)},
-            headers=auth_headers(csrf),
-        )
-        assert patched.status_code == 200, patched.text
-
-        page = client.get(f"/projects/{project['slug']}/")
-        assert page.status_code == 200
-        assert "<script>alert(1)</script>" not in page.text
-        assert "&lt;script&gt;alert(1)&lt;/script&gt;" in page.text
-        assert "后端" in page.text and "FastAPI" in page.text
+        response = create_app(client, csrf, "resume", "未注册类型")
+    assert response.status_code == 400
+    assert "不支持" in response.json()["error"]
 
 
-def test_content_only_for_plugins() -> None:
+def test_content_edit_requires_plugin() -> None:
     with TestClient(app) as client:
         csrf = login(client)
         space = create_app(client, csrf, "space", "空间").json()["project"]
@@ -116,7 +98,7 @@ def test_content_only_for_plugins() -> None:
             json={"content": "{}"},
             headers=auth_headers(csrf),
         )
-        assert response.status_code == 400
+    assert response.status_code == 400
 
 
 def test_site_app_upload() -> None:
@@ -144,12 +126,7 @@ def test_cascade_delete_and_visibility_inheritance() -> None:
     with TestClient(app) as client:
         csrf = login(client)
         space = create_app(client, csrf, "space", "待删空间").json()["project"]
-        child = client.post(
-            "/api/admin/projects/upload",
-            files={"file": ("空间内.html", b"<h1>hidden child</h1>", "text/html")},
-            data={"parent_id": str(space["id"])},
-            headers=auth_headers(csrf),
-        ).json()["project"]
+        child = upload_to(client, csrf, "空间内.html", b"<h1>child</h1>", space["id"]).json()["project"]
 
         hidden = client.patch(
             f"/api/admin/projects/{space['id']}",
@@ -173,18 +150,8 @@ def test_scoped_move_does_not_affect_root() -> None:
     with TestClient(app) as client:
         csrf = login(client)
         space = create_app(client, csrf, "space", "排序空间").json()["project"]
-        first = client.post(
-            "/api/admin/projects/upload",
-            files={"file": ("一.html", b"<h1>1</h1>", "text/html")},
-            data={"parent_id": str(space["id"])},
-            headers=auth_headers(csrf),
-        ).json()["project"]
-        second = client.post(
-            "/api/admin/projects/upload",
-            files={"file": ("二.html", b"<h1>2</h1>", "text/html")},
-            data={"parent_id": str(space["id"])},
-            headers=auth_headers(csrf),
-        ).json()["project"]
+        first = upload_to(client, csrf, "一.html", b"<h1>1</h1>", space["id"]).json()["project"]
+        second = upload_to(client, csrf, "二.html", b"<h1>2</h1>", space["id"]).json()["project"]
 
         moved = client.post(
             f"/api/admin/projects/{first['id']}/move",
@@ -194,15 +161,47 @@ def test_scoped_move_does_not_affect_root() -> None:
         assert moved.status_code == 200 and moved.json()["ok"] is True
 
         db = store.init(app.state.config)()
-        space_children = [row.slug for row in store.all_projects(db, space["id"])]
-        assert space_children == [first["slug"], second["slug"]]
-        root_projects = [row.slug for row in store.all_projects(db)]
-        assert root_projects == [space["slug"]]
+        assert [row.slug for row in store.all_projects(db, space["id"])] == [first["slug"], second["slug"]]
+        assert [row.slug for row in store.all_projects(db)] == [space["slug"]]
+
+
+def test_admin_pages_use_registered_app_list() -> None:
+    with TestClient(app) as client:
+        csrf = login(client)
+        space = create_app(client, csrf, "space", "页面空间").json()["project"]
+        child = upload_to(client, csrf, "页面子项.html", b"<h1>c</h1>", space["id"]).json()["project"]
+
+        root = client.get("/admin")
+        assert "新建空间" in root.text
+        assert "上传静态站点" in root.text
+        assert "新建简历" not in root.text
+        assert 'id="app-type"' not in root.text
+
+        space_page = client.get(f"/admin/projects/{space['id']}")
+        assert space_page.status_code == 200
+        assert "新建空间" in space_page.text
+        assert "页面子项" in space_page.text
+        assert f'data-parent-id="{space["id"]}"' in space_page.text
+        assert child["slug"]  # used
+
+
+def test_multiple_spaces_and_login_persists() -> None:
+    with TestClient(app) as client:
+        csrf = login(client)
+        first = create_app(client, csrf, "space", "子空间1").json()["project"]
+        second = create_app(client, csrf, "space", "子空间2").json()["project"]
+        assert first["slug"] != second["slug"]
+
+        root = client.get("/")
+        assert "子空间1" in root.text and "子空间2" in root.text
+
+        again = client.get("/login", follow_redirects=False)
+        assert again.status_code == 303
+        assert again.headers["location"] == "/admin"
+        assert client.get("/admin").status_code == 200
 
 
 def test_old_database_migration() -> None:
-    import tempfile
-
     data = Path(tempfile.mkdtemp(prefix="siteflow-migrate-"))
     database = data / "siteflow.db"
     conn = sqlite3.connect(database)
@@ -212,8 +211,9 @@ def test_old_database_migration() -> None:
         "pinned BOOLEAN, visible BOOLEAN, sort_order INTEGER, created_at VARCHAR, updated_at VARCHAR)"
     )
     conn.execute(
-        "INSERT INTO projects (slug, type, title, description, url, entry, cover, pinned, visible, sort_order, created_at, updated_at) "
-        "VALUES ('old-one', 'html', '旧作品', '', '', 'index.html', '', 0, 1, 0, '2026-01-01', '2026-01-01')"
+        "INSERT INTO projects (slug, type, title, description, url, entry, cover, pinned, visible, sort_order, "
+        "created_at, updated_at) VALUES ('old-one', 'html', '旧作品', '', '', 'index.html', '', 0, 1, 0, "
+        "'2026-01-01', '2026-01-01')"
     )
     conn.commit()
     conn.close()
@@ -238,53 +238,3 @@ def test_old_database_migration() -> None:
     assert project is not None
     assert project.parent_id is None
     assert project.content == "{}"
-
-
-def test_admin_app_pages_render() -> None:
-    with TestClient(app) as client:
-        csrf = login(client)
-        space = create_app(client, csrf, "space", "页面空间").json()["project"]
-        child = client.post(
-            "/api/admin/projects/upload",
-            files={"file": ("页面子项.html", b"<h1>c</h1>", "text/html")},
-            data={"parent_id": str(space["id"])},
-            headers=auth_headers(csrf),
-        ).json()["project"]
-        resume = create_app(client, csrf, "resume", "页面简历").json()["project"]
-        resume["id"]
-
-        root = client.get("/admin")
-        assert "新建空间" in root.text
-        assert "新建简历" in root.text
-        assert "上传静态站点" in root.text
-        assert 'id="app-type"' not in root.text
-
-        space_page = client.get(f"/admin/projects/{space['id']}")
-        assert space_page.status_code == 200
-        assert "新建子空间" in space_page.text
-        assert "页面子项" in space_page.text
-        assert f'data-parent-id="{space["id"]}"' in space_page.text
-
-        resume_page = client.get(f"/admin/projects/{resume['id']}")
-        assert resume_page.status_code == 200
-        assert 'id="resume-data"' in resume_page.text
-        assert 'id="f-name"' in resume_page.text
-        assert 'data-section="work"' in resume_page.text
-        assert child["slug"] not in resume_page.text
-
-
-def test_multiple_apps_at_root_and_login_persists() -> None:
-    with TestClient(app) as client:
-        csrf = login(client)
-        space = create_app(client, csrf, "space", "子空间").json()["project"]
-        resume_one = create_app(client, csrf, "resume", "简单简历1").json()["project"]
-        resume_two = create_app(client, csrf, "resume", "简单简历2").json()["project"]
-        assert len({space["slug"], resume_one["slug"], resume_two["slug"]}) == 3
-
-        root = client.get("/")
-        assert "子空间" in root.text and "简单简历1" in root.text and "简单简历2" in root.text
-
-        again = client.get("/login", follow_redirects=False)
-        assert again.status_code == 303
-        assert again.headers["location"] == "/admin"
-        assert client.get("/admin").status_code == 200

@@ -114,11 +114,11 @@
     var row = button.closest(".row");
     var id = row ? row.getAttribute("data-id") : null;
 
-    if (action === "create-space" || action === "create-resume") {
-      var appType = action === "create-space" ? "space" : "resume";
+    if (action === "create-app") {
+      var appType = button.getAttribute("data-type");
       api("POST", "/projects/app", {
         type: appType,
-        title: appType === "space" ? "新空间" : "新简历",
+        title: appType === "space" ? "新空间" : "",
         parent_id: parentId()
       }).then(refresh).catch(onError);
       return;
