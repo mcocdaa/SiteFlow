@@ -95,13 +95,22 @@ class BlogApp:
             return None
         slug = path[len("posts/") :].strip("/")
         content = validate_content(project.content)
-        post = next((item for item in content["posts"] if item["slug"] == slug), None)
-        if post is None:
+        posts = content["posts"]
+        index = next((position for position, item in enumerate(posts) if item["slug"] == slug), None)
+        if index is None:
             return None
+        prev_post = posts[index - 1] if index > 0 else None
+        next_post = posts[index + 1] if index + 1 < len(posts) else None
         return templates.TemplateResponse(
             request,
             "blog_post.html",
-            {"project": project, "post": post, "body_html": _markdown.render(post["body"])},
+            {
+                "project": project,
+                "post": posts[index],
+                "body_html": _markdown.render(posts[index]["body"]),
+                "prev_post": prev_post,
+                "next_post": next_post,
+            },
         )
 
     def render(self, request: Request, project: Project, db: Session) -> HTMLResponse:

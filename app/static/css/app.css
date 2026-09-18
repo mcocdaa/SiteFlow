@@ -334,3 +334,32 @@ main.wrap { padding: 48px 24px 96px; }
   .resume { max-width: none; padding: 0; }
   .resume-contact a { color: inherit; }
 }
+
+.post-item { padding: 22px 0; border-bottom: 1px solid var(--border); }
+.post-item:first-child { padding-top: 0; }
+.post-item:last-child { border-bottom: none; }
+.post-link { display: block; text-decoration: none; color: inherit; }
+.post-link h2 { transition: color .15s; }
+.post-link:hover h2 { color: var(--accent); }
+.post-more { display: inline-flex; align-items: center; gap: 4px; margin-top: 10px; font-size: 13px; font-weight: 500; color: var(--accent); opacity: .85; transition: opacity .15s, gap .15s; }
+.post-link:hover .post-more { opacity: 1; gap: 8px; }
+.post-length { color: var(--text-muted); font-size: 12px; }
+.post-body p { margin: 0 0 18px; }
+.post-body ul, .post-body ol { margin: 0 0 18px; padding-left: 22px; }
+.post-body li { margin: 6px 0; }
+.post-body hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+.post-nav { display: flex; justify-content: space-between; gap: 16px; margin-top: 48px; padding-top: 20px; border-top: 1px solid var(--border); }
+.post-nav-link { display: flex; flex-direction: column; gap: 4px; max-width: 46%; text-decoration: none; color: inherit; }
+.post-nav-link.next { text-align: right; margin-left: auto; }
+.post-nav-link strong { font-size: 14px; font-weight: 600; }
+.post-nav-link:hover strong { color: var(--accent); }
+.post-nav-link .muted { font-size: 12px; }
+
+.entry-head-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.entry-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 40vw; }
+.entry-toggle { flex: none; }
+.entry-card.collapsed .entry-grid { display: none; }
+.entry-card.collapsed { padding: 10px 14px; }
+.entry-card.collapsed .entry-head { margin-bottom: 0; }
+.entry-card textarea.mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 13px; line-height: 1.6; }
+#save-state a { color: var(--accent); }

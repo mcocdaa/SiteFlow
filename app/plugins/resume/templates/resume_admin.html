@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="/static/css/app.css">
   <meta name="csrf" content="{{ csrf }}">
 </head>
-<body data-plugin-id="{{ project.id }}">
+<body data-plugin-id="{{ project.id }}" data-preview-url="/projects/{{ project.slug }}/">
   {% import "icons.html" as icons %}
   <header class="site-header">
     <div class="wrap row-between">
@@ -48,6 +48,7 @@
     {% endfor %}
     <div class="form-actions">
       <button type="button" class="btn primary" data-action="save-content">{{ icons.icon("check") }}保存</button>
+      <button type="button" class="btn" data-action="save-preview">保存并查看</button>
       <span class="muted" id="save-state"></span>
     </div>
   </main>
@@ -181,7 +182,7 @@
     Object.keys(SECTION_FIELDS).forEach(function (section) { content[section] = collectSection(section); });
     return content;
   }
-  function save() {
+  function save(thenView) {
     var status = document.getElementById("save-state");
     status.textContent = "保存中…";
     fetch("/api/admin/projects/" + projectId, {
@@ -193,7 +194,9 @@
         if (!response.ok || data.ok === false) throw new Error(data.error || "保存失败");
         state = collect();
         Object.keys(SECTION_FIELDS).forEach(renderSection);
-        status.textContent = "已保存 " + new Date().toLocaleTimeString();
+        var previewUrl = body.getAttribute("data-preview-url");
+        status.innerHTML = "已保存 " + new Date().toLocaleTimeString() + ' · <a href="' + previewUrl + '" target="_blank">查看简历</a>';
+        if (thenView) window.location.href = previewUrl;
       });
     }).catch(function (error) {
       status.textContent = "";
@@ -229,7 +232,8 @@
       renderSection(sectionName);
       return;
     }
-    if (event.target.closest('[data-action="save-content"]')) save();
+    if (event.target.closest('[data-action="save-content"]')) save(false);
+    if (event.target.closest('[data-action="save-preview"]')) save(true);
   });
 })();
   </script>

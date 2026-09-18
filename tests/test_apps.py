@@ -307,6 +307,7 @@ def test_resume_plugin_render_and_escape() -> None:
         assert 'id="plugin-data"' in admin_page.text
         assert 'id="f-name"' in admin_page.text
         assert 'data-section="work"' in admin_page.text
+        assert "保存并查看" in admin_page.text
 
 
 def test_blog_plugin_index_detail_and_markdown_safety() -> None:
@@ -346,6 +347,8 @@ def test_blog_plugin_index_detail_and_markdown_safety() -> None:
 
         detail = client.get(f"/projects/{blog['slug']}/posts/hello")
         assert detail.status_code == 200
+        assert "文章列表" in detail.text
+        assert "上一篇" in detail.text and "第二篇" in detail.text
         assert "<strong>粗体</strong>" in detail.text
         assert "<script>alert(1)</script>" not in detail.text
         assert "&lt;script&gt;" in detail.text
@@ -359,3 +362,6 @@ def test_blog_plugin_index_detail_and_markdown_safety() -> None:
         assert admin_page.status_code == 200
         assert 'id="plugin-data"' in admin_page.text
         assert "添加文章" in admin_page.text
+        assert "保存并查看" in admin_page.text
+        assert 'data-preview-url="/projects/' in admin_page.text
+        assert 'id="post-count"' in admin_page.text
