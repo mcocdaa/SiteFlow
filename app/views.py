@@ -163,6 +163,9 @@ def cover_file(request: Request, name: str):
 @router.get("/login")
 def login_page(request: Request):
     config = get_config(request)
+    session = read_session(config, request)
+    if session is not None and session.get("admin") is True:
+        return RedirectResponse("/admin", status_code=303)
     token = new_session_token()
     response = templates.TemplateResponse(
         request,

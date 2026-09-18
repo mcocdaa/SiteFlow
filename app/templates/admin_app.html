@@ -35,14 +35,11 @@
       <input type="url" id="link-url" placeholder="https://example.com 链接">
       <button class="btn primary" data-action="add-link">{{ icons.icon("plus") }}添加链接</button>
     </section>
-    {% if app_types %}
+    {% if can_nest %}
     <section class="app-create">
-      <select id="app-type" aria-label="应用类型">
-        {% for app in app_types %}{% if app.type != 'site' %}<option value="{{ app.type }}">{{ app.label }}</option>{% endif %}{% endfor %}
-      </select>
-      <input id="app-title" placeholder="应用标题（可选）">
-      <button class="btn" data-action="create-app">{{ icons.icon("layers") }}新建子应用</button>
-      <button class="btn ghost" data-action="upload-app">{{ icons.icon("archive") }}上传静态站点应用</button>
+      <button class="btn" data-action="create-space">{{ icons.icon("layers") }}新建子空间</button>
+      <button class="btn" data-action="create-resume">{{ icons.icon("file-text") }}新建简历</button>
+      <button class="btn ghost" data-action="upload-app">{{ icons.icon("archive") }}上传静态站点</button>
     </section>
     {% endif %}
     {{ rows.rows(children) }}

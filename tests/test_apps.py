@@ -254,12 +254,14 @@ def test_admin_app_pages_render() -> None:
         resume["id"]
 
         root = client.get("/admin")
-        assert "新建应用" in root.text
-        assert "上传静态站点应用" in root.text
+        assert "新建空间" in root.text
+        assert "新建简历" in root.text
+        assert "上传静态站点" in root.text
+        assert 'id="app-type"' not in root.text
 
         space_page = client.get(f"/admin/projects/{space['id']}")
         assert space_page.status_code == 200
-        assert "新建子应用" in space_page.text
+        assert "新建子空间" in space_page.text
         assert "页面子项" in space_page.text
         assert f'data-parent-id="{space["id"]}"' in space_page.text
 
@@ -269,3 +271,20 @@ def test_admin_app_pages_render() -> None:
         assert 'id="f-name"' in resume_page.text
         assert 'data-section="work"' in resume_page.text
         assert child["slug"] not in resume_page.text
+
+
+def test_multiple_apps_at_root_and_login_persists() -> None:
+    with TestClient(app) as client:
+        csrf = login(client)
+        space = create_app(client, csrf, "space", "子空间").json()["project"]
+        resume_one = create_app(client, csrf, "resume", "简单简历1").json()["project"]
+        resume_two = create_app(client, csrf, "resume", "简单简历2").json()["project"]
+        assert len({space["slug"], resume_one["slug"], resume_two["slug"]}) == 3
+
+        root = client.get("/")
+        assert "子空间" in root.text and "简单简历1" in root.text and "简单简历2" in root.text
+
+        again = client.get("/login", follow_redirects=False)
+        assert again.status_code == 303
+        assert again.headers["location"] == "/admin"
+        assert client.get("/admin").status_code == 200
