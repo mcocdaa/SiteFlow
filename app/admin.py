@@ -21,7 +21,6 @@ from app.uploads import InvalidUpload, extract_site, make_cover, remove_tree, sa
 router = APIRouter()
 
 COVER_LIMIT = 10 * 1024 * 1024
-BUILTIN_APPS = [{"type": "space", "label": "空间", "icon": "layers"}]
 
 
 class LinkPayload(BaseModel):
@@ -65,23 +64,20 @@ def resolve_parent(db, parent_id: int | None):
     parent = store.by_id(db, parent_id)
     if parent is None:
         return None, api_error("父级不存在", 404)
-    if parent.type != "space":
-        return None, api_error("只有空间可以包含子项")
+    plugin = registry.get(parent.type)
+    if plugin is None or plugin.leaf:
+        return None, api_error("只有可包含子项的应用可以嵌套")
     if store.depth(db, parent) >= 3:
         return None, api_error("已达最大嵌套深度（3 层）")
     return parent, None
 
 
 def app_choices() -> list[dict]:
-    return [*BUILTIN_APPS, *({"type": plugin.type, "label": plugin.label, "icon": plugin.icon} for plugin in registry.all_apps())]
+    return [{"type": plugin.type, "label": plugin.label, "icon": plugin.icon} for plugin in registry.all_apps()]
 
 
 def plugin_types() -> list[str]:
     return [plugin.type for plugin in registry.all_apps()]
-
-
-def app_types() -> set[str]:
-    return {"space", *(plugin.type for plugin in registry.all_apps())}
 
 
 def admin_scope(request: Request, db):
@@ -117,7 +113,8 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
     if redirect is not None:
         return redirect
     project = store.by_id(db, project_id)
-    if project is None or project.type not in app_types():
+    plugin = registry.get(project.type) if project is not None else None
+    if project is None or plugin is None:
         raise HTTPException(404)
     parent = store.by_id(db, project.parent_id) if project.parent_id else None
     context = {
@@ -126,8 +123,9 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
         "project": project,
         "parent": parent,
         "depth": store.depth(db, project),
-        "children": store.all_projects(db, project.id) if project.type == "space" else [],
-        "can_nest": project.type == "space" and store.depth(db, project) < 3,
+        "children": store.all_projects(db, project.id),
+        "plugin_leaf": plugin.leaf,
+        "can_nest": not plugin.leaf and store.depth(db, project) < 3,
         "app_choices": app_choices(),
         "plugin_types": plugin_types(),
     }
@@ -137,18 +135,13 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
 @router.post("/api/admin/projects/app")
 def create_app(payload: AppPayload, _auth: AdminConfig, db: DbSession):
     plugin = registry.get(payload.type)
-    if payload.type == "space":
-        default_title = "未命名空间"
-        content = "{}"
-    elif plugin is not None:
-        default_title = plugin.label
-        content = json.dumps(plugin.default_content(), ensure_ascii=False)
-    else:
+    if plugin is None:
         return api_error("不支持的应用类型")
     parent, error = resolve_parent(db, payload.parent_id)
     if error is not None:
         return error
-    title = (payload.title.strip() or default_title)[:200]
+    title = (payload.title.strip() or plugin.label)[:200]
+    content = json.dumps(plugin.default_content(), ensure_ascii=False)
     project = Project(
         slug=store.unique_slug(db, title),
         type=payload.type,
@@ -272,7 +265,7 @@ def patch_project(
     content = updates.pop("content", None)
     if content is not None:
         plugin = registry.get(project.type)
-        if plugin is None:
+        if plugin is None or not plugin.content_editable:
             return api_error("该类型不支持内容编辑")
         try:
             validated = plugin.validate_content(content)

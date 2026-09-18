@@ -21,7 +21,7 @@ from app.auth import (
 )
 from app.deps import DbSession, get_config
 from app.plugins import registry
-from app.templating import templates
+from app.templating import placeholder_hue, templates
 
 router = APIRouter()
 
@@ -55,10 +55,6 @@ MEDIA_TYPES = {
 }
 
 
-def placeholder_hue(slug: str) -> int:
-    return sum(slug.encode()) % 360
-
-
 @router.get("/healthz")
 def health() -> dict[str, str]:
     return {"status": "ok"}
@@ -82,19 +78,6 @@ def gallery(request: Request, db: DbSession):
 
 
 def project_home(request: Request, config, project, db):
-    if project.type == "space":
-        session = read_session(config, request)
-        return templates.TemplateResponse(
-            request,
-            "space.html",
-            {
-                "site_title": config.site_title,
-                "project": project,
-                "projects": store.visible_projects(db, project.id),
-                "hue": placeholder_hue,
-                "is_admin": bool(session and session.get("admin") is True),
-            },
-        )
     plugin = registry.get(project.type)
     if plugin is not None:
         return plugin.render(request, project, db)

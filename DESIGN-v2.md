@@ -82,39 +82,49 @@ data/
 - 静态站点就是普通 `html/zip` 项目，不是应用；应用 = 空间 + 注册插件。
 - 可见性继承：任一祖先 `visible=0`，后代对访客 404。
 
-## 5. 插件机制
+## 5. 应用注册表与插件机制
+
+**应用列表 = 注册表内容**。`space` 就是一个通过同接口注册的应用，不是核心特例：
 
 ```
 app/plugins/
 ├── __init__.py
-├── base.py        # AppPlugin 协议/数据类
-├── registry.py    # 内置注册表 + 预留外部入口
-└── resume/
-    ├── plugin.py  # 插件实现（渲染 + 默认内容 + 校验）
-    └── admin.py   # 该插件的管理接口（admin router）
-
-插件页面模板统一放 `app/templates/`（共享 Jinja 环境，如 `resume.html`）。
+├── base.py        # AppPlugin 协议 + InvalidContent
+├── registry.py    # register / get / all_apps，注册内置应用
+├── space.py       # 内置应用：空间（列表中的第一个）
+└── <name>/        # 插件应用（v2.1：resume、blog 等）
+    ├── plugin.py  # 实现协议
+    └── templates/ # 自动加入 Jinja 搜索路径
 ```
 
 接口（`base.py`）：
 
 ```python
 class AppPlugin(Protocol):
-    type: str                       # "resume"
-    label: str                      # 管理台显示名
-    icon: str                       # Lucide 图标名
-    leaf: bool                      # True 不可包含子项
+    type: str                 # "space" / "resume" / "blog"
+    label: str                # 管理台显示名
+    icon: str                 # Lucide 图标名
+    leaf: bool                # True 不可包含子项
+    content_editable: bool    # True 可在管理台编辑 content JSON
 
     def default_content(self) -> dict: ...
-    def validate_content(self, raw: str) -> dict: ...   # 抛 InvalidContent
+    def validate_content(self, raw: str) -> dict: ...  # 抛 InvalidContent
     def render(self, request, project, db) -> Response: ...
-    def register_admin(self, router) -> None: ...       # 管理接口挂载
 ```
 
-- 注册：`registry.register(ResumePlugin())`；启动时遍历 `APPS` 生成管理台"新建应用"选项。
-- 预留外部加载：`importlib.metadata.entry_points(group="siteflow.apps")`（v2.0 不开放文档）。
-- 插件管理路由统一挂在应用上下文：`/api/admin/projects/{id}/content`（PATCH 内容）、
-  `/api/admin/projects/{id}/...`（插件自定义子路由）。
+- 管理台「应用」区块的新建按钮由 `all_apps()` 循环生成；未注册类型创建返回 400。
+- 路由分发：`project.type` 命中注册表 → `plugin.render()`；`html/zip` → 302 到 `entry`。
+- 嵌套规则由 `leaf` 决定：父级必须是 `leaf=False` 的应用，且深度 < 3。
+- 预留外部加载：`importlib.metadata.entry_points(group="siteflow.apps")`（后续版本开放）。
+
+### 新增一个应用（如 v2.1 的简历/博客）
+
+1. 新建 `app/plugins/resume/plugin.py`，实现 `ResumeApp` 的协议字段与方法；
+2. 模板放 `app/plugins/resume/templates/`（启动时自动加入，无需改核心）；
+3. 在 `app/plugins/registry.py` 末尾 `register(ResumeApp())`；
+4. 需要内容编辑时：`content_editable = True`，实现 `default_content/validate_content`，
+   管理台即通过通用 `PATCH /api/admin/projects/{id}` 的 `content` 字段保存；
+5. 需要专属管理界面时：新增自身管理页模板与（可选）管理路由，由注册表信息接入入口。
 
 ## 6. 简历/博客插件（v2.1 规划）
 
