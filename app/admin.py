@@ -59,18 +59,6 @@ def touch(project: Project) -> None:
     project.updated_at = datetime.now(UTC).isoformat()
 
 
-def app_type_choices() -> list[dict]:
-    choices = [
-        {"type": "space", "label": "空间", "icon": "layers", "leaf": False},
-        {"type": "site", "label": "静态站点", "icon": "archive", "leaf": True},
-    ]
-    choices.extend(
-        {"type": plugin.type, "label": plugin.label, "icon": plugin.icon, "leaf": plugin.leaf}
-        for plugin in registry.all_apps()
-    )
-    return choices
-
-
 def resolve_parent(db, parent_id: int | None):
     if parent_id is None:
         return None, None
@@ -105,7 +93,6 @@ def admin_page(request: Request, db: DbSession):
             "site_title": config.site_title,
             "projects": store.all_projects(db),
             "csrf": csrf_for(request),
-            "app_types": app_type_choices(),
         },
     )
 
@@ -126,7 +113,7 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
         "parent": parent,
         "depth": store.depth(db, project),
         "children": store.all_projects(db, project.id) if project.type == "space" else [],
-        "app_types": app_type_choices() if project.type == "space" and store.depth(db, project) < 3 else [],
+        "can_nest": project.type == "space" and store.depth(db, project) < 3,
     }
     if project.type == "resume":
         plugin = registry.get(project.type)

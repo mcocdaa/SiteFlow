@@ -114,12 +114,11 @@
     var row = button.closest(".row");
     var id = row ? row.getAttribute("data-id") : null;
 
-    if (action === "create-app") {
-      var typeSelect = document.getElementById("app-type");
-      var titleInput = document.getElementById("app-title");
+    if (action === "create-space" || action === "create-resume") {
+      var appType = action === "create-space" ? "space" : "resume";
       api("POST", "/projects/app", {
-        type: typeSelect ? typeSelect.value : "space",
-        title: titleInput ? titleInput.value.trim() : "",
+        type: appType,
+        title: appType === "space" ? "新空间" : "新简历",
         parent_id: parentId()
       }).then(refresh).catch(onError);
       return;
