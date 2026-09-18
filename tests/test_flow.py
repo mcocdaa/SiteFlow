@@ -247,3 +247,12 @@ def test_admin_uses_svg_icons_not_text_glyphs() -> None:
     assert "↑" not in admin.text
     assert "↓" not in admin.text
     assert "★" not in admin.text
+
+
+def test_admin_icon_buttons_have_tooltips() -> None:
+    with TestClient(app) as client:
+        csrf = login(client)
+        upload(client, csrf, "提示测试.html", b"<h1>Tip</h1>")
+        admin = client.get("/admin")
+    for tip in ("查看", "编辑", "置顶", "上移", "下移", "隐藏", "删除"):
+        assert f'data-tip="{tip}"' in admin.text

@@ -35,13 +35,13 @@
           <span class="muted">{{ project.type | upper }}{% if project.pinned %} · 置顶{% endif %}{% if not project.visible %} · 已隐藏{% endif %}</span>
         </div>
         <div class="row-actions">
-          <a class="btn ghost icon-btn" href="/projects/{{ project.slug }}/" target="_blank" title="查看" aria-label="查看">{{ icons.icon("external-link") }}</a>
-          <button class="btn ghost icon-btn" data-action="edit" title="编辑" aria-label="编辑">{{ icons.icon("pencil") }}</button>
-          <button class="btn ghost icon-btn{{ ' is-active' if project.pinned }}" data-action="toggle-pin" data-pinned="{{ 'true' if project.pinned else 'false' }}" title="{{ '取消置顶' if project.pinned else '置顶' }}" aria-label="{{ '取消置顶' if project.pinned else '置顶' }}">{{ icons.icon("pin") }}</button>
-          <button class="btn ghost icon-btn" data-action="move-up" title="上移" aria-label="上移">{{ icons.icon("arrow-up") }}</button>
-          <button class="btn ghost icon-btn" data-action="move-down" title="下移" aria-label="下移">{{ icons.icon("arrow-down") }}</button>
-          <button class="btn ghost icon-btn" data-action="toggle-visible" data-visible="{{ 'true' if project.visible else 'false' }}" title="{{ '隐藏' if project.visible else '显示' }}" aria-label="{{ '隐藏' if project.visible else '显示' }}">{% if project.visible %}{{ icons.icon("eye") }}{% else %}{{ icons.icon("eye-off") }}{% endif %}</button>
-          <button class="btn danger icon-btn" data-action="delete" title="删除" aria-label="删除">{{ icons.icon("trash") }}</button>
+          <a class="btn ghost icon-btn" href="/projects/{{ project.slug }}/" target="_blank" data-tip="查看" aria-label="查看">{{ icons.icon("external-link") }}</a>
+          <button class="btn ghost icon-btn" data-action="edit" data-tip="编辑" aria-label="编辑">{{ icons.icon("pencil") }}</button>
+          <button class="btn ghost icon-btn{{ ' is-active' if project.pinned }}" data-action="toggle-pin" data-pinned="{{ 'true' if project.pinned else 'false' }}" data-tip="{{ '取消置顶' if project.pinned else '置顶' }}" aria-label="{{ '取消置顶' if project.pinned else '置顶' }}">{{ icons.icon("pin") }}</button>
+          <button class="btn ghost icon-btn" data-action="move-up" data-tip="上移" aria-label="上移">{{ icons.icon("arrow-up") }}</button>
+          <button class="btn ghost icon-btn" data-action="move-down" data-tip="下移" aria-label="下移">{{ icons.icon("arrow-down") }}</button>
+          <button class="btn ghost icon-btn" data-action="toggle-visible" data-visible="{{ 'true' if project.visible else 'false' }}" data-tip="{{ '隐藏' if project.visible else '显示' }}" aria-label="{{ '隐藏' if project.visible else '显示' }}">{% if project.visible %}{{ icons.icon("eye") }}{% else %}{{ icons.icon("eye-off") }}{% endif %}</button>
+          <button class="btn danger icon-btn" data-action="delete" data-tip="删除" aria-label="删除">{{ icons.icon("trash") }}</button>
         </div>
         <div class="editor" hidden>
           <label>标题 <input name="title" value="{{ project.title }}"></label>
