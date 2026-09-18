@@ -49,7 +49,7 @@ ADMIN_PASSWORD=dev DATA_DIR=./data COOKIE_SECURE=false \
 
 ## 安全红线（改动必须保持）
 
-1. `/projects/*` 静态文件（html/zip/site）响应带 `CSP: sandbox ...`（`views.SANDBOX_CSP`）；
+1. `/projects/*` 静态文件（html/zip）响应带 `CSP: sandbox ...`（`views.SANDBOX_CSP`）；
    `space`/`resume` 由我们的模板渲染，所有用户内容必须保持 Jinja 转义。
 2. ZIP 解压拒绝 `..`、绝对路径、符号链接、加密条目、超量条目与超限解压。
 3. 管理写操作必须经过 `admin_api`：登录 + 同源 + CSRF 三重校验；

@@ -7,7 +7,7 @@ from fastapi.testclient import TestClient
 from app import store
 from app.config import Config
 from app.main import app
-from tests.test_flow import auth_headers, login, make_zip, upload
+from tests.test_flow import auth_headers, login, upload
 
 
 def create_app(client: TestClient, csrf: str, app_type: str, title: str, parent_id: int | None = None):
@@ -67,15 +67,6 @@ def test_depth_and_leaf_rules() -> None:
         assert too_deep.status_code == 400
         assert "深度" in too_deep.json()["error"]
 
-        site = client.post(
-            "/api/admin/projects/upload",
-            files={"file": ("站点.zip", make_zip({"index.html": b"ok"}), "application/zip")},
-            data={"as_app": "true", "parent_id": str(root_space["id"])},
-            headers=auth_headers(csrf),
-        ).json()["project"]
-        under_site = create_app(client, csrf, "space", "站点下", parent_id=site["id"])
-        assert under_site.status_code == 400
-
         html = upload(client, csrf, "普通作品.html", b"<h1>x</h1>").json()["project"]
         under_item = create_app(client, csrf, "space", "作品下", parent_id=html["id"])
         assert under_item.status_code == 400
@@ -99,27 +90,6 @@ def test_content_edit_requires_plugin() -> None:
             headers=auth_headers(csrf),
         )
     assert response.status_code == 400
-
-
-def test_site_app_upload() -> None:
-    with TestClient(app) as client:
-        csrf = login(client)
-        archive = make_zip({"site/index.html": b"<h1>site app</h1>"})
-        response = client.post(
-            "/api/admin/projects/upload",
-            files={"file": ("站点.zip", archive, "application/zip")},
-            data={"as_app": "true"},
-            headers=auth_headers(csrf),
-        )
-        assert response.status_code == 200, response.text
-        project = response.json()["project"]
-        assert project["type"] == "site"
-        assert project["entry"] == "site/index.html"
-        page = client.get(f"/projects/{project['slug']}/", follow_redirects=False)
-        assert page.status_code == 302
-        view = client.get(f"/projects/{project['slug']}/site/index.html")
-        assert view.status_code == 200
-        assert view.headers["content-security-policy"].startswith("sandbox ")
 
 
 def test_cascade_delete_and_visibility_inheritance() -> None:
@@ -173,7 +143,7 @@ def test_admin_pages_use_registered_app_list() -> None:
 
         root = client.get("/admin")
         assert "新建空间" in root.text
-        assert "上传静态站点" in root.text
+        assert "上传静态站点" not in root.text
         assert "新建简历" not in root.text
         assert 'id="app-type"' not in root.text
 

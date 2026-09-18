@@ -40,7 +40,6 @@
       {% for app in app_choices %}
       <button class="btn" data-action="create-app" data-type="{{ app.type }}">{{ icons.icon(app.icon) }}新建{{ app.label }}</button>
       {% endfor %}
-      <button class="btn ghost" data-action="upload-app">{{ icons.icon("archive") }}上传静态站点</button>
     </section>
     {% endif %}
     {{ rows.rows(children, plugin_types) }}
