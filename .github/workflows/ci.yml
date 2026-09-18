@@ -1,0 +1,56 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (pytest + ruff + mypy)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements-dev.txt
+      - name: Run tests
+        run: pytest -q
+      - name: Lint
+        run: ruff check app tests
+      - name: Type check
+        run: mypy app tests
+      - name: JS syntax
+        run: node --check app/static/js/admin.js
+
+  docker:
+    name: Docker (build + healthz smoke)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - name: Build image
+        run: docker build -t siteflow:ci .
+      - name: Run container and smoke test
+        run: |
+          docker run -d --name siteflow-ci -p 18000:8000 \
+            -e ADMIN_PASSWORD=ci-password -e COOKIE_SECURE=false siteflow:ci
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:18000/healthz && break
+            sleep 1
+          done
+          curl -sf http://127.0.0.1:18000/healthz
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18000/)" = "200"
+          test "$(curl -s -o /dev/null -w '%{http_code}' http://127.0.0.1:18000/admin)" = "303"
+          docker rm -f siteflow-ci
