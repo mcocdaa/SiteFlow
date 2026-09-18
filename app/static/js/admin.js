@@ -26,7 +26,6 @@
 
   var dropzone = document.getElementById("dropzone");
   var fileInput = document.getElementById("file-input");
-  var appUploadMode = false;
 
   if (dropzone) {
     dropzone.addEventListener("click", function () { fileInput.click(); });
@@ -42,8 +41,7 @@
     });
     fileInput.addEventListener("change", function () {
       if (!fileInput.files.length) return;
-      uploadFile(fileInput.files[0], { asApp: appUploadMode });
-      appUploadMode = false;
+      uploadFile(fileInput.files[0]);
       fileInput.value = "";
     });
   }
@@ -53,17 +51,11 @@
     return value ? parseInt(value, 10) : null;
   }
 
-  function uploadFile(file, options) {
-    options = options || {};
+  function uploadFile(file) {
     var form = new FormData();
     form.append("file", file);
     var parent = parentId();
     if (parent) form.append("parent_id", String(parent));
-    if (options.asApp) {
-      form.append("as_app", "true");
-      var titleInput = document.getElementById("app-title");
-      if (titleInput && titleInput.value.trim()) form.append("title", titleInput.value.trim());
-    }
     var xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/admin/projects/upload");
     xhr.setRequestHeader("X-CSRF-Token", CSRF);
@@ -121,11 +113,6 @@
         title: appType === "space" ? "新空间" : "",
         parent_id: parentId()
       }).then(refresh).catch(onError);
-      return;
-    }
-    if (action === "upload-app") {
-      appUploadMode = true;
-      if (fileInput) fileInput.click();
       return;
     }
     if (action === "logout") {

@@ -81,7 +81,7 @@ def plugin_types() -> list[str]:
 
 
 def app_types() -> set[str]:
-    return {"space", "site", *(plugin.type for plugin in registry.all_apps())}
+    return {"space", *(plugin.type for plugin in registry.all_apps())}
 
 
 def admin_scope(request: Request, db):
@@ -169,7 +169,6 @@ async def upload_project(
     config: AdminConfig,
     db: DbSession,
     parent_id: Annotated[int | None, Form()] = None,
-    as_app: Annotated[bool, Form()] = False,
     title: Annotated[str, Form()] = "",
 ):
     parent, error = resolve_parent(db, parent_id)
@@ -203,7 +202,7 @@ async def upload_project(
                 entry = "index.html"
             else:
                 entry = extract_site(tmp_path, folder, config)
-            project_type = "site" if as_app else ("zip" if suffix == ".zip" else "html")
+            project_type = "zip" if suffix == ".zip" else "html"
             project = Project(
                 slug=slug,
                 type=project_type,

@@ -9,7 +9,7 @@
 一个**应用**——它拥有自己的空间（子卡片）、静态站点或插件页面（简历等），用于展示个人简历、
 空间、博客等。管理员账号全局唯一。
 
-v2.0 交付：应用模型（内置 `space` 空间）+ 静态站点应用 + 插件框架（应用列表来自注册表）。
+v2.0 交付：应用模型（内置 `space` 空间）+ 插件框架（应用列表来自注册表）。
 v2.1 交付：简历插件、博客插件 + 主题/外观。v2.2 交付：2FA 登录 + 管理台增强。
 
 核心代码不包含任何具体插件（简历/博客）内容；插件在 `app/plugins/<name>/` 自包含，
@@ -36,7 +36,7 @@ v2.1 交付：简历插件、博客插件 + 主题/外观。v2.2 交付：2FA �
 
 1. 所有条目（含应用）在同一张表，`parent_id` 为 NULL 表示根画廊条目。
 2. `space` 可包含：html / zip / link / space / site / resume（受深度限制）。
-3. `site` 与 `resume` 为叶子，不能包含子项。
+3. 插件应用为叶子，不能包含子项。
 4. 深度 3 的 `space` 不能再创建子应用，只能放 html/zip/link。
 5. slug 全局唯一（沿用现有逻辑），路由不体现层级，避免歧义与迁移复杂度。
 
@@ -49,7 +49,7 @@ v2.1 交付：简历插件、博客插件 + 主题/外观。v2.2 交付：2FA �
 | `parent_id` | INTEGER NULL | 自引用外键，NULL=根；删除父级级联删除子级 |
 | `content` | TEXT NOT NULL DEFAULT '{}' | 插件数据/空间配置 JSON（简历内容等） |
 
-`type` 取值扩展为：`html` `zip` `link`（原有） + `space` `site`（应用） + 插件类型（运行时注册）。
+`type` 取值扩展为：`html` `zip` `link`（原有） + `space`（内置应用） + 插件类型（运行时注册）。
 `site` 复用现有上传/解压管线（`entry`、文件目录不变）。
 
 迁移：`store.init()` 启动时检测列缺失并 `ALTER TABLE ... ADD COLUMN`（无需新依赖）。
@@ -70,8 +70,8 @@ data/
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/` | 根画廊（卡片 index，含应用卡片） |
-| GET | `/projects/{slug}/` | 按类型分发：`space` → 应用卡片 index；注册插件 → 插件渲染；`html/zip/site` → 302 到 `entry` |
-| GET | `/projects/{slug}/{path}` | 静态文件（仅 html/zip/site，`CSP: sandbox` + nosniff） |
+| GET | `/projects/{slug}/` | 按类型分发：`space` → 应用卡片 index；注册插件 → 插件渲染；`html/zip` → 302 到 `entry` |
+| GET | `/projects/{slug}/{path}` | 静态文件（html/zip，`CSP: sandbox` + nosniff） |
 | POST/PATCH/DELETE | `/api/admin/projects...` | 应用与子项的创建/内容/排序/显隐/删除（`admin_api` 三重校验） |
 
 说明：
@@ -79,6 +79,7 @@ data/
 - 卡片跳转：html/zip → `/projects/{slug}/`；link → 外站；space/site/resume → `/projects/{slug}/`。
 - `space` 的 index 由我们的模板渲染（非 sandbox），与根画廊同一设计语言，可继续点入子项。
 - 静态文件处理与 v1 共用同一函数与媒体类型表，响应必须带 `CSP: sandbox`。
+- 静态站点就是普通 `html/zip` 项目，不是应用；应用 = 空间 + 注册插件。
 - 可见性继承：任一祖先 `visible=0`，后代对访客 404。
 
 ## 5. 插件机制
@@ -147,7 +148,6 @@ class AppPlugin(Protocol):
 
 - [ ] 根画廊可新建三种应用，卡片正确区分类型并带图标。
 - [ ] 空间应用 `/projects/{slug}/` 显示子卡片；可上传 html/zip、加外链、再建子应用。
-- [ ] 静态站点应用上传 ZIP/HTML 后正常渲染，响应带 CSP sandbox；与普通 html/zip 卡片互不影响。
 - [ ] 深度限制：根→应用→应用 可建；第 4 层拒绝（前端隐藏 + 后端 400）。
 - [ ] 叶子类型（site 与插件应用）不允许添加子项（后端拒绝）。
 - [ ] 空间内 Pin/排序互不影响根画廊与其他空间。
@@ -159,6 +159,6 @@ class AppPlugin(Protocol):
 
 | 版本 | 内容 |
 |------|------|
-| v2.0 | 应用模型（space/site）、插件框架与注册表、管理台嵌套（不含任何具体插件） |
+| v2.0 | 应用模型（space）、插件框架与注册表、管理台嵌套（不含任何具体插件） |
 | v2.1 | 简历插件、博客插件（作为独立插件接入应用列表）、主题与外观 |
 | v2.2 | 2FA 登录（TOTP）、管理台增强（全局搜索/审计信息等） |
