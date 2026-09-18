@@ -61,3 +61,15 @@ HTTPS 部署时保持 `COOKIE_SECURE=true`（默认）；纯本机 HTTP 调试�
 | `COOKIE_SECURE` | `true` | HTTPS 部署保持 true |
 | `DATA_DIR` | `/data` | 容器内数据目录（挂载卷） |
 | `PROJECTS_SANDBOX` | `true` | 禁止关闭，同域部署必须保持隔离 |
+
+## 镜像部署（服务器无源码）
+
+只需 `init.sh` + `.env`，不克隆仓库，详见 [deploy/README.md](../deploy/README.md)：
+
+```bash
+cp deploy/.env.example deploy/.env    # 设置 ADMIN_PASSWORD
+cd deploy && TAG=v1.0.0 ./init.sh     # 默认监听 127.0.0.1:8003
+```
+
+真实部署实例：`siteflow.mcocdaa-newapi.xin`（nginx → `127.0.0.1:8003`，
+证书由 acme.sh 自动续期）。`.env` 中 `COOKIE_SECURE=true`，由反代终止 TLS。
