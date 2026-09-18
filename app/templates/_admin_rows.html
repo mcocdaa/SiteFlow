@@ -1,5 +1,5 @@
 {% import "icons.html" as icons %}
-{% macro rows(projects) -%}
+{% macro rows(projects, plugin_types=[]) -%}
 <section class="list" id="project-list">
   {% for project in projects %}
   <div class="row" data-id="{{ project.id }}">
@@ -9,7 +9,7 @@
       <span class="muted">{{ project.type | upper }}{% if project.pinned %} · 置顶{% endif %}{% if not project.visible %} · 已隐藏{% endif %}</span>
     </div>
     <div class="row-actions">
-      {% if project.type in ("space", "site", "resume") %}
+      {% if project.type in ("space", "site") or project.type in plugin_types %}
       <a class="btn ghost icon-btn" href="/admin/projects/{{ project.id }}" data-tip="进入管理" aria-label="进入管理">{{ icons.icon("settings") }}</a>
       {% endif %}
       <a class="btn ghost icon-btn" href="/projects/{{ project.slug }}/" target="_blank" data-tip="查看" aria-label="查看">{{ icons.icon("external-link") }}</a>

@@ -21,7 +21,7 @@ from app.uploads import InvalidUpload, extract_site, make_cover, remove_tree, sa
 router = APIRouter()
 
 COVER_LIMIT = 10 * 1024 * 1024
-APP_TYPES = ("space", "site", "resume")
+BUILTIN_APPS = [{"type": "space", "label": "空间", "icon": "layers"}]
 
 
 class LinkPayload(BaseModel):
@@ -72,6 +72,18 @@ def resolve_parent(db, parent_id: int | None):
     return parent, None
 
 
+def app_choices() -> list[dict]:
+    return [*BUILTIN_APPS, *({"type": plugin.type, "label": plugin.label, "icon": plugin.icon} for plugin in registry.all_apps())]
+
+
+def plugin_types() -> list[str]:
+    return [plugin.type for plugin in registry.all_apps()]
+
+
+def app_types() -> set[str]:
+    return {"space", "site", *(plugin.type for plugin in registry.all_apps())}
+
+
 def admin_scope(request: Request, db):
     config = get_config(request)
     data = read_session(config, request)
@@ -93,6 +105,8 @@ def admin_page(request: Request, db: DbSession):
             "site_title": config.site_title,
             "projects": store.all_projects(db),
             "csrf": csrf_for(request),
+            "app_choices": app_choices(),
+            "plugin_types": plugin_types(),
         },
     )
 
@@ -103,7 +117,7 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
     if redirect is not None:
         return redirect
     project = store.by_id(db, project_id)
-    if project is None or project.type not in APP_TYPES:
+    if project is None or project.type not in app_types():
         raise HTTPException(404)
     parent = store.by_id(db, project.parent_id) if project.parent_id else None
     context = {
@@ -114,26 +128,27 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
         "depth": store.depth(db, project),
         "children": store.all_projects(db, project.id) if project.type == "space" else [],
         "can_nest": project.type == "space" and store.depth(db, project) < 3,
+        "app_choices": app_choices(),
+        "plugin_types": plugin_types(),
     }
-    if project.type == "resume":
-        plugin = registry.get(project.type)
-        assert plugin is not None
-        context["resume"] = plugin.validate_content(project.content)
-        return templates.TemplateResponse(request, "admin_resume.html", context)
     return templates.TemplateResponse(request, "admin_app.html", context)
 
 
 @router.post("/api/admin/projects/app")
 def create_app(payload: AppPayload, _auth: AdminConfig, db: DbSession):
     plugin = registry.get(payload.type)
-    if payload.type != "space" and plugin is None:
+    if payload.type == "space":
+        default_title = "未命名空间"
+        content = "{}"
+    elif plugin is not None:
+        default_title = plugin.label
+        content = json.dumps(plugin.default_content(), ensure_ascii=False)
+    else:
         return api_error("不支持的应用类型")
     parent, error = resolve_parent(db, payload.parent_id)
     if error is not None:
         return error
-    default_title = "未命名空间" if payload.type == "space" else (plugin.label if plugin else "应用")
     title = (payload.title.strip() or default_title)[:200]
-    content = json.dumps(plugin.default_content(), ensure_ascii=False) if plugin is not None else "{}"
     project = Project(
         slug=store.unique_slug(db, title),
         type=payload.type,

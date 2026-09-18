@@ -1,6 +1,6 @@
 # SiteFlow v2 设计：应用（Application）与插件
 
-> 状态：v2.0 已实施（2026-09-18），v2.1 起为规划。
+> 状态：v2.0 已实施（2026-09-18）：插件框架 + 内置空间；简历/博客为 v2.1 插件。
 > v1 方案见 [DESIGN.md](DESIGN.md)，本文件只描述 v2 增量。
 
 ## 1. 主题与目标
@@ -9,8 +9,11 @@
 一个**应用**——它拥有自己的空间（子卡片）、静态站点或插件页面（简历等），用于展示个人简历、
 空间、博客等。管理员账号全局唯一。
 
-v2.0 交付：应用模型 + 静态子站 + 空间（嵌套卡片）+ 插件框架 + 简历插件（管理台内编辑）。
-v2.1 交付：博客插件 + 主题/外观。v2.2 交付：2FA 登录 + 管理台增强。
+v2.0 交付：应用模型（内置 `space` 空间）+ 静态站点应用 + 插件框架（应用列表来自注册表）。
+v2.1 交付：简历插件、博客插件 + 主题/外观。v2.2 交付：2FA 登录 + 管理台增强。
+
+核心代码不包含任何具体插件（简历/博客）内容；插件在 `app/plugins/<name>/` 自包含，
+经注册表接入应用列表与路由。
 
 ### 非目标（v2.0）
 
@@ -46,7 +49,7 @@ v2.1 交付：博客插件 + 主题/外观。v2.2 交付：2FA 登录 + 管理�
 | `parent_id` | INTEGER NULL | 自引用外键，NULL=根；删除父级级联删除子级 |
 | `content` | TEXT NOT NULL DEFAULT '{}' | 插件数据/空间配置 JSON（简历内容等） |
 
-`type` 取值扩展为：`html` `zip` `link`（原有） + `space` `site` `resume`（应用）。
+`type` 取值扩展为：`html` `zip` `link`（原有） + `space` `site`（应用） + 插件类型（运行时注册）。
 `site` 复用现有上传/解压管线（`entry`、文件目录不变）。
 
 迁移：`store.init()` 启动时检测列缺失并 `ALTER TABLE ... ADD COLUMN`（无需新依赖）。
@@ -67,7 +70,7 @@ data/
 | 方法 | 路径 | 说明 |
 |------|------|------|
 | GET | `/` | 根画廊（卡片 index，含应用卡片） |
-| GET | `/projects/{slug}/` | 按类型分发：`html/zip/site` → 302 到 `entry`；`space` → 渲染应用卡片 index；`resume` → 插件渲染简历页 |
+| GET | `/projects/{slug}/` | 按类型分发：`space` → 应用卡片 index；注册插件 → 插件渲染；`html/zip/site` → 302 到 `entry` |
 | GET | `/projects/{slug}/{path}` | 静态文件（仅 html/zip/site，`CSP: sandbox` + nosniff） |
 | POST/PATCH/DELETE | `/api/admin/projects...` | 应用与子项的创建/内容/排序/显隐/删除（`admin_api` 三重校验） |
 
@@ -112,36 +115,16 @@ class AppPlugin(Protocol):
 - 插件管理路由统一挂在应用上下文：`/api/admin/projects/{id}/content`（PATCH 内容）、
   `/api/admin/projects/{id}/...`（插件自定义子路由）。
 
-## 6. 简历插件（v2.0）
+## 6. 简历/博客插件（v2.1 规划）
 
-数据采用开源标准 [JSON Resume](https://jsonresume.org/schema/) 的子集（字段名兼容，便于未来复用
-开源主题与导出），存于 `projects.content`：
+本节保留 v2.1 设计意图，v2.0 不包含任何插件实现。
 
-```json
-{
-  "basics": {
-    "name": "张三",
-    "label": "后端工程师",
-    "image": "avatar.webp",
-    "email": "a@b.c",
-    "phone": "",
-    "url": "https://example.com",
-    "summary": "一句话简介，可多行",
-    "location": {"city": "深圳", "region": "", "countryCode": "CN"},
-    "profiles": [{"network": "GitHub", "username": "x", "url": "https://github.com/x"}]
-  },
-  "work": [{"name": "公司", "position": "职位", "url": "", "startDate": "2022-07", "endDate": "至今", "summary": "", "highlights": ["要点1"]}],
-  "education": [{"institution": "学校", "area": "专业", "studyType": "本科", "startDate": "", "endDate": ""}],
-  "projects": [{"name": "项目", "description": "", "highlights": [], "keywords": [], "url": ""}],
-  "skills": [{"name": "Python", "keywords": ["FastAPI"]}]
-}
-```
+简历数据采用开源标准 [JSON Resume](https://jsonresume.org/schema/) 的子集（字段名兼容，
+便于未来复用开源主题与导出），存于 `projects.content`。
 
-- v2.0 只实现上述 5 个区段；其余 JSON Resume 区段（volunteer/awards/languages 等）后续按需加入。
 - 字段全部纯文本，Jinja 转义输出；URL 只允许 http(s) 或站内相对路径。
-- 渲染：单页、最大宽度 800px、时间线样式、深浅色自适应、`@media print` 打印友好（提供"打印 / 导出 PDF"按钮，走浏览器原生打印）。
-- 管理台编辑：基本信息表单 + 各区段条目增删改/上下移；头像复用封面上传管线（`media/covers/`）。
-- 简单优先：不做 Markdown/富文本、不做多套主题（主题在 v2.1）。
+- 管理台编辑：基本信息表单 + 区段条目增删改/上下移；头像走封面管线。
+- 博客同理：文章列表/详情 + 管理台编辑，作为独立插件实现。
 
 ## 7. 管理台
 
@@ -165,9 +148,8 @@ class AppPlugin(Protocol):
 - [ ] 根画廊可新建三种应用，卡片正确区分类型并带图标。
 - [ ] 空间应用 `/projects/{slug}/` 显示子卡片；可上传 html/zip、加外链、再建子应用。
 - [ ] 静态站点应用上传 ZIP/HTML 后正常渲染，响应带 CSP sandbox；与普通 html/zip 卡片互不影响。
-- [ ] 简历应用：管理台编辑基本信息与章节条目，页面即时反映；打印样式正常。
 - [ ] 深度限制：根→应用→应用 可建；第 4 层拒绝（前端隐藏 + 后端 400）。
-- [ ] 叶子（site/resume）不允许添加子项（后端拒绝）。
+- [ ] 叶子类型（site 与插件应用）不允许添加子项（后端拒绝）。
 - [ ] 空间内 Pin/排序互不影响根画廊与其他空间。
 - [ ] 删除空间应用级联删除子项与文件；隐藏祖先使后代对访客 404。
 - [ ] 未登录/缺 CSRF 的管理请求 401/403；不存在的 slug 404。
@@ -177,6 +159,6 @@ class AppPlugin(Protocol):
 
 | 版本 | 内容 |
 |------|------|
-| v2.0 | 应用模型（space/site/resume）、插件框架、简历插件、管理台嵌套 |
-| v2.1 | 博客插件（文章列表/详情/标签可选）、主题与外观（应用级标题/图标/主题色/布局） |
+| v2.0 | 应用模型（space/site）、插件框架与注册表、管理台嵌套（不含任何具体插件） |
+| v2.1 | 简历插件、博客插件（作为独立插件接入应用列表）、主题与外观 |
 | v2.2 | 2FA 登录（TOTP）、管理台增强（全局搜索/审计信息等） |

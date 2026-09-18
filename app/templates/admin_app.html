@@ -37,12 +37,13 @@
     </section>
     {% if can_nest %}
     <section class="app-create">
-      <button class="btn" data-action="create-space">{{ icons.icon("layers") }}新建子空间</button>
-      <button class="btn" data-action="create-resume">{{ icons.icon("file-text") }}新建简历</button>
+      {% for app in app_choices %}
+      <button class="btn" data-action="create-app" data-type="{{ app.type }}">{{ icons.icon(app.icon) }}新建{{ app.label }}</button>
+      {% endfor %}
       <button class="btn ghost" data-action="upload-app">{{ icons.icon("archive") }}上传静态站点</button>
     </section>
     {% endif %}
-    {{ rows.rows(children) }}
+    {{ rows.rows(children, plugin_types) }}
     {% else %}
     <section class="info-panel">
       <p>静态站点应用，入口：<code>{{ project.entry }}</code></p>

@@ -95,10 +95,8 @@ def project_home(request: Request, config, project, db):
                 "is_admin": bool(session and session.get("admin") is True),
             },
         )
-    if project.type == "resume":
-        plugin = registry.get(project.type)
-        if plugin is None:
-            raise HTTPException(404)
+    plugin = registry.get(project.type)
+    if plugin is not None:
         return plugin.render(request, project, db)
     if not project.entry:
         raise HTTPException(404)
