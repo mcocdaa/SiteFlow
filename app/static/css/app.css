@@ -330,9 +330,27 @@ main.wrap { padding: 48px 24px 96px; }
 .post-body img { max-width: 100%; border-radius: 10px; }
 
 @media print {
-  .resume-actions { display: none; }
-  .resume { max-width: none; padding: 0; }
-  .resume-contact a { color: inherit; }
+  @page { margin: 16mm 14mm; }
+  body { background: #fff; color: #000; }
+  .resume-actions, .blog-actions, .admin-entry { display: none !important; }
+  .resume { max-width: none; margin: 0; padding: 0; font-size: 10.5pt; }
+  .resume-head { gap: 16px; padding-bottom: 10px; border-bottom: 1px solid #999; }
+  .resume-head h1 { font-size: 22pt; letter-spacing: -.02em; }
+  .resume-avatar { width: 72px; height: 72px; }
+  .resume-label { color: #000; font-size: 11pt; }
+  .resume-summary { color: #222; margin-top: 8px; }
+  .resume-contact { gap: 4px 14px; margin-top: 8px; font-size: 9.5pt; }
+  .resume-contact li, .resume-contact a { color: #222; text-decoration: none; }
+  .resume-section { margin-top: 14px; break-inside: avoid-page; }
+  .resume-section h2 { font-size: 12.5pt; margin: 0 0 6px; }
+  .resume-entry { padding: 8px 0; border-top: 1px solid #ddd; break-inside: avoid; page-break-inside: avoid; }
+  .resume-entry-head strong { font-size: 11pt; }
+  .resume-entry p, .resume-entry ul { color: #222; margin-top: 4px; }
+  .resume-entry ul { padding-left: 16px; }
+  .skill-list { gap: 4px; }
+  .skill-list li { break-inside: avoid; }
+  .chip { border-color: #999; color: #333; }
+  a { color: #000; }
 }
 
 .post-item { padding: 22px 0; border-bottom: 1px solid var(--border); }

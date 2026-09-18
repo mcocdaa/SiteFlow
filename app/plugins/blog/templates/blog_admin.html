@@ -64,7 +64,7 @@
     ["title", "标题", "text"],
     ["date", "日期（YYYY-MM-DD）", "text"],
     ["tags", "标签（逗号分隔）", "tags"],
-    ["summary", "摘要", "textarea"],
+    ["summary", "摘要", "text"],
     ["body", "正文（Markdown）", "body"]
   ];
 
@@ -127,8 +127,9 @@
       var label = el("label");
       if (field[2] === "body") label.className = "full";
       label.append(el("span", undefined, field[1]));
-      var input = el(field[2] === "text" ? "input" : "textarea");
-      if (field[2] === "text") { input.type = "text"; input.autocomplete = "off"; }
+      var singleLine = field[2] === "text" || field[2] === "tags";
+      var input = el(singleLine ? "input" : "textarea");
+      if (singleLine) { input.type = "text"; input.autocomplete = "off"; }
       else { input.rows = field[2] === "body" ? 10 : 3; if (field[2] === "body") input.className = "mono"; }
       input.value = valueOf(post, field[0], field[2]);
       input.setAttribute("data-field", field[0]);
