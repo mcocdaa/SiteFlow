@@ -1,7 +1,7 @@
 services:
   siteflow:
     build: .
-    image: siteflow:latest
+    image: ghcr.io/mcocdaa/siteflow:latest
     container_name: siteflow
     restart: unless-stopped
     ports:

@@ -45,9 +45,11 @@ git push origin vX.Y.Z
 `ghcr.io/mcocdaa/siteflow`（semver + latest）→ 自动创建 GitHub Release。
 版本记录维护在 [CHANGELOG.md](../CHANGELOG.md)。
 
-用户侧升级：
+用户侧升级（使用发布镜像，不本地构建）：
 
 ```bash
-docker pull ghcr.io/mcocdaa/siteflow:latest
-./scripts/stop.sh && ./scripts/start.sh
+docker compose pull siteflow
+docker compose up -d --no-build
 ```
+
+`./scripts/start.sh` 默认本地 `--build`（适合改动源码后部署）。
