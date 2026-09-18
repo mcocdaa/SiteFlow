@@ -223,3 +223,14 @@ def test_traversal_blocked() -> None:
         assert secret.exists()
         response = client.get("/projects/x/..%2f..%2fsiteflow.db")
         assert response.status_code == 404
+
+
+def test_gallery_shows_admin_entry_and_guide() -> None:
+    with TestClient(app) as client:
+        anonymous = client.get("/")
+        assert 'href="/login"' in anonymous.text
+        assert "去管理台上传第一个作品" not in anonymous.text
+
+        login(client)
+        logged_in = client.get("/")
+        assert "去管理台上传第一个作品" in logged_in.text

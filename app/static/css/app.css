@@ -129,3 +129,7 @@ main.wrap { padding: 48px 24px 96px; }
 }
 
 .login-error { margin: 0; color: #ef4444; font-size: 14px; }
+
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.admin-entry { color: var(--text-muted); opacity: .45; transition: opacity .15s; display: inline-flex; }
+.admin-entry:hover { opacity: 1; }

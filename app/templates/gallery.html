@@ -8,9 +8,14 @@
 </head>
 <body>
   <header class="site-header">
-    <div class="wrap">
-      <a class="brand" href="/">{{ site_title }}</a>
-      <p class="tagline">{{ site_description }}</p>
+    <div class="wrap row-between">
+      <div>
+        <a class="brand" href="/">{{ site_title }}</a>
+        <p class="tagline">{{ site_description }}</p>
+      </div>
+      <a class="admin-entry" href="/login" title="管理入口" aria-label="管理入口">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+      </a>
     </div>
   </header>
   <main class="wrap">
@@ -39,6 +44,7 @@
     <div class="empty">
       <h2>还没有作品</h2>
       <p>这里将展示你的 HTML、静态网站和外链作品。</p>
+      {% if is_admin %}<p><a class="btn" href="/admin">去管理台上传第一个作品</a></p>{% endif %}
     </div>
     {% endif %}
   </main>

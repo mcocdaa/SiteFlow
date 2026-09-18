@@ -13,6 +13,7 @@ from app.auth import (
     csrf_for,
     login_allowed,
     new_session_token,
+    read_session,
     record_login_failure,
     require_admin,
     require_same_origin,
@@ -65,6 +66,7 @@ def health() -> dict[str, str]:
 @router.get("/")
 def gallery(request: Request, db: DbSession):
     config = get_config(request)
+    session = read_session(config, request)
     return templates.TemplateResponse(
         request,
         "gallery.html",
@@ -73,6 +75,7 @@ def gallery(request: Request, db: DbSession):
             "site_description": config.site_description,
             "projects": store.visible_projects(db),
             "hue": placeholder_hue,
+            "is_admin": bool(session and session.get("admin") is True),
         },
     )
 
