@@ -5,6 +5,24 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ project.title }}{% if site_title and site_title != project.title %} - {{ site_title }}{% endif %}</title>
   <link rel="stylesheet" href="/static/css/app.css">
+  {% if theme and (theme.accent or theme.radius_card or theme.font_family) %}
+  <style>
+    :root {
+      {% if theme.accent %}--accent: {{ theme.accent }};{% endif %}
+      {% if theme.radius_card %}--radius-card: {{ theme.radius_card }};{% endif %}
+      {% if theme.font_family == 'serif' %}
+      --font-family: Georgia, "Songti SC", "Source Serif Pro", serif;
+      font-family: var(--font-family);
+      {% elif theme.font_family == 'mono' %}
+      --font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      font-family: var(--font-family);
+      {% elif theme.font_family == 'sans' %}
+      --font-family: -apple-system, "Segoe UI", "PingFang SC", "Noto Sans SC", sans-serif;
+      font-family: var(--font-family);
+      {% endif %}
+    }
+  </style>
+  {% endif %}
 </head>
 <body>
   {% import "icons.html" as icons %}
@@ -16,7 +34,13 @@
         <a class="brand" href="/projects/{{ project.slug }}/">{{ project.title }}</a>
         {% if project.description %}<p class="tagline">{{ project.description }}</p>{% endif %}
       </div>
-      <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" aria-label="管理入口">{{ icons.icon("settings") }}</a>
+      <div class="header-actions">
+        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索与命令 (⌘K)" aria-label="搜索与命令">
+          {{ icons.icon("search", 15) }}
+          <span class="cmd-k-badge"><kbd>⌘</kbd><kbd>K</kbd></span>
+        </button>
+        <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" aria-label="管理入口">{{ icons.icon("settings") }}</a>
+      </div>
     </div>
   </header>
   <main class="wrap">
@@ -32,5 +56,9 @@
   <footer class="site-footer">
     <div class="wrap"><span>Powered by SiteFlow</span></div>
   </footer>
+  {% include "_preview_modal.html" %}
+  {% include "_command_palette.html" %}
+  <script src="/static/js/preview.js" defer></script>
+  <script src="/static/js/palette.js" defer></script>
 </body>
 </html>

@@ -18,6 +18,7 @@ class Project(Base):
         ForeignKey("projects.id", ondelete="CASCADE"), nullable=True, index=True
     )
     content: Mapped[str] = mapped_column(Text, default="{}")
+    password_hash: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
     title: Mapped[str] = mapped_column(String(200))
     description: Mapped[str] = mapped_column(Text, default="")
     url: Mapped[str] = mapped_column(Text, default="")
@@ -30,4 +31,7 @@ class Project(Base):
     updated_at: Mapped[str] = mapped_column(String, default=lambda: datetime.now(UTC).isoformat())
 
     def as_dict(self) -> dict:
-        return {column.name: getattr(self, column.name) for column in self.__table__.columns}
+        data = {column.name: getattr(self, column.name) for column in self.__table__.columns}
+        data["has_password"] = bool(self.password_hash)
+        data.pop("password_hash", None)
+        return data

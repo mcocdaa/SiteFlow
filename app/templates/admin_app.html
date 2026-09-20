@@ -17,18 +17,122 @@
         <p class="brand">{{ project.title }}</p>
         {% if project.description %}<p class="tagline">{{ project.description }}</p>{% endif %}
       </div>
-      <div class="row-actions">
+      <div class="row-actions header-actions">
+        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索与命令 (⌘K)" aria-label="搜索与命令">
+          {{ icons.icon("search", 15) }}
+          <span class="cmd-k-badge"><kbd>⌘</kbd><kbd>K</kbd></span>
+        </button>
         <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}查看</a>
         <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}退出登录</button>
       </div>
     </div>
   </header>
   <main class="wrap">
+    {% if stats %}
+    <section class="admin-stats-card">
+      <div class="stats-col">
+        <span class="stats-label">今日访问</span>
+        <div class="stats-val"><strong>{{ stats.today_pv }}</strong> <span class="muted">PV</span> · <strong>{{ stats.today_uv }}</strong> <span class="muted">UV</span></div>
+      </div>
+      <div class="stats-col">
+        <span class="stats-label">7天总访问</span>
+        <div class="stats-val"><strong>{{ stats.total_pv_7d }}</strong> <span class="muted">PV</span> · <strong>{{ stats.total_uv_7d }}</strong> <span class="muted">UV</span></div>
+      </div>
+      <div class="stats-col stats-chart" title="过去 7 天 PV 趋势">
+        <span class="stats-label">7天趋势</span>
+        {{ stats.sparkline_svg | safe }}
+      </div>
+    </section>
+    {% endif %}
+
+    {% if project.type == 'space' %}
+    <h2 class="section-title">空间独立主题定制</h2>
+    <section class="plugin-block theme-block" id="space-theme-section">
+      <div class="block-head">
+        <h2>外观与视觉风格</h2>
+        <span class="muted">定制此空间的独立强调色、字体风格与卡片圆角</span>
+      </div>
+      <div class="theme-grid">
+        <div class="theme-field">
+          <label>强调色 (Accent Color)</label>
+          <div class="color-swatches" id="color-swatches">
+            <button type="button" class="swatch" style="--c: #4f46e5;" data-color="#4f46e5" title="经典靛蓝"></button>
+            <button type="button" class="swatch" style="--c: #0284c7;" data-color="#0284c7" title="极客天蓝"></button>
+            <button type="button" class="swatch" style="--c: #10b981;" data-color="#10b981" title="自然翡翠"></button>
+            <button type="button" class="swatch" style="--c: #f59e0b;" data-color="#f59e0b" title="温暖琥珀"></button>
+            <button type="button" class="swatch" style="--c: #f43f5e;" data-color="#f43f5e" title="现代玫瑰"></button>
+            <button type="button" class="swatch" style="--c: #8b5cf6;" data-color="#8b5cf6" title="极光紫"></button>
+          </div>
+          <div class="color-input-wrap">
+            <input type="color" id="theme-accent-picker" value="{{ space_theme.accent if space_theme and space_theme.accent else '#4f46e5' }}">
+            <input type="text" id="theme-accent" placeholder="#4f46e5" value="{{ space_theme.accent if space_theme else '' }}">
+          </div>
+        </div>
+
+        <div class="theme-field">
+          <label>字体风格 (Typography)</label>
+          <select id="theme-font">
+            <option value="" {% if not space_theme or not space_theme.font_family %}selected{% endif %}>默认无衬线 (System Sans)</option>
+            <option value="sans" {% if space_theme and space_theme.font_family == 'sans' %}selected{% endif %}>现代无衬线 (Modern Sans)</option>
+            <option value="serif" {% if space_theme and space_theme.font_family == 'serif' %}selected{% endif %}>典雅衬线 (Elegant Serif)</option>
+            <option value="mono" {% if space_theme and space_theme.font_family == 'mono' %}selected{% endif %}>极客等宽 (Tech Monospace)</option>
+          </select>
+        </div>
+
+        <div class="theme-field">
+          <label>卡片圆角 (Card Border Radius)</label>
+          <select id="theme-radius">
+            <option value="" {% if not space_theme or not space_theme.radius_card %}selected{% endif %}>默认圆角 (14px)</option>
+            <option value="0px" {% if space_theme and space_theme.radius_card == '0px' %}selected{% endif %}>直角锐利 (0px)</option>
+            <option value="6px" {% if space_theme and space_theme.radius_card == '6px' %}selected{% endif %}>微圆角 (6px)</option>
+            <option value="10px" {% if space_theme and space_theme.radius_card == '10px' %}selected{% endif %}>适中圆角 (10px)</option>
+            <option value="14px" {% if space_theme and space_theme.radius_card == '14px' %}selected{% endif %}>现代圆角 (14px)</option>
+            <option value="20px" {% if space_theme and space_theme.radius_card == '20px' %}selected{% endif %}>圆润大圆角 (20px)</option>
+          </select>
+        </div>
+      </div>
+      <div class="theme-actions mt-3">
+        <button type="button" class="btn primary" id="save-theme-btn">{{ icons.icon("check") }}保存空间主题</button>
+        <span class="theme-save-tip muted" id="theme-save-tip"></span>
+      </div>
+    </section>
+    {% endif %}
+
     {% if not plugin_leaf %}
+    <h2 class="section-title">添加内容</h2>
     <section class="dropzone" id="dropzone">
-      <span class="dropzone-icon">{{ icons.icon("upload", 28) }}</span>
-      <p><strong>拖拽 HTML 或 ZIP 到这里</strong></p>
-      <p class="muted">添加到「{{ project.title }}」 · 也可以在下方添加外链 / 新建子应用</p>
+      <div class="dropzone-idle" id="dropzone-idle">
+        <span class="dropzone-icon">{{ icons.icon("upload", 28) }}</span>
+        <p><strong>拖拽 HTML 或 ZIP 到这里</strong></p>
+        <p class="muted">添加到「{{ project.title }}」 · 也可以在下方添加外链 / 新建子应用</p>
+      </div>
+      <div class="dropzone-stages" id="dropzone-stages" hidden>
+        <div class="stage-flow">
+          <div class="stage-step" data-step="1">
+            <span class="step-num">1</span>
+            <span class="step-text">上传</span>
+          </div>
+          <span class="step-arrow">➔</span>
+          <div class="stage-step" data-step="2">
+            <span class="step-num">2</span>
+            <span class="step-text">安全沙箱审计</span>
+          </div>
+          <span class="step-arrow">➔</span>
+          <div class="stage-step" data-step="3">
+            <span class="step-num">3</span>
+            <span class="step-text">解压与嗅探</span>
+          </div>
+          <span class="step-arrow">➔</span>
+          <div class="stage-step" data-step="4">
+            <span class="step-num">4</span>
+            <span class="step-text">就绪</span>
+          </div>
+        </div>
+        <div class="stage-progress">
+          <div class="stage-progress-bar" id="stage-progress-bar" style="width: 0%;"></div>
+        </div>
+        <p class="stage-status-msg" id="stage-status-msg">准备上传...</p>
+      </div>
       <input type="file" id="file-input" accept=".html,.htm,.zip" hidden>
     </section>
     <section class="link-row">
@@ -52,6 +156,10 @@
     </section>
     {% endif %}
   </main>
+  {% include "_preview_modal.html" %}
+  {% include "_command_palette.html" %}
+  <script src="/static/js/preview.js" defer></script>
+  <script src="/static/js/palette.js" defer></script>
   <script src="/static/js/admin.js" defer></script>
 </body>
 </html>

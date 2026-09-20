@@ -1,0 +1,59 @@
+{% import "icons.html" as icons %}
+<div id="preview-modal" class="preview-modal" hidden aria-hidden="true" role="dialog">
+  <div class="preview-backdrop" data-action="close-preview"></div>
+  <div class="preview-container">
+    <header class="preview-header">
+      <div class="preview-meta">
+        <span class="preview-badge" id="preview-badge">HTML5</span>
+        <span class="preview-title" id="preview-title">作品预览</span>
+      </div>
+      <div class="preview-viewports" role="tablist">
+        <button type="button" class="preview-vbtn active" data-vp="100%" title="桌面端 (100%)">
+          {{ icons.icon("monitor", 16) }} <span>桌面端</span>
+        </button>
+        <button type="button" class="preview-vbtn" data-vp="768px" title="平板 (768px)">
+          {{ icons.icon("tablet", 16) }} <span>平板 (768px)</span>
+        </button>
+        <button type="button" class="preview-vbtn" data-vp="375px" title="手机 (375px)">
+          {{ icons.icon("smartphone", 16) }} <span>手机 (375px)</span>
+        </button>
+        <button type="button" class="preview-vbtn icon-only" id="preview-rotate" title="旋转屏幕 (横竖屏切换)" hidden>
+          {{ icons.icon("refresh-cw", 15) }}
+        </button>
+      </div>
+      <div class="preview-actions">
+        <button type="button" class="btn ghost icon-btn preview-tool" id="preview-qr-toggle" data-tip="局域网真机调试二维码" aria-label="真机调试二维码">
+          {{ icons.icon("smartphone", 16) }}<span class="qr-btn-text">真机调试</span>
+        </button>
+        <a class="btn ghost icon-btn preview-tool" id="preview-open-link" href="#" rel="noopener noreferrer" data-tip="全屏打开" aria-label="全屏打开">
+          {{ icons.icon("external-link", 16) }}
+        </a>
+        <button type="button" class="btn ghost icon-btn preview-close-btn" data-action="close-preview" data-tip="关闭 (Esc)" aria-label="关闭预览">
+          {{ icons.icon("x", 18) }}
+        </button>
+      </div>
+    </header>
+
+    <div class="preview-body" id="preview-body">
+      <div class="preview-viewport-box" id="preview-box" style="width: 100%;">
+        <div class="preview-loader" id="preview-loader">{{ icons.icon("refresh-cw", 20) }} 正在加载安全沙箱...</div>
+        <iframe id="preview-frame" src="about:blank" title="预览视口" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads allow-same-origin"></iframe>
+      </div>
+    </div>
+
+    <!-- QR Code Popover -->
+    <div class="qr-popover" id="qr-popover" hidden>
+      <div class="qr-content">
+        <div class="qr-head">
+          <strong>局域网真机调试</strong>
+          <button type="button" class="btn ghost icon-btn" id="qr-close">{{ icons.icon("x", 14) }}</button>
+        </div>
+        <div class="qr-img-wrap" id="qr-img-wrap">
+          <div class="qr-loading">生成二维码中...</div>
+        </div>
+        <p class="qr-url" id="qr-url-text"></p>
+        <p class="qr-tip">用手机与电脑连接同一局域网 / Wi-Fi 后扫码，即可在移动端真机预览调试。</p>
+      </div>
+    </div>
+  </div>
+</div>

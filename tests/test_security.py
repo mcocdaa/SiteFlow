@@ -30,6 +30,52 @@ def test_extract_size_limit(monkeypatch) -> None:
     assert response.status_code == 422
 
 
+def test_zipbomb_expansion_ratio_rejected() -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("index.html", b"0" * (2 * 1024 * 1024))
+    with TestClient(app) as client:
+        csrf = login(client)
+        response = upload(client, csrf, "ratio_bomb.zip", buffer.getvalue())
+    assert response.status_code == 422
+    assert "疑似解压炸弹" in response.text
+
+
+def test_zip_gbk_filename_supported() -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", compression=zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr("index.html", b"<h1>GBK Test</h1>")
+        # Simulate Windows GBK zip file: flag_bits & 0x800 == 0
+        gbk_bytes = "说明文档.txt".encode("gbk")
+        cp437_str = gbk_bytes.decode("cp437")
+        info = zipfile.ZipInfo(cp437_str)
+        info.flag_bits = 0
+        archive.writestr(info, b"Windows Chinese Filename Content")
+    with TestClient(app) as client:
+        csrf = login(client)
+        response = upload(client, csrf, "gbk_test.zip", buffer.getvalue())
+    assert response.status_code == 200
+    slug = response.json()["project"]["slug"]
+    with TestClient(app) as client:
+        file_resp = client.get(f"/projects/{slug}/说明文档.txt")
+        assert file_resp.status_code == 200
+        assert b"Windows Chinese Filename Content" in file_resp.content
+
+
+def test_zip_inode_limit_rejected(monkeypatch) -> None:
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w") as archive:
+        archive.writestr("index.html", b"<h1>Test</h1>")
+        for i in range(15):
+            archive.writestr(f"dir_{i}/file_{i}.txt", b"ok")
+    with TestClient(app) as client:
+        monkeypatch.setattr(app.state.config, "zip_entries", 10)
+        csrf = login(client)
+        response = upload(client, csrf, "too_many_inodes.zip", buffer.getvalue())
+    assert response.status_code == 422
+    assert "超出限制" in response.text or "Inode" in response.text
+
+
 def test_parse_og_metadata() -> None:
     html = (
         b"<html><head><title>Fallback</title>"

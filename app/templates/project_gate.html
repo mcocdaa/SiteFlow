@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>访问受限 - {{ project.title }} - {{ site_title }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+</head>
+<body class="login-body">
+  {% import "icons.html" as icons %}
+  <div class="login-card gate-card">
+    <div class="gate-icon-wrapper">
+      {{ icons.icon("lock", 32) }}
+    </div>
+    <h1>{{ project.title }}</h1>
+    <p class="tagline text-center">此作品已设置访问密码保护</p>
+
+    {% if error %}
+    <p class="login-error text-center">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="/projects/{{ project.slug }}/unlock" class="gate-form">
+      <input type="password" name="password" placeholder="请输入访问密码" required autofocus>
+      <button type="submit" class="btn primary btn-block">{{ icons.icon("check") }}解锁并访问</button>
+    </form>
+    <p class="text-center mt-2">
+      <a href="/" class="muted-link">{{ icons.icon("arrow-left", 14) }}返回画廊首页</a>
+    </p>
+  </div>
+</body>
+</html>

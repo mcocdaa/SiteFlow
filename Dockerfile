@@ -1,7 +1,7 @@
-FROM python:3.14-slim
+FROM python:3.13-slim
 
 LABEL org.opencontainers.image.title="SiteFlow" \
-      org.opencontainers.image.description="Docker 化的个人作品画廊：上传 HTML / ZIP / 外链，CSP sandbox 隔离" \
+      org.opencontainers.image.description="Docker 化的个人作品画廊与静态制品沙箱展示平台" \
       org.opencontainers.image.source="https://github.com/mcocdaa/SiteFlow" \
       org.opencontainers.image.licenses="MIT"
 
@@ -17,7 +17,7 @@ COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
-COPY DESIGN.md README.md ./
+COPY DESIGN.md README.md pyproject.toml ./
 
 RUN mkdir -p /data && chown -R app:app /data /srv/siteflow
 USER app

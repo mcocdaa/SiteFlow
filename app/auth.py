@@ -46,6 +46,53 @@ def verify_password(config: Config, password: str) -> bool:
         return False
 
 
+def hash_project_password(password: str) -> str:
+    return _password_hasher.hash(password)
+
+
+def verify_project_password(hashed: str, password: str) -> bool:
+    if not hashed or not password:
+        return False
+    try:
+        return _password_hasher.verify(hashed, password)
+    except VerifyMismatchError:
+        return False
+
+
+def make_project_token(config: Config, slug: str) -> str:
+    serializer = URLSafeTimedSerializer(config.secret, salt="siteflow-project-gate")
+    return serializer.dumps({"slug": slug, "ts": time.time()})
+
+
+def verify_project_token(config: Config, slug: str, token: str) -> bool:
+    if not token:
+        return False
+    serializer = URLSafeTimedSerializer(config.secret, salt="siteflow-project-gate")
+    try:
+        data = serializer.loads(token, max_age=SESSION_MAX_AGE)
+        return isinstance(data, dict) and data.get("slug") == slug
+    except BadSignature:
+        return False
+
+
+def project_cookie_name(slug: str) -> str:
+    # Deterministic safe cookie name
+    h = hashlib.md5(slug.encode()).hexdigest()[:8]
+    return f"sf_gate_{h}"
+
+
+def set_project_cookie(config: Config, response: Response, slug: str, token: str) -> None:
+    response.set_cookie(
+        project_cookie_name(slug),
+        token,
+        max_age=SESSION_MAX_AGE,
+        httponly=True,
+        samesite="lax",
+        secure=config.secure,
+        path=f"/projects/{slug}",
+    )
+
+
 def new_session_token() -> str:
     return secrets.token_urlsafe(32)
 

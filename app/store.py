@@ -23,7 +23,24 @@ def _migrate(engine: Engine) -> None:
             )
         if "content" not in columns:
             conn.exec_driver_sql("ALTER TABLE projects ADD COLUMN content TEXT NOT NULL DEFAULT '{}'")
+        if "password_hash" not in columns:
+            conn.exec_driver_sql("ALTER TABLE projects ADD COLUMN password_hash TEXT DEFAULT NULL")
         conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_projects_parent_id ON projects (parent_id)")
+
+        conn.exec_driver_sql("""
+            CREATE TABLE IF NOT EXISTS daily_stats (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                project_id INTEGER,
+                pv INTEGER NOT NULL DEFAULT 0,
+                uv INTEGER NOT NULL DEFAULT 0
+            )
+        """)
+        conn.exec_driver_sql("""
+            CREATE UNIQUE INDEX IF NOT EXISTS ux_daily_stats_date_project
+            ON daily_stats (date, COALESCE(project_id, -1))
+        """)
+        conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_daily_stats_date ON daily_stats (date)")
         conn.commit()
 
 
