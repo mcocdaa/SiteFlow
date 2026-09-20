@@ -1,4 +1,6 @@
 # EditorConfig is awesome: https://EditorConfig.org
+# 跨编辑器 / IDE 的代码格式配置文件
+
 root = true
 
 [*]
@@ -9,5 +11,11 @@ end_of_line = lf
 insert_final_newline = true
 trim_trailing_whitespace = true
 
-[*.{js,json,css,html,yml,yaml,md}]
+[*.{js,jsx,ts,tsx,vue,json,css,scss,less,html,md,yml,yaml}]
 indent_size = 2
+
+[*.{py}]
+indent_size = 4
+
+[Makefile]
+indent_style = tab
