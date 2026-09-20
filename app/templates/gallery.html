@@ -15,7 +15,13 @@
         <a class="brand" href="/">{{ site_title }}</a>
         <p class="tagline">{{ site_description }}</p>
       </div>
-      <a class="admin-entry" href="/login" data-tip="管理入口" aria-label="管理入口">{{ icons.icon("settings") }}</a>
+      <div class="header-actions">
+        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索与命令 (⌘K)" aria-label="搜索与命令">
+          {{ icons.icon("search", 15) }}
+          <span class="cmd-k-badge"><kbd>⌘</kbd><kbd>K</kbd></span>
+        </button>
+        <a class="admin-entry" href="/login" data-tip="管理入口" aria-label="管理入口">{{ icons.icon("settings") }}</a>
+      </div>
     </div>
   </header>
   <main class="wrap">
@@ -32,5 +38,9 @@
   <footer class="site-footer">
     <div class="wrap"><span>Powered by SiteFlow</span></div>
   </footer>
+  {% include "_preview_modal.html" %}
+  {% include "_command_palette.html" %}
+  <script src="/static/js/preview.js" defer></script>
+  <script src="/static/js/palette.js" defer></script>
 </body>
 </html>

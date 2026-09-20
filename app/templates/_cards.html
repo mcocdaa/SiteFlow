@@ -1,21 +1,28 @@
 {% import "icons.html" as icons %}
-{% set app_icons = {"space": "layers", "link": "external-link"} %}
+{% set app_icons = {"space": "layers", "link": "external-link", "resume": "file-text", "blog": "book-open"} %}
 {% macro cards(projects, hue) -%}
 <div class="grid">
   {% for project in projects %}
   <a class="card" href="{{ project.url if project.type == 'link' else '/projects/' + project.slug + '/' }}"
-     {% if project.type == 'link' %}target="_blank" rel="noopener noreferrer"{% endif %}>
+     {% if project.type == 'link' %}target="_blank" rel="noopener noreferrer"{% endif %}
+     data-slug="{{ project.slug }}" data-title="{{ project.title }}" data-type="{{ project.type }}">
     {% if project.type == 'link' %}<span class="card-external">{{ icons.icon("external-link", 14) }}</span>{% endif %}
     <div class="cover">
       {% if project.cover %}
       <img src="/media/covers/{{ project.cover }}" alt="">
       {% else %}
-      <div class="placeholder" style="--hue: {{ hue(project.slug) }}"><span>{{ project.title[0] }}</span></div>
+      {{ svg_cover(project.slug, project.title, project.type) | safe }}
       {% endif %}
       <span class="badge badge-{{ project.type }}">
         {% if project.type in app_icons %}{{ icons.icon(app_icons[project.type], 12) }}{% endif %}
         {{ project.type | upper }}
       </span>
+      {% if project.password_hash %}<span class="card-lock" title="受密码保护">{{ icons.icon("lock", 13) }}</span>{% endif %}
+      {% if project.type not in ('link', 'space') %}
+      <button type="button" class="card-preview-btn" data-action="quick-preview" data-slug="{{ project.slug }}" data-title="{{ project.title }}" data-type="{{ project.type }}" data-tip="视口预览" aria-label="视口预览">
+        {{ icons.icon("maximize", 14) }}
+      </button>
+      {% endif %}
       {% if project.pinned %}<span class="pin" title="置顶">{{ icons.icon("pin", 14) }}</span>{% endif %}
     </div>
     <div class="card-body">

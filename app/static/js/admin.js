@@ -56,17 +56,70 @@
     form.append("file", file);
     var parent = parentId();
     if (parent) form.append("parent_id", String(parent));
+
+    var dropzoneIdle = document.getElementById("dropzone-idle");
+    var dropzoneStages = document.getElementById("dropzone-stages");
+    var progressBar = document.getElementById("stage-progress-bar");
+    var statusMsg = document.getElementById("stage-status-msg");
+    var stageSteps = dropzoneStages ? dropzoneStages.querySelectorAll(".stage-step") : [];
+
+    function setStage(stepNum, percent, message) {
+      if (!dropzoneStages) return;
+      dropzoneStages.hidden = false;
+      if (dropzoneIdle) dropzoneIdle.hidden = true;
+      if (dropzone) dropzone.classList.add("uploading");
+      stageSteps.forEach(function (el) {
+        var num = parseInt(el.getAttribute("data-step"), 10);
+        el.classList.toggle("active", num === stepNum);
+        el.classList.toggle("done", num < stepNum);
+      });
+      if (progressBar) progressBar.style.width = percent + "%";
+      if (statusMsg) statusMsg.textContent = message;
+    }
+
+    function resetDropzone() {
+      if (dropzoneStages) dropzoneStages.hidden = true;
+      if (dropzoneIdle) dropzoneIdle.hidden = false;
+      if (dropzone) dropzone.classList.remove("uploading");
+    }
+
+    setStage(1, 10, "正在准备上传制品...");
+
     var xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/admin/projects/upload");
     xhr.setRequestHeader("X-CSRF-Token", CSRF);
+
+    xhr.upload.onprogress = function (e) {
+      if (e.lengthComputable) {
+        var percent = Math.round((e.loaded / e.total) * 45);
+        setStage(1, Math.max(10, percent), "正在上传制品 (" + Math.round((e.loaded / e.total) * 100) + "%)...");
+      }
+    };
+
+    xhr.upload.onload = function () {
+      setStage(2, 65, "执行安全沙箱审计（ZipBomb 防御与容错转码）...");
+      setTimeout(function () {
+        setStage(3, 85, "结构嗅探与安全解压中...");
+      }, 350);
+    };
+
     xhr.onload = function () {
       try {
         var data = JSON.parse(xhr.responseText);
         if (xhr.status >= 400 || data.ok === false) throw new Error(data.error || "上传失败");
-        refresh();
-      } catch (error) { onError(error); }
+        setStage(4, 100, "制品安全就绪！正在同步画廊...");
+        setTimeout(refresh, 500);
+      } catch (error) {
+        resetDropzone();
+        onError(error);
+      }
     };
-    xhr.onerror = function () { onError(new Error("网络错误")); };
+
+    xhr.onerror = function () {
+      resetDropzone();
+      onError(new Error("网络错误，上传中断"));
+    };
+
     xhr.send(form);
   }
 
@@ -88,6 +141,55 @@
         .then(function () {
           linkUrl.value = "";
           refresh();
+        })
+        .catch(onError);
+    });
+  }
+
+  // Space Theme customization
+  var saveThemeBtn = document.getElementById("save-theme-btn");
+  if (saveThemeBtn) {
+    var swatches = document.querySelectorAll(".swatch[data-color]");
+    var accentPicker = document.getElementById("theme-accent-picker");
+    var accentText = document.getElementById("theme-accent");
+    var fontSelect = document.getElementById("theme-font");
+    var radiusSelect = document.getElementById("theme-radius");
+    var tip = document.getElementById("theme-save-tip");
+
+    swatches.forEach(function (sw) {
+      sw.addEventListener("click", function () {
+        var c = sw.getAttribute("data-color");
+        if (accentText) accentText.value = c;
+        if (accentPicker) accentPicker.value = c;
+      });
+    });
+
+    if (accentPicker && accentText) {
+      accentPicker.addEventListener("input", function () {
+        accentText.value = accentPicker.value;
+      });
+      accentText.addEventListener("input", function () {
+        if (/^#[0-9a-fA-F]{6}$/.test(accentText.value)) {
+          accentPicker.value = accentText.value;
+        }
+      });
+    }
+
+    saveThemeBtn.addEventListener("click", function () {
+      var pid = parentId();
+      if (!pid) return;
+      var theme = {
+        accent: accentText ? accentText.value.trim() : "",
+        font_family: fontSelect ? fontSelect.value : "",
+        radius_card: radiusSelect ? radiusSelect.value : ""
+      };
+      api("PATCH", "/projects/" + pid, { theme: theme })
+        .then(function () {
+          if (tip) {
+            tip.textContent = "✓ 空间主题已保存生效";
+            tip.style.color = "var(--accent)";
+            setTimeout(function () { tip.textContent = ""; }, 3000);
+          }
         })
         .catch(onError);
     });
@@ -143,6 +245,10 @@
       };
       var urlInput = row.querySelector('[name="url"]');
       if (urlInput) payload.url = urlInput.value;
+      var pwdInput = row.querySelector('[name="password"]');
+      if (pwdInput && pwdInput.value.trim() !== "") {
+        payload.password = pwdInput.value.trim();
+      }
       api("PATCH", "/projects/" + id, payload)
         .then(function () {
           var coverInput = row.querySelector('[name="cover"]');

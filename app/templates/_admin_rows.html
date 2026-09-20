@@ -2,15 +2,21 @@
 {% macro rows(projects, plugin_types=[]) -%}
 <section class="list" id="project-list">
   {% for project in projects %}
-  <div class="row" data-id="{{ project.id }}">
-    <img class="thumb" src="{% if project.cover %}/media/covers/{{ project.cover }}{% else %}/static/img/placeholder.svg{% endif %}" alt="">
+  <div class="row" data-id="{{ project.id }}" data-slug="{{ project.slug }}" data-title="{{ project.title }}" data-type="{{ project.type }}">
+    <img class="thumb" src="{% if project.cover %}/media/covers/{{ project.cover }}{% else %}/media/placeholder/{{ project.slug }}.svg{% endif %}" alt="">
     <div class="row-main">
-      <strong>{{ project.title }}</strong>
+      <div class="row-title-wrap">
+        <strong>{{ project.title }}</strong>
+        {% if project.password_hash %}<span class="badge-lock" title="受密码保护">{{ icons.icon("lock", 12) }}密码锁</span>{% endif %}
+      </div>
       <span class="muted">{{ project.type | upper }}{% if project.pinned %} · 置顶{% endif %}{% if not project.visible %} · 已隐藏{% endif %}</span>
     </div>
     <div class="row-actions">
       {% if project.type == "space" or project.type in plugin_types %}
       <a class="btn ghost icon-btn" href="/admin/projects/{{ project.id }}" data-tip="进入管理" aria-label="进入管理">{{ icons.icon("settings") }}</a>
+      {% endif %}
+      {% if project.type not in ('link', 'space') %}
+      <button class="btn ghost icon-btn" data-action="preview" data-slug="{{ project.slug }}" data-title="{{ project.title }}" data-type="{{ project.type }}" data-tip="视口预览" aria-label="视口预览">{{ icons.icon("maximize") }}</button>
       {% endif %}
       <a class="btn ghost icon-btn" href="/projects/{{ project.slug }}/" target="_blank" data-tip="查看" aria-label="查看">{{ icons.icon("external-link") }}</a>
       <button class="btn ghost icon-btn" data-action="edit" data-tip="编辑" aria-label="编辑">{{ icons.icon("pencil") }}</button>
@@ -24,6 +30,7 @@
       <label>标题 <input name="title" value="{{ project.title }}"></label>
       <label>描述 <input name="description" value="{{ project.description }}"></label>
       {% if project.type == 'link' %}<label>链接 <input name="url" value="{{ project.url }}"></label>{% endif %}
+      <label>访问密码 <input type="password" name="password" placeholder="{% if project.password_hash %}已设置保护（留空不变，填 clear 取消）{% else %}留空不设密码（输入以保护）{% endif %}"></label>
       <div class="field">
         <span>封面</span>
         <span class="file-picker">

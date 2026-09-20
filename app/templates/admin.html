@@ -13,10 +13,33 @@
   <header class="site-header">
     <div class="wrap row-between">
       <a class="brand" href="/">{{ icons.icon("arrow-left") }}{{ site_title }}</a>
-      <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}退出登录</button>
+      <div class="header-actions">
+        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索与命令 (⌘K)" aria-label="搜索与命令">
+          {{ icons.icon("search", 15) }}
+          <span class="cmd-k-badge"><kbd>⌘</kbd><kbd>K</kbd></span>
+        </button>
+        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}退出登录</button>
+      </div>
     </div>
   </header>
   <main class="wrap">
+    {% if stats %}
+    <section class="admin-stats-card">
+      <div class="stats-col">
+        <span class="stats-label">今日访问</span>
+        <div class="stats-val"><strong>{{ stats.today_pv }}</strong> <span class="muted">PV</span> · <strong>{{ stats.today_uv }}</strong> <span class="muted">UV</span></div>
+      </div>
+      <div class="stats-col">
+        <span class="stats-label">7天总访问</span>
+        <div class="stats-val"><strong>{{ stats.total_pv_7d }}</strong> <span class="muted">PV</span> · <strong>{{ stats.total_uv_7d }}</strong> <span class="muted">UV</span></div>
+      </div>
+      <div class="stats-col stats-chart" title="过去 7 天 PV 趋势">
+        <span class="stats-label">7天趋势</span>
+        {{ stats.sparkline_svg | safe }}
+      </div>
+    </section>
+    {% endif %}
+
     <h2 class="section-title">应用</h2>
     <section class="app-create">
       {% for app in app_choices %}
@@ -25,9 +48,38 @@
     </section>
     <h2 class="section-title">项目</h2>
     <section class="dropzone" id="dropzone">
-      <span class="dropzone-icon">{{ icons.icon("upload", 28) }}</span>
-      <p><strong>拖拽 HTML 或 ZIP 到这里</strong></p>
-      <p class="muted">或点击选择文件 · 也可以在下方添加外链 / 新建应用</p>
+      <div class="dropzone-idle" id="dropzone-idle">
+        <span class="dropzone-icon">{{ icons.icon("upload", 28) }}</span>
+        <p><strong>拖拽 HTML 或 ZIP 到这里</strong></p>
+        <p class="muted">或点击选择文件 · 也可以在下方添加外链 / 新建应用</p>
+      </div>
+      <div class="dropzone-stages" id="dropzone-stages" hidden>
+        <div class="stage-flow">
+          <div class="stage-step" data-step="1">
+            <span class="step-num">1</span>
+            <span class="step-text">上传</span>
+          </div>
+          <span class="step-arrow">➔</span>
+          <div class="stage-step" data-step="2">
+            <span class="step-num">2</span>
+            <span class="step-text">安全沙箱审计</span>
+          </div>
+          <span class="step-arrow">➔</span>
+          <div class="stage-step" data-step="3">
+            <span class="step-num">3</span>
+            <span class="step-text">解压与嗅探</span>
+          </div>
+          <span class="step-arrow">➔</span>
+          <div class="stage-step" data-step="4">
+            <span class="step-num">4</span>
+            <span class="step-text">就绪</span>
+          </div>
+        </div>
+        <div class="stage-progress">
+          <div class="stage-progress-bar" id="stage-progress-bar" style="width: 0%;"></div>
+        </div>
+        <p class="stage-status-msg" id="stage-status-msg">准备上传...</p>
+      </div>
       <input type="file" id="file-input" accept=".html,.htm,.zip" hidden>
     </section>
     <section class="link-row">
@@ -36,6 +88,10 @@
     </section>
     {{ rows.rows(projects, plugin_types) }}
   </main>
+  {% include "_preview_modal.html" %}
+  {% include "_command_palette.html" %}
+  <script src="/static/js/preview.js" defer></script>
+  <script src="/static/js/palette.js" defer></script>
   <script src="/static/js/admin.js" defer></script>
 </body>
 </html>

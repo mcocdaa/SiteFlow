@@ -14,6 +14,7 @@ class Config:
     upload_limit: int
     extract_limit: int
     zip_entries: int
+    base_domain: str = ""
 
     @classmethod
     def load(cls) -> "Config":
@@ -34,6 +35,7 @@ class Config:
                 key_path.write_text(secrets.token_hex(32))
                 key_path.chmod(0o600)
             secret = key_path.read_text().strip()
+        base_domain = os.getenv("BASE_DOMAIN", "").strip().lower()
         return cls(
             data=data,
             password=password,
@@ -44,4 +46,5 @@ class Config:
             upload_limit=int(os.getenv("MAX_UPLOAD_MB", "100")) * 1024 * 1024,
             extract_limit=int(os.getenv("MAX_EXTRACT_MB", "500")) * 1024 * 1024,
             zip_entries=int(os.getenv("MAX_ZIP_ENTRIES", "5000")),
+            base_domain=base_domain,
         )

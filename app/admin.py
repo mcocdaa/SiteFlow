@@ -8,8 +8,8 @@ from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 
-from app import store
-from app.auth import csrf_for, read_session
+from app import stats, store
+from app.auth import csrf_for, hash_project_password, read_session
 from app.deps import AdminConfig, DbSession, api_error, get_config
 from app.models import Project
 from app.og import fetch_image, fetch_og
@@ -37,6 +37,8 @@ class PatchPayload(BaseModel):
     pinned: bool | None = None
     visible: bool | None = None
     content: str | None = None
+    password: str | None = None
+    theme: dict | None = None
 
 
 class MovePayload(BaseModel):
@@ -103,6 +105,7 @@ def admin_page(request: Request, db: DbSession):
             "csrf": csrf_for(request),
             "app_choices": app_choices(),
             "plugin_types": plugin_types(),
+            "stats": stats.get_7day_stats(db, project_id=None),
         },
     )
 
@@ -128,6 +131,8 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
         "can_nest": not plugin.leaf and store.depth(db, project) < 3,
         "app_choices": app_choices(),
         "plugin_types": plugin_types(),
+        "stats": stats.get_7day_stats(db, project_id=project.id),
+        "space_theme": plugin.validate_content(project.content) if project.type == "space" else None,
     }
     if plugin.admin_template:
         context["content"] = plugin.validate_content(project.content)
@@ -275,6 +280,21 @@ def patch_project(
         except InvalidContent as exc:
             return api_error(str(exc), 422)
         project.content = json.dumps(validated, ensure_ascii=False)
+    theme = updates.pop("theme", None)
+    if theme is not None:
+        if project.type != "space":
+            return api_error("只有空间支持主题配置")
+        plugin = registry.get("space")
+        if plugin is not None:
+            validated_theme = plugin.validate_content(theme)
+            project.content = json.dumps(validated_theme, ensure_ascii=False)
+    password = updates.pop("password", None)
+    if password is not None:
+        p_clean = password.strip()
+        if p_clean in ("", "none", "clear"):
+            project.password_hash = None
+        else:
+            project.password_hash = hash_project_password(p_clean)
     for field, value in updates.items():
         setattr(project, field, value)
     touch(project)

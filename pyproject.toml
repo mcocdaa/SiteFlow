@@ -1,3 +1,35 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "siteflow"
+version = "2.2.0"
+description = "Docker 化的轻量级静态制品画廊与安全沙箱展示平台"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi>=0.115,<1",
+    "uvicorn>=0.34,<1",
+    "sqlalchemy>=2.0.53,<3",
+    "jinja2>=3.1.6,<4",
+    "python-multipart>=0.0.32,<1",
+    "itsdangerous>=2.2,<3",
+    "argon2-cffi>=25.1.0,<26",
+    "pillow>=11,<13",
+    "httpx>=0.28.1,<1",
+    "beautifulsoup4>=4.13,<5",
+    "markdown-it-py>=3,<5",
+    "qrcode>=8.0,<9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<10",
+    "ruff>=0.11,<1",
+    "mypy>=2.3.1,<3",
+]
+
 [tool.ruff]
 line-length = 110
 target-version = "py312"
