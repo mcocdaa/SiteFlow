@@ -1,7 +1,6 @@
 import os
-import shutil
-from pathlib import Path
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 # Configure environment
 os.environ["ADMIN_PASSWORD"] = "siteflow_admin_2026"
@@ -12,15 +11,16 @@ os.environ["SITE_DESCRIPTION"] = "现代前端制品、自动化测试报告与�
 data_dir = Path(__file__).resolve().parent.parent / "data"
 os.environ["DATA_DIR"] = str(data_dir)
 
+from app import store
+from app.auth import hash_project_password
 from app.config import Config
 from app.main import create_app
-from app import store, stats
 from app.models import Project
-from app.auth import hash_project_password
+
 
 def seed():
     config = Config.load()
-    app = create_app(config)
+    create_app(config)
     session_maker = store.init(config)
     db = session_maker()
 
