@@ -133,9 +133,8 @@ def unique_slug(db: Session, title: str) -> str:
 
 
 def next_sort_order(db: Session, parent_id: int | None = None) -> int:
-    stmt = _scope(select(Project.sort_order), parent_id)
-    rows: list[int] = [r for r in db.execute(stmt).scalars() if r is not None]
-    return (min(rows) - 1) if rows else 0
+    orders: list[int] = [p.sort_order for p in all_projects(db, parent_id)]
+    return (min(orders) - 1) if orders else 0
 
 
 def move(db: Session, project: Project, direction: str) -> bool:
