@@ -281,6 +281,7 @@ main.wrap { padding: 48px 24px 96px; }
   font-size: 12px; font-weight: 500; line-height: 1;
   padding: 6px 8px; border-radius: 6px; white-space: nowrap;
   opacity: 0; pointer-events: none; transition: opacity .12s ease .04s;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .3);
   z-index: 20;
 }
 [data-tip]::before {
@@ -728,7 +729,7 @@ main.wrap { padding: 48px 24px 96px; }
 
 .preview-header {
   position: relative;
-  z-index: 30;
+  z-index: 1100;
   height: 54px;
   padding: 0 18px;
   background: var(--surface);
@@ -1061,7 +1062,7 @@ main.wrap { padding: 48px 24px 96px; }
   background: var(--overlay-bg);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  z-index: 1000;
+  z-index: 2000;
   display: flex;
   align-items: flex-start;
   justify-content: center;
