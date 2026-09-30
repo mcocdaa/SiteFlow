@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ project.title }}{% if site_title and site_title != project.title %} - {{ site_title }}{% endif %}</title>
   <link rel="stylesheet" href="/static/css/app.css">
+  <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
   {% if theme and (theme.accent or theme.radius_card or theme.font_family) %}
   <style>
     :root {
