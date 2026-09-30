@@ -134,7 +134,7 @@ def unique_slug(db: Session, title: str) -> str:
 
 def next_sort_order(db: Session, parent_id: int | None = None) -> int:
     stmt = _scope(select(Project.sort_order), parent_id)
-    rows = db.execute(stmt).scalars().all()
+    rows: list[int] = [r for r in db.execute(stmt).scalars() if r is not None]
     return (min(rows) - 1) if rows else 0
 
 
