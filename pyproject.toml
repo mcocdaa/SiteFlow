@@ -7,7 +7,7 @@ include = ["app*"]
 
 [project]
 name = "siteflow"
-version = "2.2.0"
+version = "2.2.1"
 description = "Docker 化的轻量级静态制品画廊与安全沙箱展示平台"
 readme = "README.md"
 requires-python = ">=3.12"
