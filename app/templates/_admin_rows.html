@@ -35,7 +35,7 @@
           <span>访问密码</span>
           {% if project.password_hash %}<span class="badge-lock">{{ icons.icon("lock", 10) }}已保护</span>{% endif %}
         </span>
-        <input type="text" name="password" autocomplete="off" placeholder="{% if project.password_hash %}输入新密码修改（填 clear 取消）{% else %}留空公开访问{% endif %}">
+        <input type="text" name="password" autocomplete="off" placeholder="{% if project.password_hash %}输入新密码以修改（留空不变）{% else %}留空公开访问（输入密码开启）{% endif %}">
       </label>
       <div class="field">
         <span>封面</span>
