@@ -238,6 +238,10 @@
     if (action === "edit") {
       var editor = row.querySelector(".editor");
       editor.hidden = !editor.hidden;
+    } else if (action === "clear-password") {
+      if (confirm("确定清除此作品的访问密码？清除后任何人均可公开直接访问。")) {
+        api("PATCH", "/projects/" + id, { password: "" }).then(refresh).catch(onError);
+      }
     } else if (action === "save") {
       var payload = {
         title: row.querySelector('[name="title"]').value,

@@ -30,7 +30,22 @@
       <label>标题 <input name="title" value="{{ project.title }}"></label>
       <label>描述 <input name="description" value="{{ project.description }}"></label>
       {% if project.type == 'link' %}<label>链接 <input name="url" value="{{ project.url }}"></label>{% endif %}
-      <label>访问密码 <input type="password" name="password" placeholder="{% if project.password_hash %}已设置保护（留空不变，填 clear 取消）{% else %}留空不设密码（输入以保护）{% endif %}"></label>
+      <div class="field password-field">
+        <div class="row-between">
+          <label>独立访问密码保护 <span class="muted font-normal">（访客查看该作品时需输入此密码）</span></label>
+          {% if project.password_hash %}
+          <span class="badge-lock" title="受密码保护">{{ icons.icon("lock", 12) }} 已开启保护</span>
+          {% else %}
+          <span class="muted font-normal">公开未设防</span>
+          {% endif %}
+        </div>
+        <div class="password-input-group">
+          <input type="text" name="password" autocomplete="off" placeholder="{% if project.password_hash %}输入新密码以修改（留空保持原密码）{% else %}留空公开访问（输入密码开启保护）{% endif %}">
+          {% if project.password_hash %}
+          <button type="button" class="btn ghost btn-sm" data-action="clear-password" title="清除访问密码，恢复为公开访问">{{ icons.icon("unlock", 13) }}清除密码</button>
+          {% endif %}
+        </div>
+      </div>
       <div class="field">
         <span>封面</span>
         <span class="file-picker">

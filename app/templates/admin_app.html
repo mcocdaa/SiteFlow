@@ -19,9 +19,8 @@
         {% if project.description %}<p class="tagline">{{ project.description }}</p>{% endif %}
       </div>
       <div class="row-actions header-actions">
-        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索与命令 (⌘K)" aria-label="搜索与命令">
-          {{ icons.icon("search", 15) }}
-          <span class="cmd-k-badge"><kbd>⌘</kbd><kbd>K</kbd></span>
+        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索" aria-label="搜索">
+          {{ icons.icon("search", 16) }}
         </button>
         <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}查看</a>
         <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}退出登录</button>
@@ -148,6 +147,9 @@
       {% endfor %}
     </section>
     {% endif %}
+    <div class="admin-list-tip">
+      <span>{{ icons.icon("lock", 13) }} <strong>提示</strong>：点击项目右侧的 ✏️ <strong>编辑</strong> 按钮，可修改标题与封面，或开启独立<strong>访问密码保护</strong>（访客须输入密码才可浏览）。</span>
+    </div>
     {{ rows.rows(children, plugin_types) }}
     {% else %}
     <section class="info-panel">
