@@ -244,16 +244,31 @@ main.wrap { padding: 48px 24px 96px; }
 .row-actions { display: flex; gap: 4px; flex-wrap: wrap; }
 
 .editor {
-  flex-basis: 100%; display: grid; gap: 12px;
+  flex-basis: 100%; display: grid; gap: 14px;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   padding-top: 16px; border-top: 1px solid var(--border);
 }
 .editor label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
+.editor .label-text { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-muted); }
 .editor input {
   padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-btn);
   background: var(--bg); color: var(--text); font-size: 14px; width: 100%;
 }
-.editor .btn { align-self: end; justify-self: start; }
+.editor-actions {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 4px;
+}
+.editor-actions .btn[data-action="clear-password"] {
+  margin-right: auto;
+  color: var(--text-muted);
+}
+.editor-actions .btn[data-action="clear-password"]:hover {
+  color: #ef4444;
+}
 
 .empty.small { padding: 48px 0; }
 
@@ -679,33 +694,6 @@ main.wrap { padding: 48px 24px 96px; }
   .badge-lock {
     color: #fbbf24;
   }
-}
-
-.admin-list-tip {
-  margin: 16px 0 8px;
-  padding: 8px 12px;
-  background: color-mix(in srgb, var(--accent) 6%, var(--surface));
-  border: 1px solid color-mix(in srgb, var(--accent) 18%, var(--border));
-  border-radius: var(--radius-btn);
-  font-size: 12px;
-  color: var(--text-muted);
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.admin-list-tip strong {
-  color: var(--text);
-}
-.password-field .font-normal {
-  font-weight: 400;
-}
-.password-input-group {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.password-input-group input {
-  flex: 1;
 }
 
 /* Responsive Viewport Preview Modal */

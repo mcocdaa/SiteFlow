@@ -86,9 +86,6 @@
       <input type="url" id="link-url" placeholder="https://example.com 作品链接">
       <button class="btn primary" data-action="add-link">{{ icons.icon("plus") }}添加链接</button>
     </section>
-    <div class="admin-list-tip">
-      <span>{{ icons.icon("lock", 13) }} <strong>提示</strong>：点击项目右侧的 ✏️ <strong>编辑</strong> 按钮，可修改标题与封面，或开启独立<strong>访问密码保护</strong>（访客须输入密码才可浏览）。</span>
-    </div>
     {{ rows.rows(projects, plugin_types) }}
   </main>
   {% include "_preview_modal.html" %}

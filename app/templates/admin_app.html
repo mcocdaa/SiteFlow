@@ -147,9 +147,6 @@
       {% endfor %}
     </section>
     {% endif %}
-    <div class="admin-list-tip">
-      <span>{{ icons.icon("lock", 13) }} <strong>提示</strong>：点击项目右侧的 ✏️ <strong>编辑</strong> 按钮，可修改标题与封面，或开启独立<strong>访问密码保护</strong>（访客须输入密码才可浏览）。</span>
-    </div>
     {{ rows.rows(children, plugin_types) }}
     {% else %}
     <section class="info-panel">
