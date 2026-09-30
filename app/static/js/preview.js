@@ -13,6 +13,7 @@
   var rotateBtn = document.getElementById("preview-rotate");
   var qrToggle = document.getElementById("preview-qr-toggle");
   var qrPopover = document.getElementById("qr-popover");
+  var qrBackdrop = document.getElementById("qr-backdrop");
   var qrImgWrap = document.getElementById("qr-img-wrap");
   var qrUrlText = document.getElementById("qr-url-text");
   var qrClose = document.getElementById("qr-close");
@@ -22,7 +23,13 @@
   var currentVp = "100%";
   var isRotated = false;
 
+  function closeQr() {
+    if (qrPopover) qrPopover.hidden = true;
+    if (qrBackdrop) qrBackdrop.hidden = true;
+  }
+
   function setViewport(vp) {
+    closeQr();
     currentVp = vp;
     isRotated = false;
     viewportBtns.forEach(function (btn) {
@@ -45,6 +52,7 @@
   }
 
   function toggleRotate() {
+    closeQr();
     isRotated = !isRotated;
     if (currentVp === "768px") {
       box.style.width = isRotated ? "1024px" : "768px";
@@ -62,7 +70,7 @@
     openLink.target = "_blank";
 
     setViewport("100%");
-    qrPopover.hidden = true;
+    closeQr();
     loader.hidden = false;
 
     frame.onload = function () {
@@ -79,13 +87,17 @@
     modal.hidden = true;
     modal.setAttribute("aria-hidden", "true");
     frame.src = "about:blank";
-    qrPopover.hidden = true;
+    closeQr();
     document.body.style.overflow = "";
   }
 
   function loadQr() {
-    qrPopover.hidden = !qrPopover.hidden;
-    if (qrPopover.hidden) return;
+    if (!qrPopover.hidden) {
+      closeQr();
+      return;
+    }
+    qrPopover.hidden = false;
+    if (qrBackdrop) qrBackdrop.hidden = false;
 
     var fullUrl = location.origin + "/projects/" + currentSlug + "/";
     qrUrlText.textContent = fullUrl;
@@ -113,7 +125,8 @@
 
   if (rotateBtn) rotateBtn.addEventListener("click", toggleRotate);
   if (qrToggle) qrToggle.addEventListener("click", loadQr);
-  if (qrClose) qrClose.addEventListener("click", function () { qrPopover.hidden = true; });
+  if (qrClose) qrClose.addEventListener("click", closeQr);
+  if (qrBackdrop) qrBackdrop.addEventListener("click", closeQr);
 
   // Close handlers
   modal.addEventListener("click", function (e) {
@@ -122,10 +135,16 @@
     }
   });
 
+  document.addEventListener("click", function (e) {
+    if (!qrPopover.hidden && !qrPopover.contains(e.target) && !qrToggle.contains(e.target)) {
+      closeQr();
+    }
+  });
+
   document.addEventListener("keydown", function (e) {
     if (e.key === "Escape" && !modal.hidden) {
       if (!qrPopover.hidden) {
-        qrPopover.hidden = true;
+        closeQr();
       } else {
         closePreview();
       }

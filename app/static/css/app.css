@@ -855,7 +855,17 @@ main.wrap { padding: 48px 24px 96px; }
   z-index: 10;
 }
 
-/* QR Popover */
+/* QR Popover & Backdrop */
+.qr-backdrop {
+  position: absolute;
+  top: 54px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1040;
+  background: transparent;
+  cursor: default;
+}
 .qr-popover {
   position: absolute;
   top: 60px;
