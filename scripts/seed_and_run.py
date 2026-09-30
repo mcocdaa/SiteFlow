@@ -179,6 +179,24 @@ def seed():
     )
     db.add(proj5)
 
+    # 7. 2048 Neon Game
+    neon_dir = config.data / "projects" / "2048-neon"
+    neon_dir.mkdir(parents=True, exist_ok=True)
+    (neon_dir / "index.html").write_text(
+        "<!DOCTYPE html><html><body style='background:#0f172a;color:#38bdf8;'><h1>2048 Neon</h1></body></html>",
+        encoding="utf-8",
+    )
+    proj_neon = Project(
+        slug="2048-neon",
+        type="html",
+        title="2048-neon",
+        description="基于 Canvas 与 Web Audio 的赛博朋克霓虹 2048 游戏",
+        entry="index.html",
+        pinned=True,
+        sort_order=5,
+    )
+    db.add(proj_neon)
+
     db.commit()
 
     # Seed some sample 7-day visit stats for the dashboard sparkline
