@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.14-slim
 
 LABEL org.opencontainers.image.title="SiteFlow" \
       org.opencontainers.image.description="Docker 化的个人作品画廊与静态制品沙箱展示平台" \
