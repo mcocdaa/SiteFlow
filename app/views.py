@@ -129,6 +129,7 @@ def find_public_project(db, slug: str):
 
 
 @router.get("/projects/{slug}", include_in_schema=False)
+@router.get("/p/{slug}", include_in_schema=False)
 def project_root(request: Request, slug: str, db: DbSession):
     config = get_config(request)
     project = find_public_project(db, slug)
@@ -171,6 +172,7 @@ def unlock_project(request: Request, slug: str, db: DbSession, password: str = F
 
 
 @router.get("/projects/{slug}/{path:path}")
+@router.get("/p/{slug}/{path:path}", include_in_schema=False)
 def project_file(request: Request, slug: str, path: str, db: DbSession):
     config = get_config(request)
     project = find_public_project(db, slug)
@@ -196,8 +198,9 @@ def project_file(request: Request, slug: str, path: str, db: DbSession):
             raise HTTPException(404)
         return response
 
-    if project.type not in ("html", "zip"):
+    if project.type not in ("html", "zip", "static"):
         raise HTTPException(404)
+
     if any(part.startswith(".") for part in Path(path).parts):
         raise HTTPException(404)
     root = (config.data / "projects" / slug).resolve()

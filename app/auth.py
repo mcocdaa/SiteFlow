@@ -200,7 +200,33 @@ def clear_login_failures(request: Request) -> None:
     clear_failures(request)
 
 
+def extract_api_token(request: Request) -> str | None:
+    auth_header = request.headers.get("authorization")
+    if auth_header is not None:
+        parts = auth_header.strip().split(None, 1)
+        if parts and parts[0].lower() == "bearer":
+            return parts[1].strip() if len(parts) > 1 else ""
+        return ""
+    api_key = request.headers.get("x-api-key")
+    if api_key is not None:
+        return api_key.strip()
+    return None
+
+
+def verify_api_token(request: Request, config: Config) -> bool:
+    token = extract_api_token(request)
+    if token is None:
+        return False
+    if not config.api_token or not token:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "无效的 API Token")
+    if not hmac.compare_digest(token.encode(), config.api_token.encode()):
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED, "无效的 API Token")
+    return True
+
+
 def require_admin(request: Request, config: Config) -> dict[str, Any]:
+    if verify_api_token(request, config):
+        return {"admin": True, "api": True}
     data = read_session(config, request)
     if data is None or data.get("admin") is not True:
         raise HTTPException(status.HTTP_401_UNAUTHORIZED, "需要登录")

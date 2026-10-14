@@ -28,7 +28,7 @@ def create_app(config: Config | None = None) -> FastAPI:
                 if subdomain and subdomain not in ("www", "api", "admin"):
                     path = request.scope.get("path", "/")
                     if not path.startswith(
-                        ("/static/", "/api/", "/healthz", "/media/", "/projects/", "/admin", "/login")
+                        ("/static/", "/api/", "/healthz", "/media/", "/projects/", "/p/", "/admin", "/login")
                     ):
                         subpath = path.lstrip("/")
                         new_path = (
@@ -40,13 +40,13 @@ def create_app(config: Config | None = None) -> FastAPI:
     @app.middleware("http")
     async def security_headers(request: Request, call_next):
         response = await call_next(request)
-        if request.url.path.startswith("/projects/"):
+        if request.url.path.startswith(("/projects/", "/p/")):
             response.headers["X-Frame-Options"] = "SAMEORIGIN"
         else:
             response.headers.setdefault("X-Frame-Options", "DENY")
         response.headers.setdefault("X-Content-Type-Options", "nosniff")
         response.headers.setdefault("Referrer-Policy", "same-origin")
-        if request.url.path.startswith("/admin") or request.url.path.startswith("/api/admin"):
+        if request.url.path.startswith(("/admin", "/api/admin", "/api/deploy")):
             response.headers.setdefault("Cache-Control", "no-store")
         return response
 

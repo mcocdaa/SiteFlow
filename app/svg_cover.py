@@ -20,11 +20,13 @@ def generate_svg_cover(slug: str, title: str, project_type: str = "html") -> str
     raw_type_label = {
         "html": "HTML5 APP",
         "zip": "ZIP BUNDLE",
+        "static": "STATIC SITE",
         "link": "EXTERNAL",
         "space": "WORKSPACE",
         "resume": "RESUME",
         "blog": "PUBLICATION",
     }.get(project_type.lower(), project_type.upper())
+
     type_label = html.escape(raw_type_label, quote=True)
 
     # Build subtle intersection cross markers

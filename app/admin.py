@@ -1,4 +1,5 @@
 import json
+import re
 import shutil
 from datetime import UTC, datetime
 from typing import Annotated
@@ -21,6 +22,7 @@ from app.uploads import InvalidUpload, extract_site, make_cover, remove_tree, sa
 router = APIRouter()
 
 COVER_LIMIT = 10 * 1024 * 1024
+_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
 
 class LinkPayload(BaseModel):
@@ -105,6 +107,7 @@ def admin_page(request: Request, db: DbSession):
             "site_title": config.site_title,
             "projects": store.all_projects(db),
             "csrf": csrf_for(request),
+            "api_token": config.api_token,
             "app_choices": app_choices(),
             "plugin_types": plugin_types(),
             "stats": stats.get_7day_stats(db, project_id=None),
@@ -125,6 +128,7 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
     context = {
         "site_title": config.site_title,
         "csrf": csrf_for(request),
+        "api_token": config.api_token,
         "project": project,
         "parent": parent,
         "depth": store.depth(db, project),
@@ -140,6 +144,127 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
         context["content"] = plugin.validate_content(project.content)
         return templates.TemplateResponse(request, plugin.admin_template, context)
     return templates.TemplateResponse(request, "admin_app.html", context)
+
+
+@router.get("/api/admin/projects")
+def list_projects(_auth: AdminConfig, db: DbSession, parent_id: int | None = None):
+    return {"ok": True, "projects": [p.as_dict() for p in store.all_projects(db, parent_id)]}
+
+
+@router.get("/api/admin/projects/{project_id}")
+def get_project_detail(project_id: int, _auth: AdminConfig, db: DbSession):
+    project = store.by_id(db, project_id)
+    if project is None:
+        return api_error("作品不存在", 404)
+    return {
+        "ok": True,
+        "project": project.as_dict(),
+        "children": [c.as_dict() for c in store.all_projects(db, project.id)],
+        "stats": stats.get_7day_stats(db, project_id=project.id),
+    }
+
+
+@router.put("/api/admin/projects/{slug}/deploy")
+@router.post("/api/admin/projects/{slug}/deploy", include_in_schema=False)
+@router.post("/api/deploy/{slug}")
+@router.put("/api/deploy/{slug}", include_in_schema=False)
+async def deploy_project(
+    slug: str,
+    file: Annotated[UploadFile, File()],
+    config: AdminConfig,
+    db: DbSession,
+    title: Annotated[str, Form()] = "",
+    description: Annotated[str, Form()] = "",
+    visible: Annotated[bool, Form()] = True,
+    parent_id: Annotated[int | None, Form()] = None,
+):
+    if not _SLUG_RE.match(slug):
+        return api_error("无效的项目标识（仅支持小写字母、数字、连字符和下划线，长度 1-64）")
+    parent, error = resolve_parent(db, parent_id)
+    if error is not None:
+        return error
+    existing = store.by_slug(db, slug)
+    if existing is not None and existing.type not in ("static", "html", "zip"):
+        return api_error("该标识已被非静态项目占用", 409)
+    name = (file.filename or "").lower()
+    if not name.endswith((".html", ".htm", ".zip")):
+        return api_error("只支持 .html / .htm / .zip 文件")
+    suffix = ".html" if name.endswith((".html", ".htm")) else ".zip"
+    tmp_token = store.unique_slug_name()
+    tmp_path = config.data / "tmp" / f"{tmp_token}{suffix}"
+    stage_dir = config.data / "tmp" / f"stage_{tmp_token}"
+    backup_dir = config.data / "tmp" / f"backup_{tmp_token}"
+    tmp_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        try:
+            size = 0
+            with tmp_path.open("wb") as outgoing:
+                while chunk := await file.read(1024 * 1024):
+                    size += len(chunk)
+                    if size > config.upload_limit:
+                        return api_error("文件超出大小限制", 413)
+                    outgoing.write(chunk)
+        finally:
+            await file.close()
+        try:
+            stage_dir.mkdir(parents=True, exist_ok=True)
+            if suffix == ".html":
+                shutil.copyfile(tmp_path, stage_dir / "index.html")
+                entry = "index.html"
+            else:
+                entry = extract_site(tmp_path, stage_dir, config)
+        except InvalidUpload as exc:
+            remove_tree(stage_dir)
+            return api_error(str(exc), 422)
+        except Exception:
+            remove_tree(stage_dir)
+            raise
+
+        folder = config.data / "projects" / slug
+        folder.parent.mkdir(parents=True, exist_ok=True)
+        if folder.exists():
+            remove_tree(backup_dir)
+            folder.rename(backup_dir)
+        try:
+            stage_dir.rename(folder)
+        except Exception:
+            if backup_dir.exists() and not folder.exists():
+                backup_dir.rename(folder)
+            raise
+        finally:
+            remove_tree(backup_dir)
+
+        if existing is not None:
+            existing.entry = entry
+            if title.strip():
+                existing.title = title.strip()[:200]
+            if description.strip():
+                existing.description = description.strip()[:500]
+            existing.visible = visible
+            if parent_id is not None:
+                existing.parent_id = parent.id if parent else None
+            touch(existing)
+            project = existing
+        else:
+            name_title = (name.rsplit(".", 1)[0] or slug)[:200]
+            project_title = (title.strip() or name_title)[:200]
+            project = Project(
+                slug=slug,
+                type="static",
+                parent_id=parent.id if parent else None,
+                title=project_title,
+                description=description.strip()[:500],
+                entry=entry,
+                visible=visible,
+                sort_order=store.next_sort_order(db, parent.id if parent else None),
+            )
+            db.add(project)
+        db.commit()
+        return {"ok": True, "project": project.as_dict(), "url": f"/p/{project.slug}/"}
+    finally:
+        tmp_path.unlink(missing_ok=True)
+        remove_tree(stage_dir)
+        remove_tree(backup_dir)
 
 
 @router.post("/api/admin/projects/app")
