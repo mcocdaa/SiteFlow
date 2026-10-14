@@ -101,11 +101,11 @@ app/plugins/
 
 ```python
 class AppPlugin(Protocol):
-    type: str                 # "space" / "resume" / "blog"
-    label: str                # 管理台显示名
-    icon: str                 # Lucide 图标名
-    leaf: bool                # True 不可包含子项
-    content_editable: bool    # True 可在管理台编辑 content JSON
+    type: str  # "space" / "resume" / "blog"
+    label: str  # 管理台显示名
+    icon: str  # Lucide 图标名
+    leaf: bool  # True 不可包含子项
+    content_editable: bool  # True 可在管理台编辑 content JSON
 
     def default_content(self) -> dict: ...
     def validate_content(self, raw: str) -> dict: ...  # 抛 InvalidContent

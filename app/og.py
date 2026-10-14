@@ -1,7 +1,7 @@
 import ipaddress
 import socket
 from dataclasses import dataclass
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from bs4 import BeautifulSoup
@@ -30,7 +30,7 @@ def _safe_host(url: str) -> tuple[ipaddress.IPv4Address | ipaddress.IPv6Address,
     return addresses.pop(), host
 
 
-def _get(url: str, depth: int) -> httpx.Response | None:
+def _stream_bytes(url: str, limit: int, *, allow_truncate: bool, depth: int = 0) -> tuple[bytes, str] | None:
     if depth >= _MAX_REDIRECTS:
         return None
     parsed = urlparse(url)
@@ -41,41 +41,59 @@ def _get(url: str, depth: int) -> httpx.Response | None:
     except (OSError, ValueError):
         return None
     try:
-        response = httpx.get(
+        with httpx.stream(
+            "GET",
             url,
             timeout=_TIMEOUT,
             follow_redirects=False,
             headers={"User-Agent": "SiteFlow/1.0"},
-        )
+        ) as response:
+            if response.status_code in (301, 302, 303, 307, 308):
+                location = response.headers.get("location", "")
+                if not location:
+                    return None
+                next_url = str(httpx.URL(url).join(location))
+                return _stream_bytes(next_url, limit, allow_truncate=allow_truncate, depth=depth + 1)
+            response.raise_for_status()
+            content_length = response.headers.get("content-length")
+            if (
+                not allow_truncate
+                and content_length
+                and content_length.isdigit()
+                and int(content_length) > limit
+            ):
+                return None
+            chunks: list[bytes] = []
+            total = 0
+            for chunk in response.iter_bytes(chunk_size=65536):
+                total += len(chunk)
+                if total > limit:
+                    if allow_truncate:
+                        keep = limit - (total - len(chunk))
+                        if keep > 0:
+                            chunks.append(chunk[:keep])
+                        break
+                    return None
+                chunks.append(chunk)
+            return b"".join(chunks), url
     except (httpx.HTTPError, OSError):
         return None
-    if response.status_code in (301, 302, 303, 307, 308):
-        location = response.headers.get("location", "")
-        return _get(str(httpx.URL(url).join(location)), depth + 1) if location else None
-    return response
 
 
 def fetch_og(url: str, _depth: int = 0) -> OpenGraph | None:
-    response = _get(url, _depth)
-    if response is None:
+    result = _stream_bytes(url, _HTML_LIMIT, allow_truncate=True, depth=_depth)
+    if result is None:
         return None
-    try:
-        response.raise_for_status()
-    except httpx.HTTPError:
-        return None
-    return parse_og(response.content[:_HTML_LIMIT], url)
+    raw, final_url = result
+    return parse_og(raw, final_url)
 
 
 def fetch_image(url: str) -> bytes | None:
-    response = _get(url, 0)
-    if response is None:
+    result = _stream_bytes(url, _IMAGE_LIMIT, allow_truncate=False, depth=0)
+    if result is None:
         return None
-    try:
-        response.raise_for_status()
-    except httpx.HTTPError:
-        return None
-    content = response.content
-    if not content or len(content) > _IMAGE_LIMIT:
+    content, _ = result
+    if not content:
         return None
     return content
 
@@ -90,5 +108,6 @@ def parse_og(html: bytes, base_url: str) -> OpenGraph | None:
 
     title = meta("og:title") or (soup.title.string.strip() if soup.title and soup.title.string else "")
     description = meta("og:description")
-    image_url = meta("og:image")
+    raw_image = meta("og:image")
+    image_url = urljoin(base_url, raw_image) if raw_image else ""
     return OpenGraph(title=title, description=description, image_url=image_url)

@@ -23,7 +23,9 @@
           (!document.documentElement.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
         var nextTheme = isDark ? "light" : "dark";
         document.documentElement.setAttribute("data-theme", nextTheme);
-        localStorage.setItem("sf_theme", nextTheme);
+        try {
+          localStorage.setItem("sf_theme", nextTheme);
+        } catch (e) {}
       }
     },
     {
@@ -43,10 +45,12 @@
   ];
 
   // Restore saved theme on load
-  var savedTheme = localStorage.getItem("sf_theme");
-  if (savedTheme) {
-    document.documentElement.setAttribute("data-theme", savedTheme);
-  }
+  try {
+    var savedTheme = localStorage.getItem("sf_theme");
+    if (savedTheme) {
+      document.documentElement.setAttribute("data-theme", savedTheme);
+    }
+  } catch (e) {}
 
   function openPalette() {
     overlay.hidden = false;

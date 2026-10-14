@@ -3,7 +3,7 @@ import secrets
 import shutil
 from pathlib import Path
 
-from sqlalchemy import Engine, create_engine, select
+from sqlalchemy import Engine, create_engine, select, text
 from sqlalchemy.orm import Session, sessionmaker
 
 from app.config import Config
@@ -68,7 +68,11 @@ def session() -> Session:
 
 
 def _scope(stmt, parent_id: int | None):
-    return stmt.where(Project.parent_id.is_(None)) if parent_id is None else stmt.where(Project.parent_id == parent_id)
+    return (
+        stmt.where(Project.parent_id.is_(None))
+        if parent_id is None
+        else stmt.where(Project.parent_id == parent_id)
+    )
 
 
 def visible_projects(db: Session, parent_id: int | None = None) -> list[Project]:
@@ -106,7 +110,7 @@ def descendants(db: Session, project: Project) -> list[Project]:
     found: list[Project] = []
     pending = [project.id]
     while pending:
-        parent = pending.pop()
+        parent = pending.pop(0)
         rows = list(db.execute(select(Project).where(Project.parent_id == parent)).scalars())
         found.extend(rows)
         pending.extend(row.id for row in rows)
@@ -147,6 +151,14 @@ def move(db: Session, project: Project, direction: str) -> bool:
     for position, row in enumerate(ordered):
         row.sort_order = position
     return True
+
+
+def delete_stats(db: Session, project_ids: list[int]) -> None:
+    if not project_ids:
+        return
+    placeholders = ", ".join(f":id_{i}" for i in range(len(project_ids)))
+    params = {f"id_{i}": pid for i, pid in enumerate(project_ids)}
+    db.execute(text(f"DELETE FROM daily_stats WHERE project_id IN ({placeholders})"), params)
 
 
 def delete_files(config: Config, project: Project) -> None:

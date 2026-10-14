@@ -19,7 +19,8 @@ _password_hasher = PasswordHasher()
 _password_hash_cache: dict[str, str] = {}
 _serializer: URLSafeTimedSerializer | None = None
 _serializer_secret: str | None = None
-_failed: dict[str, deque[float]] = defaultdict(deque)
+_MAX_FAILED_KEYS = 10_000
+_failed: dict[Any, deque[float]] = defaultdict(deque)
 
 
 def _get_serializer(config: Config) -> URLSafeTimedSerializer:
@@ -162,21 +163,41 @@ def client_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
-def login_allowed(request: Request) -> bool:
-    key = client_ip(request)
+def allow_attempt(request: Request, slug: str = "__login__") -> bool:
+    key = (client_ip(request), slug)
     now = time.time()
-    window = _failed[key]
+    window = _failed.get(key)
+    if not window:
+        return True
     while window and now - window[0] > 900:
         window.popleft()
+    if not window:
+        _failed.pop(key, None)
+        return True
     return len(window) < 5
 
 
+def record_failure(request: Request, slug: str = "__login__") -> None:
+    key = (client_ip(request), slug)
+    if key not in _failed and len(_failed) >= _MAX_FAILED_KEYS:
+        _failed.pop(next(iter(_failed)), None)
+    _failed[key].append(time.time())
+
+
+def clear_failures(request: Request, slug: str = "__login__") -> None:
+    _failed.pop((client_ip(request), slug), None)
+
+
+def login_allowed(request: Request) -> bool:
+    return allow_attempt(request)
+
+
 def record_login_failure(request: Request) -> None:
-    _failed[client_ip(request)].append(time.time())
+    record_failure(request)
 
 
 def clear_login_failures(request: Request) -> None:
-    _failed.pop(client_ip(request), None)
+    clear_failures(request)
 
 
 def require_admin(request: Request, config: Config) -> dict[str, Any]:

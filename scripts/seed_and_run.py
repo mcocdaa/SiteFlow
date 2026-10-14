@@ -44,7 +44,8 @@ def seed():
     # 2. Project inside Space: Astro / Vite Dashboard
     proj_dir = config.data / "projects" / "cloud-console"
     proj_dir.mkdir(parents=True, exist_ok=True)
-    (proj_dir / "index.html").write_text("""<!DOCTYPE html>
+    (proj_dir / "index.html").write_text(
+        """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
@@ -63,7 +64,9 @@ def seed():
     <p>集群健康状态良好，28 个微服务节点在线，响应延迟 12ms。</p>
   </div>
 </body>
-</html>""", encoding="utf-8")
+</html>""",
+        encoding="utf-8",
+    )
 
     proj1 = Project(
         slug="cloud-console",
@@ -80,7 +83,8 @@ def seed():
     # 3. Project: Playwright E2E 自动化测试报告
     pw_dir = config.data / "projects" / "playwright-e2e-report"
     pw_dir.mkdir(parents=True, exist_ok=True)
-    (pw_dir / "index.html").write_text("""<!DOCTYPE html>
+    (pw_dir / "index.html").write_text(
+        """<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
@@ -108,7 +112,9 @@ def seed():
     <div class="test-row"><span>✓ 跨租户数据隔离安全沙箱审计</span><span style="color:#10b981">通过 (640ms)</span></div>
   </div>
 </body>
-</html>""", encoding="utf-8")
+</html>""",
+        encoding="utf-8",
+    )
 
     proj2 = Project(
         slug="playwright-e2e-report",
@@ -124,7 +130,8 @@ def seed():
     # 4. Project: API 文档 (Swagger / OpenAPI)
     api_dir = config.data / "projects" / "payment-api-docs"
     api_dir.mkdir(parents=True, exist_ok=True)
-    (api_dir / "index.html").write_text("""<!DOCTYPE html>
+    (api_dir / "index.html").write_text(
+        """<!DOCTYPE html>
 <html>
 <head><title>Payment Gateway API</title><style>body { font-family: monospace; padding: 40px; background: #18181b; color: #fafafa; } .tag { color: #10b981; }</style></head>
 <body>
@@ -132,7 +139,9 @@ def seed():
   <p><span class="tag">POST</span> /v1/charges - 创建支付交易</p>
   <p><span class="tag">GET</span> /v1/refunds - 查询退款流水</p>
 </body>
-</html>""", encoding="utf-8")
+</html>""",
+        encoding="utf-8",
+    )
 
     proj3 = Project(
         slug="payment-api-docs",
@@ -147,7 +156,8 @@ def seed():
     # 5. Project: 密码保护的项目 (2026 Q3 财务审计看板)
     secret_dir = config.data / "projects" / "q3-audit-dashboard"
     secret_dir.mkdir(parents=True, exist_ok=True)
-    (secret_dir / "index.html").write_text("""<!DOCTYPE html>
+    (secret_dir / "index.html").write_text(
+        """<!DOCTYPE html>
 <html>
 <head><title>2026 Q3 财务审计看板</title><style>body { font-family: sans-serif; padding: 40px; background: #0f172a; color: #fff; }</style></head>
 <body>
@@ -155,7 +165,9 @@ def seed():
   <p style="color: #ef4444;">绝密文件：仅限审计委员会与公司高管查阅。</p>
   <p>净利润率同比增长 28.4%，研发投入比 34.2%。</p>
 </body>
-</html>""", encoding="utf-8")
+</html>""",
+        encoding="utf-8",
+    )
 
     proj4 = Project(
         slug="q3-audit-dashboard",
@@ -206,14 +218,19 @@ def seed():
     for i in range(7):
         d_str = (now - timedelta(days=6 - i)).strftime("%Y-%m-%d")
         from sqlalchemy import text
-        db.execute(text("""
+
+        db.execute(
+            text("""
             INSERT INTO daily_stats (date, project_id, pv, uv)
             VALUES (:date, NULL, :pv, :uv)
             ON CONFLICT(date, COALESCE(project_id, -1)) DO UPDATE SET pv = :pv, uv = :uv
-        """), {"date": d_str, "pv": sample_pvs[i], "uv": sample_uvs[i]})
+        """),
+            {"date": d_str, "pv": sample_pvs[i], "uv": sample_uvs[i]},
+        )
     db.commit()
     db.close()
     print("Seeded successfully!")
+
 
 if __name__ == "__main__":
     seed()
