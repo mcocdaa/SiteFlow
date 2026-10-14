@@ -233,7 +233,37 @@
         .catch(onError);
       return;
     }
+    if (action === "toggle-api-token") {
+      var displayEl = document.getElementById("api-token-display");
+      if (!displayEl) return;
+      var isRevealed = displayEl.getAttribute("data-revealed") === "true";
+      var toggleSpan = button.querySelector("span");
+      if (isRevealed) {
+        displayEl.textContent = displayEl.getAttribute("data-masked") || "";
+        displayEl.setAttribute("data-revealed", "false");
+        if (toggleSpan) toggleSpan.textContent = "显示";
+      } else {
+        displayEl.textContent = displayEl.getAttribute("data-token") || "";
+        displayEl.setAttribute("data-revealed", "true");
+        if (toggleSpan) toggleSpan.textContent = "隐藏";
+      }
+      return;
+    }
+    if (action === "copy-api-token") {
+      var tokenVal = button.getAttribute("data-token") || "";
+      var labelSpan = button.querySelector("span");
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(tokenVal).then(function () {
+          if (labelSpan) labelSpan.textContent = "已复制";
+          setTimeout(function () {
+            if (labelSpan) labelSpan.textContent = "复制 Token";
+          }, 1800);
+        }).catch(onError);
+      }
+      return;
+    }
     if (!row) return;
+
 
     if (action === "edit") {
       var editor = row.querySelector(".editor");

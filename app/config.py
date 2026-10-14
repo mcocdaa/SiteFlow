@@ -1,6 +1,12 @@
+import hashlib
+import hmac
 import os
 from dataclasses import dataclass
 from pathlib import Path
+
+
+def derive_api_token(secret: str) -> str:
+    return hmac.new(secret.encode(), b"siteflow-api-token", hashlib.sha256).hexdigest()[:32]
 
 
 @dataclass
@@ -15,6 +21,11 @@ class Config:
     extract_limit: int
     zip_entries: int
     base_domain: str = ""
+    api_token: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.api_token and self.password and self.secret:
+            self.api_token = derive_api_token(self.secret)
 
     @classmethod
     def load(cls) -> "Config":
@@ -36,6 +47,9 @@ class Config:
                 key_path.chmod(0o600)
             secret = key_path.read_text().strip()
         base_domain = os.getenv("BASE_DOMAIN", "").strip().lower()
+        api_token = os.getenv("SITEFLOW_API_TOKEN", "").strip()
+        if not api_token and password:
+            api_token = derive_api_token(secret)
         return cls(
             data=data,
             password=password,
@@ -47,4 +61,5 @@ class Config:
             extract_limit=int(os.getenv("MAX_EXTRACT_MB", "500")) * 1024 * 1024,
             zip_entries=int(os.getenv("MAX_ZIP_ENTRIES", "5000")),
             base_domain=base_domain,
+            api_token=api_token,
         )

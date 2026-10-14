@@ -6,7 +6,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 
 from app import store
-from app.auth import check_csrf, require_admin, require_same_origin
+from app.auth import check_csrf, require_admin, require_same_origin, verify_api_token
 from app.config import Config
 
 
@@ -31,6 +31,8 @@ def api_error(message: str, status_code: int = 400) -> JSONResponse:
 
 def admin_api(request: Request) -> Config:
     config = get_config(request)
+    if verify_api_token(request, config):
+        return config
     require_admin(request, config)
     require_same_origin(request)
     submitted = request.headers.get("x-csrf-token") or ""

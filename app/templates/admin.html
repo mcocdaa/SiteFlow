@@ -40,7 +40,40 @@
     </section>
     {% endif %}
 
+    {% if api_token %}
+    <details class="api-panel-card" id="api-panel-card">
+      <summary class="api-panel-summary">
+        <div class="api-panel-title">
+          <span>🤖 AI / API 接入 (Headless API)</span>
+          <span class="api-panel-badge">Bearer / X-API-Key</span>
+        </div>
+        <span class="api-panel-hint muted">免 Cookie / CSRF 直连部署与管理 {{ icons.icon("chevron-down", 16) }}</span>
+      </summary>
+      <div class="api-panel-body">
+        <div class="api-token-row">
+          <span class="api-token-label">API Token</span>
+          <code class="api-token-code" id="api-token-display" data-token="{{ api_token }}" data-masked="{{ api_token[:4] ~ '••••••••••••••••••••••••' ~ api_token[-4:] if api_token|length > 8 else '••••••••' }}">{{ api_token[:4] ~ '••••••••••••••••••••••••' ~ api_token[-4:] if api_token|length > 8 else '••••••••' }}</code>
+          <button type="button" class="btn btn-sm" data-action="toggle-api-token" id="toggle-api-token-btn">{{ icons.icon("eye", 14) }}<span>显示</span></button>
+          <button type="button" class="btn primary btn-sm" data-action="copy-api-token" id="copy-api-token-btn" data-token="{{ api_token }}">{{ icons.icon("check", 14) }}<span>复制 Token</span></button>
+        </div>
+        <div class="api-examples">
+          <div class="api-example-block">
+            <span class="api-example-label">获取项目列表 (GET /api/admin/projects)</span>
+            <pre class="api-curl"><code>curl -s -H "Authorization: Bearer &lt;API_TOKEN&gt;" {{ request.base_url }}api/admin/projects</code></pre>
+          </div>
+          <div class="api-example-block">
+            <span class="api-example-label">幂等部署单页或压缩包 (PUT /api/admin/projects/{slug}/deploy)</span>
+            <pre class="api-curl"><code>curl -X PUT -H "Authorization: Bearer &lt;API_TOKEN&gt;" \
+  -F "file=@report.html" -F "title=AI 分析报告" \
+  {{ request.base_url }}api/admin/projects/my-ai-report/deploy</code></pre>
+          </div>
+        </div>
+      </div>
+    </details>
+    {% endif %}
+
     <h2 class="section-title">应用</h2>
+
     <section class="app-create">
       {% for app in app_choices %}
       <button class="btn" data-action="create-app" data-type="{{ app.type }}">{{ icons.icon(app.icon) }}新建{{ app.label }}</button>

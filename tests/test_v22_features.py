@@ -250,3 +250,109 @@ def test_subdomain_routing() -> None:
         root_resp = client.get("/", headers={"host": "siteflow.local"})
         assert root_resp.status_code == 200
         assert "Subdomain Test" in root_resp.text
+
+
+def test_headless_bearer_api_and_idempotent_deploy() -> None:
+    token = app.state.config.api_token
+    assert token and len(token) == 32
+    bearer = {"Authorization": f"Bearer {token}"}
+    api_key_hdr = {"X-API-Key": token}
+
+    with TestClient(app) as client:
+        # (b) Invalid Bearer / X-API-Key token rejected with 401/403
+        bad_bearer = client.get("/api/admin/projects", headers={"Authorization": "Bearer invalid-token"})
+        assert bad_bearer.status_code in (401, 403)
+        bad_key = client.get("/api/admin/projects", headers={"X-API-Key": "wrong-key"})
+        assert bad_key.status_code in (401, 403)
+
+        # (a) Valid Bearer token calling GET /api/admin/projects without cookies or CSRF/Origin headers
+        list_resp = client.get("/api/admin/projects", headers=bearer)
+        assert list_resp.status_code == 200
+        assert list_resp.json() == {"ok": True, "projects": []}
+
+        # POST /api/admin/projects/app via Bearer token without cookies/CSRF
+        app_resp = client.post(
+            "/api/admin/projects/app",
+            json={"type": "space", "title": "AI 空间", "description": "Created by AI"},
+            headers=bearer,
+        )
+        assert app_resp.status_code == 200
+        space_proj = app_resp.json()["project"]
+        assert space_proj["title"] == "AI 空间"
+
+        # GET /api/admin/projects/{project_id} via X-API-Key
+        detail_resp = client.get(f"/api/admin/projects/{space_proj['id']}", headers=api_key_hdr)
+        assert detail_resp.status_code == 200
+        detail_data = detail_resp.json()
+        assert detail_data["ok"] is True
+        assert detail_data["project"]["id"] == space_proj["id"]
+        assert detail_data["children"] == []
+        assert "today_pv" in detail_data["stats"]
+
+        # PUT /api/admin/projects/my-ai-report/deploy via Bearer token
+        deploy_v1 = client.put(
+            "/api/admin/projects/my-ai-report/deploy",
+            files={"file": ("report.html", b"<h1>AI Report v1</h1>", "text/html")},
+            data={"title": "AI 报告 v1", "description": "第一版"},
+            headers=bearer,
+        )
+        assert deploy_v1.status_code == 200, deploy_v1.text
+        v1_data = deploy_v1.json()
+        assert v1_data["ok"] is True
+        assert v1_data["url"] == "/p/my-ai-report/"
+        assert v1_data["project"]["slug"] == "my-ai-report"
+        assert v1_data["project"]["title"] == "AI 报告 v1"
+        v1_id = v1_data["project"]["id"]
+
+        # Verify deployed content is served at both /p/my-ai-report/ and /projects/my-ai-report/
+        page_v1 = client.get("/p/my-ai-report/")
+        assert page_v1.status_code == 200
+        assert "AI Report v1" in page_v1.text
+
+        # (c) Idempotent re-deploy updating existing slug my-ai-report
+        deploy_v2 = client.put(
+            "/api/admin/projects/my-ai-report/deploy",
+            files={
+                "file": (
+                    "bundle.zip",
+                    make_zip({"index.html": b"<h1>AI Report v2 Updated</h1>", "data.json": b'{"v":2}'}),
+                    "application/zip",
+                )
+            },
+            data={"title": "AI 报告 v2", "description": "第二版"},
+            headers=bearer,
+        )
+        assert deploy_v2.status_code == 200, deploy_v2.text
+        v2_data = deploy_v2.json()
+        assert v2_data["ok"] is True
+        assert v2_data["project"]["id"] == v1_id
+        assert v2_data["project"]["slug"] == "my-ai-report"
+        assert v2_data["project"]["title"] == "AI 报告 v2"
+        assert v2_data["project"]["description"] == "第二版"
+
+        page_v2 = client.get("/projects/my-ai-report/index.html")
+        assert page_v2.status_code == 200
+        assert "AI Report v2 Updated" in page_v2.text
+        assert client.get("/projects/my-ai-report/data.json").json() == {"v": 2}
+
+        # POST /api/deploy/{slug} alias also works
+        alias_resp = client.post(
+            "/api/deploy/my-ai-report",
+            files={"file": ("report.html", b"<h1>AI Report v3 Alias</h1>", "text/html")},
+            headers=api_key_hdr,
+        )
+        assert alias_resp.status_code == 200
+        assert alias_resp.json()["project"]["id"] == v1_id
+        assert "AI Report v3 Alias" in client.get("/p/my-ai-report/index.html").text
+
+        # Verify GET /api/admin/projects returns both space and my-ai-report without duplicates
+        all_resp = client.get("/api/admin/projects", headers=bearer)
+        assert all_resp.status_code == 200
+        slugs = [p["slug"] for p in all_resp.json()["projects"]]
+        assert slugs.count("my-ai-report") == 1
+
+        # Verify Admin UI displays AI / API integration panel with masked token
+        login(client)
+        admin_html = client.get("/admin").text
+        assert "AI / API 接入 (Headless API)" in admin_html
+        assert "/api/admin/projects/{slug}/deploy" in admin_html or "my-ai-report/deploy" in admin_html
