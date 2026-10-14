@@ -172,3 +172,128 @@ def test_fetch_image_blocks_private_and_non_http() -> None:
     assert fetch_image("http://127.0.0.1:9/cover.png") is None
     assert fetch_image("http://169.254.169.254/latest/meta-data") is None
     assert fetch_image("file:///etc/passwd") is None
+
+
+def test_svg_placeholder_escapes_xss_and_validates_slug() -> None:
+    from app.svg_cover import generate_svg_cover
+    from tests.test_flow import auth_headers
+
+    raw_svg = generate_svg_cover(
+        'bad"><script>alert(1)</script>',
+        "<script>alert(1)</script>",
+        "<img src=x onerror=alert(1)>",
+    )
+    assert "<script>" not in raw_svg
+    assert "<img" not in raw_svg
+    assert "&lt;" in raw_svg
+    assert 'id="glow-badscriptalert1script"' in raw_svg
+
+    with TestClient(app) as client:
+        csrf = login(client)
+        resp = client.post(
+            "/api/admin/projects/upload",
+            files={"file": ("xss.html", b"<h1>ok</h1>", "text/html")},
+            data={"title": "<script>alert(1)</script>"},
+            headers=auth_headers(csrf),
+        )
+        assert resp.status_code == 200
+        slug = resp.json()["project"]["slug"]
+
+        svg_resp = client.get(f"/media/placeholder/{slug}.svg")
+        assert svg_resp.status_code == 200
+        assert (
+            svg_resp.headers.get("Content-Security-Policy") == "default-src 'none'; style-src 'unsafe-inline'"
+        )
+        assert "<script>" not in svg_resp.text
+        assert "&lt;</text>" in svg_resp.text
+
+        invalid_resp = client.get('/media/placeholder/bad"slug.svg')
+        assert invalid_resp.status_code == 404
+
+
+def test_search_does_not_leak_hidden_projects_with_login_csrf_cookie() -> None:
+    from tests.test_flow import auth_headers
+
+    with TestClient(app) as admin_client:
+        csrf = login(admin_client)
+        pub = upload(admin_client, csrf, "public-item.html", b"<h1>Public</h1>").json()["project"]
+        sec = upload(admin_client, csrf, "secret-hidden-item.html", b"<h1>Hidden</h1>").json()["project"]
+        patch_resp = admin_client.patch(
+            f"/api/admin/projects/{sec['id']}",
+            json={"visible": False},
+            headers=auth_headers(csrf),
+        )
+        assert patch_resp.status_code == 200
+
+    with TestClient(app) as anon_client:
+        # Visiting /login issues an unauthenticated session cookie {"admin": False}
+        login_page = anon_client.get("/login")
+        assert login_page.status_code == 200
+        assert "siteflow_session" in anon_client.cookies
+
+        search_resp = anon_client.get("/api/search")
+        assert search_resp.status_code == 200
+        slugs = [item["slug"] for item in search_resp.json()]
+        assert pub["slug"] in slugs
+        assert sec["slug"] not in slugs
+
+
+def test_project_unlock_rate_limit() -> None:
+    from tests.test_flow import auth_headers
+
+    with TestClient(app) as admin_client:
+        csrf = login(admin_client)
+        proj = upload(admin_client, csrf, "locked-work.html", b"<h1>Locked</h1>").json()["project"]
+        pid, slug = proj["id"], proj["slug"]
+        res = admin_client.patch(
+            f"/api/admin/projects/{pid}",
+            json={"password": "CorrectHorseBatteryStaple"},
+            headers=auth_headers(csrf),
+        )
+        assert res.status_code == 200
+
+    with TestClient(app) as anon_client:
+        for _ in range(5):
+            attempt = anon_client.post(
+                f"/projects/{slug}/unlock",
+                data={"password": "wrong-password"},
+                follow_redirects=False,
+            )
+            assert attempt.status_code == 401
+
+        blocked = anon_client.post(
+            f"/projects/{slug}/unlock",
+            data={"password": "CorrectHorseBatteryStaple"},
+            follow_redirects=False,
+        )
+        assert blocked.status_code == 429
+        assert "尝试次数过多" in blocked.text
+
+
+def test_space_not_sandboxed_and_static_cors_headers() -> None:
+    from tests.test_flow import auth_headers
+
+    with TestClient(app) as client:
+        csrf = login(client)
+        space = client.post(
+            "/api/admin/projects/app",
+            json={"type": "space", "title": "测试空间"},
+            headers=auth_headers(csrf),
+        ).json()["project"]
+        pub_html = upload(client, csrf, "public-app.html", b"<h1>App</h1>").json()["project"]
+
+        space_resp = client.get(f"/projects/{space['slug']}/")
+        assert space_resp.status_code == 200
+        assert "Content-Security-Policy" not in space_resp.headers
+
+        static_resp = client.get(f"/projects/{pub_html['slug']}/index.html")
+        assert static_resp.status_code == 200
+        assert static_resp.headers.get("Content-Security-Policy", "").startswith("sandbox ")
+        assert static_resp.headers.get("Access-Control-Allow-Origin") == "*"
+
+    rel_og = parse_og(
+        b'<html><head><meta property="og:title" content="T"><meta property="og:image" content="/img/cover.png"></head></html>',
+        "https://example.com/posts/1",
+    )
+    assert rel_og is not None
+    assert rel_og.image_url == "https://example.com/img/cover.png"

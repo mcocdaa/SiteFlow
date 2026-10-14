@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # SiteFlow 镜像部署（无需克隆源码）
-# 用法: TAG=v1.0.0 SITEFLOW_PORT=8003 ./init.sh
+# 用法: TAG=v2.2.1 SITEFLOW_PORT=8003 ./init.sh
 set -euo pipefail
 
-TAG="${TAG:-v1.0.0}"
+TAG="${TAG:-v2.2.1}"
 PORT="${SITEFLOW_PORT:-8003}"
 NAME="${SITEFLOW_NAME:-siteflow}"
 IMAGE="ghcr.io/mcocdaa/siteflow:${TAG}"

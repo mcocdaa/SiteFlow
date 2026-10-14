@@ -161,9 +161,7 @@ def test_link_and_mutations() -> None:
         project = html.json()["project"]
         pid, slug = project["id"], project["slug"]
 
-        pinned = client.patch(
-            f"/api/admin/projects/{pid}", json={"pinned": True}, headers=auth_headers(csrf)
-        )
+        pinned = client.patch(f"/api/admin/projects/{pid}", json={"pinned": True}, headers=auth_headers(csrf))
         assert pinned.status_code == 200
         assert pinned.json()["project"]["pinned"] is True
 

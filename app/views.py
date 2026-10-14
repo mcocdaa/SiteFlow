@@ -1,3 +1,4 @@
+import re
 from pathlib import Path
 
 from fastapi import APIRouter, Form, HTTPException, Request
@@ -6,8 +7,10 @@ from sqlalchemy import select
 
 from app import stats, store
 from app.auth import (
+    allow_attempt,
     apply_session,
     check_csrf,
+    clear_failures,
     clear_login_failures,
     clear_session,
     create_session,
@@ -17,6 +20,7 @@ from app.auth import (
     new_session_token,
     project_cookie_name,
     read_session,
+    record_failure,
     record_login_failure,
     require_admin,
     require_same_origin,
@@ -34,6 +38,8 @@ from app.templating import placeholder_hue, templates
 router = APIRouter()
 
 SANDBOX_CSP = "sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads"
+_SVG_CSP = "default-src 'none'; style-src 'unsafe-inline'"
+_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
 MEDIA_TYPES = {
     ".html": "text/html",
@@ -142,13 +148,22 @@ def unlock_project(request: Request, slug: str, db: DbSession, password: str = F
     project = find_public_project(db, slug)
     if not project.password_hash:
         return RedirectResponse(f"/projects/{slug}/", status_code=303)
+    if not allow_attempt(request, slug):
+        return templates.TemplateResponse(
+            request,
+            "project_gate.html",
+            {"site_title": config.site_title, "project": project, "error": "尝试次数过多，请稍后再试"},
+            status_code=429,
+        )
     if not verify_project_password(project.password_hash, password):
+        record_failure(request, slug)
         return templates.TemplateResponse(
             request,
             "project_gate.html",
             {"site_title": config.site_title, "project": project, "error": "密码不正确，请重新输入"},
             status_code=401,
         )
+    clear_failures(request, slug)
     token = make_project_token(config, slug)
     response = RedirectResponse(f"/projects/{slug}/", status_code=303)
     set_project_cookie(config, response, slug, token)
@@ -210,6 +225,8 @@ def project_file(request: Request, slug: str, path: str, db: DbSession):
         res.headers["Content-Security-Policy"] = SANDBOX_CSP
         res.headers["X-Frame-Options"] = "SAMEORIGIN"
         res.headers["X-Content-Type-Options"] = "nosniff"
+        if not project.password_hash:
+            res.headers["Access-Control-Allow-Origin"] = "*"
         return res
 
     media_type = MEDIA_TYPES.get(target.suffix.lower(), "application/octet-stream")
@@ -221,6 +238,8 @@ def project_file(request: Request, slug: str, path: str, db: DbSession):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["X-Frame-Options"] = "SAMEORIGIN"
     response.headers["Cache-Control"] = cache_control
+    if not project.password_hash:
+        response.headers["Access-Control-Allow-Origin"] = "*"
     return response
 
 
@@ -252,6 +271,8 @@ def cover_file(request: Request, name: str):
 
 @router.get("/media/placeholder/{slug}.svg")
 def placeholder_svg(slug: str, db: DbSession):
+    if not _SLUG_RE.match(slug):
+        raise HTTPException(404)
     project = store.by_slug(db, slug)
     title = project.title if project else slug
     ptype = project.type if project else "html"
@@ -259,7 +280,10 @@ def placeholder_svg(slug: str, db: DbSession):
     return Response(
         content=svg,
         media_type="image/svg+xml",
-        headers={"Cache-Control": "public, max-age=86400"},
+        headers={
+            "Cache-Control": "public, max-age=86400",
+            "Content-Security-Policy": _SVG_CSP,
+        },
     )
 
 
@@ -292,7 +316,12 @@ def login_page(request: Request):
     response = templates.TemplateResponse(
         request,
         "login.html",
-        {"site_title": config.site_title, "csrf": token, "error": None, "next": safe_next(request.query_params.get("next"))},
+        {
+            "site_title": config.site_title,
+            "csrf": token,
+            "error": None,
+            "next": safe_next(request.query_params.get("next")),
+        },
     )
     apply_session(config, response, token, authenticated=False)
     response.headers["Cache-Control"] = "no-store"
@@ -313,7 +342,12 @@ def login_submit(
         return templates.TemplateResponse(
             request,
             "login.html",
-            {"site_title": config.site_title, "csrf": csrf_for(request), "error": "尝试次数过多，请稍后再试", "next": target},
+            {
+                "site_title": config.site_title,
+                "csrf": csrf_for(request),
+                "error": "尝试次数过多，请稍后再试",
+                "next": target,
+            },
             status_code=429,
         )
     submitted = request.headers.get("x-csrf-token") or csrf
@@ -321,7 +355,12 @@ def login_submit(
         return templates.TemplateResponse(
             request,
             "login.html",
-            {"site_title": config.site_title, "csrf": csrf_for(request), "error": "会话校验失败，请重试", "next": target},
+            {
+                "site_title": config.site_title,
+                "csrf": csrf_for(request),
+                "error": "会话校验失败，请重试",
+                "next": target,
+            },
             status_code=403,
         )
     if not verify_password(config, password):
@@ -329,7 +368,12 @@ def login_submit(
         return templates.TemplateResponse(
             request,
             "login.html",
-            {"site_title": config.site_title, "csrf": csrf_for(request), "error": "密码不正确", "next": target},
+            {
+                "site_title": config.site_title,
+                "csrf": csrf_for(request),
+                "error": "密码不正确",
+                "next": target,
+            },
             status_code=401,
         )
     clear_login_failures(request)
@@ -353,7 +397,8 @@ def logout(request: Request):
 @router.get("/api/search")
 def search_projects(request: Request, db: DbSession, q: str = ""):
     config = get_config(request)
-    is_admin = bool(read_session(config, request))
+    session = read_session(config, request)
+    is_admin = bool(session and session.get("admin") is True)
     stmt = select(Project)
     if not is_admin:
         stmt = stmt.where(Project.visible.is_(True))
@@ -370,19 +415,20 @@ def search_projects(request: Request, db: DbSession, q: str = ""):
             searchable = f"{p.title} {p.slug} {p.description or ''} {p.type}".lower()
             match = query in searchable
         if match:
-            results.append({
-                "id": p.id,
-                "title": p.title,
-                "slug": p.slug,
-                "description": p.description or "",
-                "type": p.type,
-                "url": p.url if p.type == "link" else f"/projects/{p.slug}/",
-                "space": space_map.get(p.parent_id, "") if p.parent_id else "",
-                "pinned": p.pinned,
-                "is_locked": bool(p.password_hash),
-            })
+            results.append(
+                {
+                    "id": p.id,
+                    "title": p.title,
+                    "slug": p.slug,
+                    "description": p.description or "",
+                    "type": p.type,
+                    "url": p.url if p.type == "link" else f"/projects/{p.slug}/",
+                    "space": space_map.get(p.parent_id, "") if p.parent_id else "",
+                    "pinned": p.pinned,
+                    "is_locked": bool(p.password_hash),
+                }
+            )
             if len(results) >= 20:
                 break
 
     return JSONResponse(results)
-

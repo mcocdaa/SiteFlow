@@ -118,7 +118,11 @@ def extract_site(source: Path, destination: Path, config: Config) -> str:
                         written += len(chunk)
                         if written > config.extract_limit:
                             raise InvalidUpload("解压大小超出限制")
-                        if archive_size > 0 and written > 1024 * 1024 and (written / archive_size) > MAX_EXPANSION_RATIO:
+                        if (
+                            archive_size > 0
+                            and written > 1024 * 1024
+                            and (written / archive_size) > MAX_EXPANSION_RATIO
+                        ):
                             raise InvalidUpload("压缩包解压膨胀比过高（疑似解压炸弹）")
                         outgoing.write(chunk)
         candidates = sorted(

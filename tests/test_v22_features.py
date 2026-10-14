@@ -250,4 +250,3 @@ def test_subdomain_routing() -> None:
         root_resp = client.get("/", headers={"host": "siteflow.local"})
         assert root_resp.status_code == 200
         assert "Subdomain Test" in root_resp.text
-

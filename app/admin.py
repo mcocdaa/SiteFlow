@@ -75,7 +75,9 @@ def resolve_parent(db, parent_id: int | None):
 
 
 def app_choices() -> list[dict]:
-    return [{"type": plugin.type, "label": plugin.label, "icon": plugin.icon} for plugin in registry.all_apps()]
+    return [
+        {"type": plugin.type, "label": plugin.label, "icon": plugin.icon} for plugin in registry.all_apps()
+    ]
 
 
 def plugin_types() -> list[str]:
@@ -357,8 +359,11 @@ def delete_project(project_id: int, _auth: AdminConfig, db: DbSession):
     if project is None:
         return api_error("作品不存在", 404)
     config = _auth
-    for row in [*store.descendants(db, project), project]:
+    rows = [*reversed(store.descendants(db, project)), project]
+    store.delete_stats(db, [row.id for row in rows])
+    for row in rows:
         store.delete_files(config, row)
         db.delete(row)
+        db.flush()
     db.commit()
     return {"ok": True}

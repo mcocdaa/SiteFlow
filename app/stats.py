@@ -1,4 +1,6 @@
 import hashlib
+import hmac
+import secrets
 from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
@@ -8,15 +10,19 @@ from sqlalchemy.orm import Session
 
 from app.auth import client_ip
 
+_MAX_UV_KEYS = 10_000
+_MAX_UV_PER_KEY = 10_000
 _uv_cache: dict[tuple[str, int | None], set[str]] = defaultdict(set)
 _last_prune_date: str = ""
+_daily_salt: bytes = secrets.token_bytes(32)
 
 
 def _prune_cache(today: str) -> None:
-    global _last_prune_date
+    global _last_prune_date, _daily_salt
     if today == _last_prune_date:
         return
     _last_prune_date = today
+    _daily_salt = secrets.token_bytes(32)
     # Keep only today and yesterday
     yesterday = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%d")
     valid_dates = {today, yesterday}
@@ -32,11 +38,15 @@ def record_visit(db: Session, request: Request, project_id: int | None = None) -
 
     ip = client_ip(request)
     ua = request.headers.get("user-agent", "")
-    visitor_hash = hashlib.sha256(f"{today}:{ip}:{ua}".encode()).hexdigest()[:16]
+    visitor_hash = hmac.new(_daily_salt, f"{today}:{ip}:{ua}".encode(), hashlib.sha256).hexdigest()[:16]
 
     cache_key = (today, project_id)
-    if visitor_hash not in _uv_cache[cache_key]:
-        _uv_cache[cache_key].add(visitor_hash)
+    if cache_key not in _uv_cache and len(_uv_cache) >= _MAX_UV_KEYS:
+        _uv_cache.pop(next(iter(_uv_cache)), None)
+    visitors = _uv_cache[cache_key]
+    if visitor_hash not in visitors:
+        if len(visitors) < _MAX_UV_PER_KEY:
+            visitors.add(visitor_hash)
         uv_inc = 1
     else:
         uv_inc = 0
