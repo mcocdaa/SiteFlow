@@ -9,6 +9,8 @@
 [![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
 [![Docker](https://img.shields.io/badge/docker-ready-blue.svg)](Dockerfile)
 
+<img src="docs/assets/demo_siteflow.gif" alt="SiteFlow Live Demo" width="820">
+
 Docker 化部署的个人作品收集与展示平台：单个管理员上传 HTML / ZIP 静态站点或添加外链，访客在画廊中浏览。设计细节见 [DESIGN.md](DESIGN.md)。
 
 ## 核心特性 (v2.2)
