@@ -351,8 +351,9 @@ def test_headless_bearer_api_and_idempotent_deploy() -> None:
         slugs = [p["slug"] for p in all_resp.json()["projects"]]
         assert slugs.count("my-ai-report") == 1
 
-        # Verify Admin UI displays AI / API integration panel with masked token
+        # Verify Admin UI provides compact copy API key button in header without raw curl clutter
         login(client)
         admin_html = client.get("/admin").text
-        assert "AI / API 接入 (Headless API)" in admin_html
-        assert "/api/admin/projects/{slug}/deploy" in admin_html or "my-ai-report/deploy" in admin_html
+        assert "复制 API 密钥" in admin_html
+        assert f'data-token="{token}"' in admin_html
+        assert "curl -X PUT" not in admin_html
