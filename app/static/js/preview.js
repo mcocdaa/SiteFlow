@@ -76,9 +76,16 @@
     }
   }
 
-  function openPreview(slug, title, type) {
+  function openPreview(slug, title, type, triggerEl) {
     currentSlug = slug;
-    var rawTitle = title || slug;
+    var origZhTitle = "";
+    if (triggerEl && triggerEl.getAttribute) {
+      origZhTitle = triggerEl.getAttribute("data-zh-title-orig") || triggerEl.getAttribute("data-title") || "";
+    }
+    var rawTitle = origZhTitle || title || slug;
+    if (window.SiteFlowI18n && window.SiteFlowI18n.toZhText) {
+      rawTitle = window.SiteFlowI18n.toZhText(rawTitle);
+    }
     titleEl.removeAttribute("data-i18n");
     titleEl.setAttribute("data-zh-orig", rawTitle);
     titleEl.textContent = translateText(rawTitle);
@@ -181,18 +188,20 @@
     e.stopPropagation();
 
     var slug = trigger.getAttribute("data-slug");
-    var title = trigger.getAttribute("data-title");
+    var title = trigger.getAttribute("data-zh-title-orig") || trigger.getAttribute("data-title");
     var type = trigger.getAttribute("data-type") || "html";
+    var sourceEl = trigger;
     if (!slug) {
       var row = trigger.closest("[data-id], .card");
       if (row) {
         slug = row.getAttribute("data-slug");
-        title = row.getAttribute("data-title") || title;
+        title = row.getAttribute("data-zh-title-orig") || row.getAttribute("data-title") || title;
         type = row.getAttribute("data-type") || type;
+        sourceEl = row;
       }
     }
     if (slug) {
-      openPreview(slug, title, type);
+      openPreview(slug, title, type, sourceEl);
     }
   });
 

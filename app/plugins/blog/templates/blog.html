@@ -5,17 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ blog.title or project.title }}</title>
   <link rel="stylesheet" href="/static/css/app.css">
+  <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 </head>
 <body class="blog-body">
   {% import "icons.html" as icons %}
   <div class="blog-actions">
-    <a class="btn ghost" href="/">{{ icons.icon("arrow-left") }}返回</a>
-    <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" aria-label="管理入口">{{ icons.icon("settings") }}</a>
+    <a class="btn ghost" href="/">{{ icons.icon("arrow-left") }}<span data-i18n="common.back">返回</span></a>
+    <span class="actions-right">
+      <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
+      <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings") }}</a>
+    </span>
   </div>
   <main class="blog">
     <header class="blog-head">
-      <h1>{{ blog.title or project.title }}</h1>
-      {% if blog.description %}<p>{{ blog.description }}</p>{% endif %}
+      <h1 data-i18n-auto>{{ blog.title or project.title }}</h1>
+      {% if blog.description %}<p data-i18n-auto>{{ blog.description }}</p>{% endif %}
     </header>
     {% if posts %}
     <ul class="post-list">
@@ -26,19 +30,20 @@
           <p class="post-meta">
             {% if post.date %}<span>{{ post.date }}</span>{% endif %}
             {% for tag in post.tags %}<span class="chip">{{ tag }}</span>{% endfor %}
-            {% if post.body %}<span class="post-length">{{ post.body | length }} 字</span>{% endif %}
+            {% if post.body %}<span class="post-length">{{ post.body | length }} <span data-i18n="blog.chars_unit">字</span></span>{% endif %}
           </p>
           {% if post.summary %}<p class="post-summary">{{ post.summary }}</p>{% endif %}
-          <span class="post-more">阅读全文{{ icons.icon("arrow-right", 14) }}</span>
+          <span class="post-more"><span data-i18n="blog.read_more">阅读全文</span>{{ icons.icon("arrow-right", 14) }}</span>
         </a>
       </li>
       {% endfor %}
     </ul>
     {% else %}
     <div class="empty">
-      <p>还没有文章。</p>
+      <p data-i18n="blog.empty">还没有文章。</p>
     </div>
     {% endif %}
   </main>
+  <script src="/static/js/i18n.js" defer></script>
 </body>
 </html>

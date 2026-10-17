@@ -149,7 +149,66 @@
       "js.api_copied": "已复制密钥",
       "js.confirm_clear_pwd": "确定清除此作品的访问密码？清除后任何人均可公开直接访问。",
       "js.cover_failed": "封面上传失败",
-      "js.confirm_delete": "确定删除该作品？文件将一并删除，不可恢复。"
+      "js.confirm_delete": "确定删除该作品？文件将一并删除，不可恢复。",
+      "resume.print_pdf": "打印 / 导出 PDF",
+      "resume.sec_work": "工作经历",
+      "resume.sec_education": "教育经历",
+      "resume.sec_projects": "项目",
+      "resume.sec_skills": "技能",
+      "resume.preview": "预览",
+      "resume.basic_info": "基本信息",
+      "resume.field_name": "姓名",
+      "resume.field_label": "职位 / 头衔",
+      "resume.field_email": "邮箱",
+      "resume.field_phone": "电话",
+      "resume.field_url": "网站",
+      "resume.field_city": "城市",
+      "resume.field_region": "地区",
+      "resume.field_country": "国家代码",
+      "resume.field_summary": "简介",
+      "resume.field_links": "链接（每行一条：名称|https://...）",
+      "resume.add_entry": "添加",
+      "resume.save_preview": "保存并查看",
+      "resume.entry_num": "第 {n} 条",
+      "resume.saving": "保存中…",
+      "resume.save_failed": "保存失败",
+      "resume.saved_at": "已保存 {time}",
+      "resume.view_resume": "查看简历",
+      "resume.col_company": "公司",
+      "resume.col_position": "职位",
+      "resume.col_start": "开始",
+      "resume.col_end": "结束",
+      "resume.col_url": "链接",
+      "resume.col_summary": "摘要",
+      "resume.col_highlights": "要点（每行一条）",
+      "resume.col_institution": "学校",
+      "resume.col_area": "专业",
+      "resume.col_study_type": "学历",
+      "resume.col_proj_name": "名称",
+      "resume.col_proj_desc": "描述",
+      "resume.col_keywords": "关键词（逗号分隔）",
+      "resume.col_skill_name": "技能",
+      "blog.chars_unit": "字",
+      "blog.read_more": "阅读全文",
+      "blog.empty": "还没有文章。",
+      "blog.info_title": "博客信息",
+      "blog.posts_heading": "文章",
+      "blog.add_post": "添加文章",
+      "blog.untitled": "（未命名）",
+      "blog.collapse": "折叠",
+      "blog.expand": "展开",
+      "blog.post_num": "第 {n} 篇",
+      "blog.preview_post": "预览这篇",
+      "blog.view_blog": "查看博客",
+      "blog.col_slug": "Slug（URL，可中文）",
+      "blog.col_title": "标题",
+      "blog.col_date": "日期（YYYY-MM-DD）",
+      "blog.col_tags": "标签（逗号分隔）",
+      "blog.col_summary": "摘要",
+      "blog.col_body": "正文（Markdown）",
+      "blog.back_to_list": "文章列表",
+      "blog.prev_post": "上一篇",
+      "blog.next_post": "下一篇"
     },
     en: {
       "common.search": "Search (⌘K)",
@@ -296,7 +355,66 @@
       "js.api_copied": "Copied!",
       "js.confirm_clear_pwd": "Remove password protection from this project? Anyone will be able to access it.",
       "js.cover_failed": "Cover upload failed",
-      "js.confirm_delete": "Delete this project and all its files permanently?"
+      "js.confirm_delete": "Delete this project and all its files permanently?",
+      "resume.print_pdf": "Print / Export PDF",
+      "resume.sec_work": "Work Experience",
+      "resume.sec_education": "Education",
+      "resume.sec_projects": "Projects",
+      "resume.sec_skills": "Skills",
+      "resume.preview": "Preview",
+      "resume.basic_info": "Basic Information",
+      "resume.field_name": "Full Name",
+      "resume.field_label": "Role / Title",
+      "resume.field_email": "Email",
+      "resume.field_phone": "Phone",
+      "resume.field_url": "Website",
+      "resume.field_city": "City",
+      "resume.field_region": "Region",
+      "resume.field_country": "Country Code",
+      "resume.field_summary": "Summary",
+      "resume.field_links": "Profiles (one per line: Network|https://...)",
+      "resume.add_entry": "Add",
+      "resume.save_preview": "Save & Preview",
+      "resume.entry_num": "Entry #{n}",
+      "resume.saving": "Saving...",
+      "resume.save_failed": "Failed to save",
+      "resume.saved_at": "Saved at {time}",
+      "resume.view_resume": "View Resume",
+      "resume.col_company": "Company",
+      "resume.col_position": "Position",
+      "resume.col_start": "Start Date",
+      "resume.col_end": "End Date",
+      "resume.col_url": "URL",
+      "resume.col_summary": "Summary",
+      "resume.col_highlights": "Highlights (one per line)",
+      "resume.col_institution": "Institution",
+      "resume.col_area": "Major / Area",
+      "resume.col_study_type": "Degree",
+      "resume.col_proj_name": "Project Name",
+      "resume.col_proj_desc": "Description",
+      "resume.col_keywords": "Keywords (comma-separated)",
+      "resume.col_skill_name": "Skill Category",
+      "blog.chars_unit": "chars",
+      "blog.read_more": "Read Article",
+      "blog.empty": "No posts published yet.",
+      "blog.info_title": "Blog Settings",
+      "blog.posts_heading": "Posts",
+      "blog.add_post": "New Post",
+      "blog.untitled": "(Untitled)",
+      "blog.collapse": "Collapse",
+      "blog.expand": "Expand",
+      "blog.post_num": "Post #{n}",
+      "blog.preview_post": "Preview Post",
+      "blog.view_blog": "View Blog",
+      "blog.col_slug": "Slug (URL identifier)",
+      "blog.col_title": "Title",
+      "blog.col_date": "Date (YYYY-MM-DD)",
+      "blog.col_tags": "Tags (comma-separated)",
+      "blog.col_summary": "Summary",
+      "blog.col_body": "Body (Markdown)",
+      "blog.back_to_list": "All Posts",
+      "blog.prev_post": "Previous",
+      "blog.next_post": "Next"
     }
   };
 
@@ -326,17 +444,65 @@
     "基于 Canvas 与 Web Audio 的赛博朋克霓虹 2048 游戏": "Cyberpunk neon 2048 game built with HTML5 Canvas and Web Audio",
     "AI 分析报告": "AI Analysis Report",
     "新空间": "New Space",
+    "简历": "Resume",
+    "博客": "Blog",
+    "未命名作品": "Untitled Project",
     "密码不正确": "Incorrect password",
     "密码不正确，请重新输入": "Incorrect password, please try again",
     "尝试次数过多，请稍后再试": "Too many attempts, please try again later",
-    "会话校验失败，请重试": "Session verification failed, please retry"
+    "会话校验失败，请重试": "Session verification failed, please retry",
+    "已经在边界": "Already at the boundary",
+    "标题不能为空": "Title cannot be empty",
+    "未找到该项目": "Project not found",
+    "作品不存在": "Project not found",
+    "父级不存在": "Parent not found",
+    "只有可包含子项的应用可以嵌套": "Only container apps can be nested",
+    "已达最大嵌套深度（3 层）": "Maximum nesting depth (3 levels) reached",
+    "无效的项目标识（仅支持小写字母、数字、连字符和下划线，长度 1-64）": "Invalid project slug (lowercase letters, digits, hyphens, underscores, length 1-64)",
+    "该标识已被非静态项目占用": "Slug is already taken by a non-static project",
+    "只支持 .html / .htm / .zip 文件": "Only .html / .htm / .zip files are supported",
+    "文件超出大小限制": "File exceeds size limit",
+    "不支持的应用类型": "Unsupported app type",
+    "链接必须以 http:// 或 https:// 开头": "URL must start with http:// or https://",
+    "该类型不支持内容编辑": "This project type does not support content editing",
+    "只有空间支持主题配置": "Only spaces support theme customization",
+    "方向必须是 up 或 down": "Direction must be up or down",
+    "封面不能超过 10MB": "Cover image cannot exceed 10MB",
+    "压缩包文件数量超出限制": "Archive contains too many files",
+    "压缩包包含不安全路径、符号链接或加密文件": "Archive contains unsafe paths, symlinks, or encrypted files",
+    "压缩包包含重复路径": "Archive contains duplicate paths",
+    "压缩包单文件解压膨胀比过高（疑似解压炸弹）": "Single-file expansion ratio too high (suspected zip bomb)",
+    "解压大小超出限制": "Extracted size exceeds limit",
+    "压缩包文件与目录总数超出 Inode 上限": "Total files and directories exceed inode limit",
+    "压缩包解压膨胀比过高（疑似解压炸弹）": "Archive expansion ratio too high (suspected zip bomb)",
+    "压缩包包含不安全路径": "Archive contains unsafe paths",
+    "ZIP 中未找到 index.html": "index.html not found in ZIP archive",
+    "压缩包损坏或格式不支持": "Corrupted archive or unsupported format",
+    "图片格式不支持或尺寸过大": "Unsupported image format or dimensions too large",
+    "无法读取封面图片": "Unable to read cover image",
+    "简历内容不是合法 JSON": "Resume content is not valid JSON",
+    "简历内容必须是 JSON 对象": "Resume content must be a JSON object",
+    "博客内容不是合法 JSON": "Blog content is not valid JSON",
+    "博客内容必须是 JSON 对象": "Blog content must be a JSON object"
   };
+
+  var AUTO_TEXT_MAP_ZH = {};
+  Object.keys(AUTO_TEXT_MAP_EN).forEach(function (zhKey) {
+    var enVal = AUTO_TEXT_MAP_EN[zhKey];
+    if (!AUTO_TEXT_MAP_ZH[enVal]) {
+      AUTO_TEXT_MAP_ZH[enVal] = zhKey;
+    }
+  });
 
   var MONOGRAM_MAP_EN = {
     "前": "F",
     "支": "P",
     "我": "M",
-    "测": "T"
+    "测": "T",
+    "简": "R",
+    "博": "B",
+    "新": "N",
+    "未": "U"
   };
 
   function getLang() {
@@ -359,12 +525,24 @@
     return raw;
   }
 
+  function toZhText(text) {
+    if (!text) return text;
+    var trimmed = text.trim();
+    if (AUTO_TEXT_MAP_ZH[trimmed]) {
+      return AUTO_TEXT_MAP_ZH[trimmed];
+    }
+    return text;
+  }
+
   function translateText(text) {
     if (!text) return text;
     var lang = getLang();
     var trimmed = text.trim();
     if (lang === "en" && AUTO_TEXT_MAP_EN[trimmed]) {
       return AUTO_TEXT_MAP_EN[trimmed];
+    }
+    if (lang === "zh" && AUTO_TEXT_MAP_ZH[trimmed]) {
+      return AUTO_TEXT_MAP_ZH[trimmed];
     }
     return text;
   }
@@ -458,6 +636,8 @@
     var origDocTitle = document.documentElement.getAttribute("data-orig-doc-title") || document.title;
     if (lang === "en") {
       var enTitle = origDocTitle
+        .replace(" - 简历编辑 - ", " - Resume Editor - ")
+        .replace(" - 博客编辑 - ", " - Blog Editor - ")
         .replace("管理 - ", "Admin - ")
         .replace(" - 管理 - ", " - Admin - ")
         .replace("登录 - ", "Sign In - ")
@@ -511,7 +691,8 @@
     setLang: setLang,
     toggleLang: toggleLang,
     applyI18n: applyI18n,
-    translateText: translateText
+    translateText: translateText,
+    toZhText: toZhText
   };
 
   if (document.readyState === "loading") {

@@ -5,14 +5,16 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ resume.basics.name or project.title }}</title>
   <link rel="stylesheet" href="/static/css/app.css">
+  <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 </head>
 <body class="resume-body">
   {% import "icons.html" as icons %}
   <div class="resume-actions">
-    <a class="btn ghost" href="/">{{ icons.icon("arrow-left") }}返回</a>
+    <a class="btn ghost" href="/">{{ icons.icon("arrow-left") }}<span data-i18n="common.back">返回</span></a>
     <span class="actions-right">
-      <button class="btn" onclick="window.print()">{{ icons.icon("printer") }}打印 / 导出 PDF</button>
-      <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" aria-label="管理入口">{{ icons.icon("settings") }}</a>
+      <button class="btn" onclick="window.print()">{{ icons.icon("printer") }}<span data-i18n="resume.print_pdf">打印 / 导出 PDF</span></button>
+      <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
+      <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings") }}</a>
     </span>
   </div>
   <main class="resume">
@@ -20,7 +22,7 @@
       {% set avatar = resume.basics.image or project.cover %}
       {% if avatar %}<img class="resume-avatar" src="/media/covers/{{ avatar }}" alt="">{% endif %}
       <div>
-        <h1>{{ resume.basics.name or project.title }}</h1>
+        <h1 data-i18n-auto>{{ resume.basics.name or project.title }}</h1>
         {% if resume.basics.label %}<p class="resume-label">{{ resume.basics.label }}</p>{% endif %}
         {% if resume.basics.summary %}<p class="resume-summary">{{ resume.basics.summary }}</p>{% endif %}
         <ul class="resume-contact">
@@ -37,7 +39,7 @@
     {% for section_key, section_title, section_icon in [("work", "工作经历", "briefcase"), ("education", "教育经历", "graduation-cap"), ("projects", "项目", "layers"), ("skills", "技能", "wrench")] %}
     {% if resume[section_key] %}
     <section class="resume-section">
-      <h2>{{ icons.icon(section_icon, 16) }}{{ section_title }}</h2>
+      <h2>{{ icons.icon(section_icon, 16) }}<span data-i18n="resume.sec_{{ section_key }}">{{ section_title }}</span></h2>
       {% if section_key == "skills" %}
       <ul class="skill-list">
         {% for item in resume[section_key] %}
@@ -70,5 +72,6 @@
     {% endif %}
     {% endfor %}
   </main>
+  <script src="/static/js/i18n.js" defer></script>
 </body>
 </html>

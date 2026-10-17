@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ project.title }} - 简历编辑 - {{ site_title }}</title>
   <link rel="stylesheet" href="/static/css/app.css">
+  <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
   <meta name="csrf" content="{{ csrf }}">
 </head>
 <body data-plugin-id="{{ project.id }}" data-preview-url="/projects/{{ project.slug }}/">
@@ -12,47 +13,49 @@
   <header class="site-header">
     <div class="wrap row-between">
       <div>
-        <p class="crumbs"><a href="/admin">管理</a>{% if parent %} <span class="muted">/</span> <a href="/admin/projects/{{ parent.id }}">{{ parent.title }}</a>{% endif %} <span class="muted">/</span> <span>{{ project.title }}</span></p>
-        <p class="brand">{{ project.title }}</p>
+        <p class="crumbs"><a href="/admin" data-i18n="admin.crumb_admin">管理</a>{% if parent %} <span class="muted">/</span> <a href="/admin/projects/{{ parent.id }}" data-i18n-auto>{{ parent.title }}</a>{% endif %} <span class="muted">/</span> <span data-i18n-auto>{{ project.title }}</span></p>
+        <p class="brand" data-i18n-auto>{{ project.title }}</p>
       </div>
-      <div class="row-actions">
-        <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}预览</a>
-        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}退出登录</button>
+      <div class="row-actions header-actions">
+        <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}<span data-i18n="resume.preview">预览</span></a>
+        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
+        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
       </div>
     </div>
   </header>
   <main class="wrap">
     <section class="plugin-block">
-      <h2>基本信息</h2>
+      <h2 data-i18n="resume.basic_info">基本信息</h2>
       <div class="editor-grid">
-        <label>姓名 <input id="f-name" autocomplete="off"></label>
-        <label>职位 / 头衔 <input id="f-label" autocomplete="off"></label>
-        <label>邮箱 <input id="f-email" type="email" autocomplete="off"></label>
-        <label>电话 <input id="f-phone" autocomplete="off"></label>
-        <label>网站 <input id="f-url" placeholder="https://..." autocomplete="off"></label>
-        <label>城市 <input id="f-city" autocomplete="off"></label>
-        <label>地区 <input id="f-region" autocomplete="off"></label>
-        <label>国家代码 <input id="f-countryCode" placeholder="CN" autocomplete="off"></label>
+        <label><span data-i18n="resume.field_name">姓名</span> <input id="f-name" autocomplete="off"></label>
+        <label><span data-i18n="resume.field_label">职位 / 头衔</span> <input id="f-label" autocomplete="off"></label>
+        <label><span data-i18n="resume.field_email">邮箱</span> <input id="f-email" type="email" autocomplete="off"></label>
+        <label><span data-i18n="resume.field_phone">电话</span> <input id="f-phone" autocomplete="off"></label>
+        <label><span data-i18n="resume.field_url">网站</span> <input id="f-url" placeholder="https://..." autocomplete="off"></label>
+        <label><span data-i18n="resume.field_city">城市</span> <input id="f-city" autocomplete="off"></label>
+        <label><span data-i18n="resume.field_region">地区</span> <input id="f-region" autocomplete="off"></label>
+        <label><span data-i18n="resume.field_country">国家代码</span> <input id="f-countryCode" placeholder="CN" autocomplete="off"></label>
       </div>
-      <label class="stack">简介 <textarea id="f-summary" rows="3"></textarea></label>
-      <label class="stack">链接（每行一条：名称|https://...）<textarea id="f-links" rows="3" placeholder="GitHub|https://github.com/me"></textarea></label>
+      <label class="stack"><span data-i18n="resume.field_summary">简介</span> <textarea id="f-summary" rows="3"></textarea></label>
+      <label class="stack"><span data-i18n="resume.field_links">链接（每行一条：名称|https://...）</span><textarea id="f-links" rows="3" placeholder="GitHub|https://github.com/me"></textarea></label>
     </section>
     {% for section_key, section_title in [("work", "工作经历"), ("education", "教育经历"), ("projects", "项目"), ("skills", "技能")] %}
     <section class="plugin-block" data-section="{{ section_key }}">
       <div class="block-head">
-        <h2>{{ section_title }}</h2>
-        <button type="button" class="btn ghost" data-add-entry>{{ icons.icon("plus") }}添加</button>
+        <h2 data-i18n="resume.sec_{{ section_key }}">{{ section_title }}</h2>
+        <button type="button" class="btn ghost" data-add-entry>{{ icons.icon("plus") }}<span data-i18n="resume.add_entry">添加</span></button>
       </div>
       <div class="entry-list"></div>
     </section>
     {% endfor %}
     <div class="form-actions">
-      <button type="button" class="btn primary" data-action="save-content">{{ icons.icon("check") }}保存</button>
-      <button type="button" class="btn" data-action="save-preview">保存并查看</button>
+      <button type="button" class="btn primary" data-action="save-content">{{ icons.icon("check") }}<span data-i18n="row.save">保存</span></button>
+      <button type="button" class="btn" data-action="save-preview" data-i18n="resume.save_preview">保存并查看</button>
       <span class="muted" id="save-state"></span>
     </div>
   </main>
   <script id="plugin-data" type="application/json">{{ content | tojson }}</script>
+  <script src="/static/js/i18n.js" defer></script>
   <script>
 (function () {
   "use strict";
@@ -66,11 +69,18 @@
     trash: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>'
   };
   var SECTION_FIELDS = {
-    work: [["name", "公司", "text"], ["position", "职位", "text"], ["startDate", "开始", "text"], ["endDate", "结束", "text"], ["url", "链接", "text"], ["summary", "摘要", "textarea"], ["highlights", "要点（每行一条）", "list"]],
-    education: [["institution", "学校", "text"], ["area", "专业", "text"], ["studyType", "学历", "text"], ["startDate", "开始", "text"], ["endDate", "结束", "text"]],
-    projects: [["name", "名称", "text"], ["url", "链接", "text"], ["description", "描述", "textarea"], ["highlights", "要点（每行一条）", "list"], ["keywords", "关键词（逗号分隔）", "tags"]],
-    skills: [["name", "技能", "text"], ["keywords", "关键词（逗号分隔）", "tags"]]
+    work: [["name", "resume.col_company", "公司", "text"], ["position", "resume.col_position", "职位", "text"], ["startDate", "resume.col_start", "开始", "text"], ["endDate", "resume.col_end", "结束", "text"], ["url", "resume.col_url", "链接", "text"], ["summary", "resume.col_summary", "摘要", "textarea"], ["highlights", "resume.col_highlights", "要点（每行一条）", "list"]],
+    education: [["institution", "resume.col_institution", "学校", "text"], ["area", "resume.col_area", "专业", "text"], ["studyType", "resume.col_study_type", "学历", "text"], ["startDate", "resume.col_start", "开始", "text"], ["endDate", "resume.col_end", "结束", "text"]],
+    projects: [["name", "resume.col_proj_name", "名称", "text"], ["url", "resume.col_url", "链接", "text"], ["description", "resume.col_proj_desc", "描述", "textarea"], ["highlights", "resume.col_highlights", "要点（每行一条）", "list"], ["keywords", "resume.col_keywords", "关键词（逗号分隔）", "tags"]],
+    skills: [["name", "resume.col_skill_name", "技能", "text"], ["keywords", "resume.col_keywords", "关键词（逗号分隔）", "tags"]]
   };
+
+  function tr(key, vars, fallback) {
+    if (window.SiteFlowI18n && window.SiteFlowI18n.t) {
+      return window.SiteFlowI18n.t(key, vars);
+    }
+    return fallback || key;
+  }
 
   function el(tag, className, text) {
     var node = document.createElement(tag);
@@ -93,14 +103,17 @@
   function renderEntry(section, entry, index) {
     var card = el("div", "entry-card");
     var head = el("div", "entry-head");
-    head.append(el("span", "entry-order", "第 " + (index + 1) + " 条"));
+    head.append(el("span", "entry-order", tr("resume.entry_num", { n: index + 1 }, "第 " + (index + 1) + " 条")));
     var actions = el("div", "entry-actions");
-    [["entry-up", ICONS.up, "上移"], ["entry-down", ICONS.down, "下移"], ["entry-remove", ICONS.trash, "删除"]].forEach(function (item) {
+    [["entry-up", ICONS.up, "row.move_up", "上移"], ["entry-down", ICONS.down, "row.move_down", "下移"], ["entry-remove", ICONS.trash, "row.delete", "删除"]].forEach(function (item) {
       var button = el("button", "btn ghost icon-btn");
       button.type = "button";
+      var tipText = tr(item[2], null, item[3]);
       button.setAttribute("data-entry-action", item[0]);
-      button.setAttribute("aria-label", item[2]);
-      button.setAttribute("data-tip", item[2]);
+      button.setAttribute("aria-label", tipText);
+      button.setAttribute("data-tip", tipText);
+      button.setAttribute("data-i18n-tip", item[2]);
+      button.setAttribute("data-i18n-aria-label", item[2]);
       button.innerHTML = item[1];
       actions.append(button);
     });
@@ -109,13 +122,15 @@
     var grid = el("div", "entry-grid");
     SECTION_FIELDS[section].forEach(function (field) {
       var label = el("label");
-      label.append(el("span", undefined, field[1]));
-      var input = el(field[2] === "text" ? "input" : "textarea");
-      if (field[2] === "text") { input.type = "text"; input.autocomplete = "off"; }
+      var spanEl = el("span", undefined, tr(field[1], null, field[2]));
+      spanEl.setAttribute("data-i18n", field[1]);
+      label.append(spanEl);
+      var input = el(field[3] === "text" ? "input" : "textarea");
+      if (field[3] === "text") { input.type = "text"; input.autocomplete = "off"; }
       else { input.rows = 3; }
-      input.value = fieldValue(entry, field[0], field[2]);
+      input.value = fieldValue(entry, field[0], field[3]);
       input.setAttribute("data-field", field[0]);
-      input.setAttribute("data-kind", field[2]);
+      input.setAttribute("data-kind", field[3]);
       label.append(input);
       grid.append(label);
     });
@@ -184,28 +199,52 @@
   }
   function save(thenView) {
     var status = document.getElementById("save-state");
-    status.textContent = "保存中…";
+    status.textContent = tr("resume.saving", null, "保存中…");
     fetch("/api/admin/projects/" + projectId, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": CSRF },
       body: JSON.stringify({ content: JSON.stringify(collect()) })
     }).then(function (response) {
       return response.json().then(function (data) {
-        if (!response.ok || data.ok === false) throw new Error(data.error || "保存失败");
+        if (!response.ok || data.ok === false) {
+          var errMsg = data.error ? (window.SiteFlowI18n ? window.SiteFlowI18n.translateText(data.error) : data.error) : tr("resume.save_failed", null, "保存失败");
+          throw new Error(errMsg);
+        }
         state = collect();
         Object.keys(SECTION_FIELDS).forEach(renderSection);
         var previewUrl = body.getAttribute("data-preview-url");
-        status.innerHTML = "已保存 " + new Date().toLocaleTimeString() + ' · <a href="' + previewUrl + '" target="_blank">查看简历</a>';
+        var timeStr = new Date().toLocaleTimeString();
+        status.innerHTML = tr("resume.saved_at", { time: timeStr }, "已保存 " + timeStr) + ' · <a href="' + previewUrl + '" target="_blank">' + tr("resume.view_resume", null, "查看简历") + '</a>';
         if (thenView) window.location.href = previewUrl;
       });
     }).catch(function (error) {
       status.textContent = "";
-      alert(error.message || String(error));
+      var msg = error.message || String(error);
+      if (window.SiteFlowI18n && window.SiteFlowI18n.translateText) msg = window.SiteFlowI18n.translateText(msg);
+      alert(msg);
     });
   }
   loadBasics();
   Object.keys(SECTION_FIELDS).forEach(renderSection);
+  document.addEventListener("DOMContentLoaded", function () {
+    Object.keys(SECTION_FIELDS).forEach(renderSection);
+  });
+  window.addEventListener("siteflow:langchange", function () {
+    Object.keys(SECTION_FIELDS).forEach(function (section) {
+      state[section] = collectSection(section);
+      renderSection(section);
+    });
+  });
   document.addEventListener("click", function (event) {
+    if (event.target.closest('[data-action="logout"]')) {
+      fetch("/admin/logout", {
+        method: "POST",
+        headers: { "X-CSRF-Token": CSRF }
+      }).then(function () {
+        location.href = "/admin/login";
+      });
+      return;
+    }
     var addButton = event.target.closest("[data-add-entry]");
     if (addButton) {
       var section = addButton.closest("[data-section]").getAttribute("data-section");

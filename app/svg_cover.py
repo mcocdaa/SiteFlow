@@ -3,7 +3,7 @@ import html
 import re
 
 
-def generate_svg_cover(slug: str, title: str, project_type: str = "html") -> str:
+def generate_svg_cover(slug: str, title: str, project_type: str = "html", extra_class: str = "") -> str:
     """Generates a procedural, minimalist vector grid SVG placeholder for project covers.
 
     Aesthetic: Clean tech-restrained engineering grid with subtle coordinates,
@@ -37,8 +37,9 @@ def generate_svg_cover(slug: str, title: str, project_type: str = "html") -> str
                 f'<path d="M {x - 4} {y} H {x + 4} M {x} {y - 4} V {y + 4}" stroke="{accent_hsl}" stroke-opacity="0.3" stroke-width="1" />'
             )
     crosses_svg = "\n    ".join(crosses)
+    svg_class = f"cover-svg {extra_class}".strip()
 
-    svg = f"""<svg class="cover-svg" viewBox="0 0 800 500" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
+    svg = f"""<svg class="{svg_class}" viewBox="0 0 800 500" preserveAspectRatio="xMidYMid slice" width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <radialGradient id="glow-{safe_id}" cx="50%" cy="45%" r="65%">
       <stop offset="0%" stop-color="{accent_hsl}" stop-opacity="0.16" />
