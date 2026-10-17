@@ -275,9 +275,19 @@
         api("PATCH", "/projects/" + id, { password: "" }).then(refresh).catch(onError);
       }
     } else if (action === "save") {
+      var titleInput = row.querySelector('[name="title"]');
+      var descInput = row.querySelector('[name="description"]');
+      function canonicalVal(inp) {
+        if (!inp) return "";
+        var v = inp.value;
+        if (inp.dataset && inp.dataset.enVal && inp.dataset.zhVal && v.trim() === inp.dataset.enVal.trim() && !inp.dataset.userEdited) {
+          return inp.dataset.zhVal;
+        }
+        return v;
+      }
       var payload = {
-        title: row.querySelector('[name="title"]').value,
-        description: row.querySelector('[name="description"]').value
+        title: canonicalVal(titleInput),
+        description: canonicalVal(descInput)
       };
       var urlInput = row.querySelector('[name="url"]');
       if (urlInput) payload.url = urlInput.value;

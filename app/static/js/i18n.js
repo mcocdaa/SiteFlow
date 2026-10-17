@@ -567,6 +567,12 @@
 
   function getLang() {
     try {
+      var params = new URLSearchParams(window.location.search);
+      var qLang = params.get("lang");
+      if (qLang === "en") return "en";
+      if (qLang && qLang.indexOf("zh") === 0) return "zh";
+    } catch (e) {}
+    try {
       var saved = localStorage.getItem(STORAGE_KEY);
       if (saved === "en" || saved === "zh") return saved;
     } catch (e) {}
@@ -708,7 +714,9 @@
       var zhOrig = el.dataset.zhOrigVal || "";
       if (!zhOrig) return;
       var enTrans = translateValueText(zhOrig, "en");
-      if (cur.trim() === zhOrig.trim() || cur.trim() === enTrans.trim()) {
+      el.dataset.zhVal = zhOrig;
+      el.dataset.enVal = enTrans;
+      if (!el.dataset.userEdited && (cur.trim() === zhOrig.trim() || cur.trim() === enTrans.trim())) {
         el.value = lang === "en" ? enTrans : zhOrig;
       }
     });
@@ -787,6 +795,26 @@
     setLang(next);
     return next;
   }
+
+  document.addEventListener("input", function (e) {
+    var el = e.target;
+    if (el && el.hasAttribute && el.hasAttribute("data-i18n-auto-val")) {
+      var cur = (el.value || "").trim();
+      var zhV = (el.dataset.zhVal || el.dataset.zhOrigVal || "").trim();
+      var enV = (el.dataset.enVal || "").trim();
+      if (cur !== zhV && cur !== enV) {
+        el.dataset.userEdited = "true";
+      } else {
+        delete el.dataset.userEdited;
+      }
+    }
+  });
+
+  window.addEventListener("message", function (e) {
+    if (e.data && e.data.type === "siteflow:lang" && e.data.lang) {
+      applyI18n(e.data.lang === "en" ? "en" : "zh");
+    }
+  });
 
   document.addEventListener("click", function (e) {
     var btn = e.target.closest("#lang-toggle-btn, [data-action='toggle-lang']");

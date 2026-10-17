@@ -488,3 +488,14 @@ def test_bilingual_i18n_assets_and_toggle_controls() -> None:
         assert 'id="lang-toggle-btn"' in blog_adm
         assert 'data-i18n="blog.info_title"' in blog_adm
         assert "/admin/logout" in blog_adm
+        assert "canonicalInputText" in blog_adm
+        assert "canonicalInputText" in resume_adm
+        assert "dataset.zhVal" in admin_js
+
+        # 7. Verify .cover-svg.thumb rule in app.css and modal language toggles
+        app_css = client.get("/static/css/app.css").text
+        assert ".cover-svg.thumb" in app_css
+        assert 'data-action="toggle-lang"' in gallery_html
+        assert "postMessage" in preview_js
+        assert "siteflow:lang" in preview_js
+        assert "siteflow:lang" in i18n_js.text
