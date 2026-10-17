@@ -27,8 +27,8 @@
     <section class="plugin-block">
       <h2 data-i18n="blog.info_title">博客信息</h2>
       <div class="editor-grid">
-        <label><span data-i18n="row.label_title">标题</span> <input id="f-title" autocomplete="off" data-i18n-auto-val></label>
-        <label><span data-i18n="row.label_desc">描述</span> <input id="f-description" autocomplete="off" data-i18n-auto-val></label>
+        <label class="full"><span data-i18n="row.label_title">标题</span> <input id="f-title" autocomplete="off" data-i18n-auto-val></label>
+        <label class="full"><span data-i18n="row.label_desc">描述</span> <input id="f-description" autocomplete="off" data-i18n-auto-val></label>
       </div>
     </section>
     <section class="plugin-block" data-section="posts">
@@ -63,12 +63,12 @@
     open: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>'
   };
   var POST_FIELDS = [
-    ["slug", "blog.col_slug", "Slug（URL，可中文）", "text"],
-    ["title", "blog.col_title", "标题", "text"],
-    ["date", "blog.col_date", "日期（YYYY-MM-DD）", "text"],
-    ["tags", "blog.col_tags", "标签（逗号分隔）", "tags"],
-    ["summary", "blog.col_summary", "摘要", "text"],
-    ["body", "blog.col_body", "正文（Markdown）", "body"]
+    ["slug", "blog.col_slug", "Slug（URL，可中文）", "text", "span-4"],
+    ["date", "blog.col_date", "日期（YYYY-MM-DD）", "text", "span-3"],
+    ["tags", "blog.col_tags", "标签（逗号分隔）", "tags", "span-5"],
+    ["title", "blog.col_title", "标题", "text", "full"],
+    ["summary", "blog.col_summary", "摘要", "text", "full"],
+    ["body", "blog.col_body", "正文（Markdown）", "body", "full"]
   ];
 
   function tr(key, vars, fallback) {
@@ -89,8 +89,16 @@
     if (kind === "tags") return Array.isArray(value) ? value.join(", ") : "";
     return typeof value === "string" ? value : "";
   }
-  function readValue(input, kind) {
+  function canonicalInputText(input) {
+    if (!input) return "";
     var text = input.value.trim();
+    if (input.dataset && input.dataset.enVal && input.dataset.zhVal && text === input.dataset.enVal.trim() && !input.dataset.userEdited) {
+      return input.dataset.zhVal.trim();
+    }
+    return text;
+  }
+  function readValue(input, kind) {
+    var text = canonicalInputText(input);
     if (kind === "tags") return text ? text.split(",").map(function (part) { return part.trim(); }).filter(Boolean) : [];
     return text;
   }
@@ -144,8 +152,7 @@
     card.append(head);
     var grid = el("div", "entry-grid");
     POST_FIELDS.forEach(function (field) {
-      var label = el("label");
-      if (field[3] === "body") label.className = "full";
+      var label = el("label", field[4] || undefined);
       var spanEl = el("span", undefined, tr(field[1], null, field[2]));
       spanEl.setAttribute("data-i18n", field[1]);
       label.append(spanEl);
@@ -191,28 +198,30 @@
     });
     return rows;
   }
-  var expandedIndex = -1;
+  var expandedIndex = 0;
   function collect() {
     return {
-      title: document.getElementById("f-title").value.trim(),
-      description: document.getElementById("f-description").value.trim(),
+      title: canonicalInputText(document.getElementById("f-title")),
+      description: canonicalInputText(document.getElementById("f-description")),
       posts: collectPosts()
     };
   }
   function save(thenView) {
     var status = document.getElementById("save-state");
     status.textContent = tr("resume.saving", null, "保存中…");
+    var payloadObj = collect();
     fetch("/api/admin/projects/" + projectId, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": CSRF },
-      body: JSON.stringify({ content: JSON.stringify(collect()) })
+      body: JSON.stringify({ content: JSON.stringify(payloadObj) })
     }).then(function (response) {
       return response.json().then(function (data) {
         if (!response.ok || data.ok === false) {
           var errMsg = data.error ? (window.SiteFlowI18n ? window.SiteFlowI18n.translateText(data.error) : data.error) : tr("resume.save_failed", null, "保存失败");
           throw new Error(errMsg);
         }
-        state = collect();
+        state = payloadObj;
+        renderPosts();
         var stamp = new Date().toLocaleTimeString();
         status.innerHTML = tr("resume.saved_at", { time: stamp }, "已保存 " + stamp) + ' · <a href="' + previewUrl + '" target="_blank">' + tr("blog.view_blog", null, "查看博客") + '</a>';
         if (thenView) window.location.href = previewUrl;

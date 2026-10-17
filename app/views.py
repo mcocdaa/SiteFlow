@@ -118,7 +118,8 @@ def project_home(request: Request, config, project, db):
         return plugin.render(request, project, db)
     if not project.entry:
         raise HTTPException(404)
-    return RedirectResponse(f"/projects/{project.slug}/{project.entry}", status_code=302)
+    query = f"?{request.url.query}" if request.url.query else ""
+    return RedirectResponse(f"/projects/{project.slug}/{project.entry}{query}", status_code=302)
 
 
 def find_public_project(db, slug: str):

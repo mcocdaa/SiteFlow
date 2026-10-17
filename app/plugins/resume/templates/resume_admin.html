@@ -69,10 +69,33 @@
     trash: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>'
   };
   var SECTION_FIELDS = {
-    work: [["name", "resume.col_company", "公司", "text"], ["position", "resume.col_position", "职位", "text"], ["startDate", "resume.col_start", "开始", "text"], ["endDate", "resume.col_end", "结束", "text"], ["url", "resume.col_url", "链接", "text"], ["summary", "resume.col_summary", "摘要", "textarea"], ["highlights", "resume.col_highlights", "要点（每行一条）", "list"]],
-    education: [["institution", "resume.col_institution", "学校", "text"], ["area", "resume.col_area", "专业", "text"], ["studyType", "resume.col_study_type", "学历", "text"], ["startDate", "resume.col_start", "开始", "text"], ["endDate", "resume.col_end", "结束", "text"]],
-    projects: [["name", "resume.col_proj_name", "名称", "text"], ["url", "resume.col_url", "链接", "text"], ["description", "resume.col_proj_desc", "描述", "textarea"], ["highlights", "resume.col_highlights", "要点（每行一条）", "list"], ["keywords", "resume.col_keywords", "关键词（逗号分隔）", "tags"]],
-    skills: [["name", "resume.col_skill_name", "技能", "text"], ["keywords", "resume.col_keywords", "关键词（逗号分隔）", "tags"]]
+    work: [
+      ["name", "resume.col_company", "公司", "text", "span-6"],
+      ["position", "resume.col_position", "职位", "text", "span-6"],
+      ["startDate", "resume.col_start", "开始", "text", "span-3"],
+      ["endDate", "resume.col_end", "结束", "text", "span-3"],
+      ["url", "resume.col_url", "链接", "text", "span-6"],
+      ["summary", "resume.col_summary", "摘要", "textarea", "full"],
+      ["highlights", "resume.col_highlights", "要点（每行一条）", "list", "full"]
+    ],
+    education: [
+      ["institution", "resume.col_institution", "学校", "text", "span-6"],
+      ["area", "resume.col_area", "专业", "text", "span-6"],
+      ["studyType", "resume.col_study_type", "学历", "text", "span-4"],
+      ["startDate", "resume.col_start", "开始", "text", "span-4"],
+      ["endDate", "resume.col_end", "结束", "text", "span-4"]
+    ],
+    projects: [
+      ["name", "resume.col_proj_name", "名称", "text", "span-6"],
+      ["url", "resume.col_url", "链接", "text", "span-6"],
+      ["keywords", "resume.col_keywords", "关键词（逗号分隔）", "tags", "full"],
+      ["description", "resume.col_proj_desc", "描述", "textarea", "full"],
+      ["highlights", "resume.col_highlights", "要点（每行一条）", "list", "full"]
+    ],
+    skills: [
+      ["name", "resume.col_skill_name", "技能", "text", "span-5"],
+      ["keywords", "resume.col_keywords", "关键词（逗号分隔）", "tags", "span-7"]
+    ]
   };
 
   function tr(key, vars, fallback) {
@@ -94,8 +117,16 @@
     if (kind === "tags") return Array.isArray(value) ? value.join(", ") : "";
     return typeof value === "string" ? value : "";
   }
-  function readValue(input, kind) {
+  function canonicalInputText(input) {
+    if (!input) return "";
     var text = input.value.trim();
+    if (input.dataset && input.dataset.enVal && input.dataset.zhVal && text === input.dataset.enVal.trim() && !input.dataset.userEdited) {
+      return input.dataset.zhVal.trim();
+    }
+    return text;
+  }
+  function readValue(input, kind) {
+    var text = canonicalInputText(input);
     if (kind === "list") return text ? text.split("\n").map(function (line) { return line.trim(); }).filter(Boolean) : [];
     if (kind === "tags") return text ? text.split(",").map(function (part) { return part.trim(); }).filter(Boolean) : [];
     return text;
@@ -121,17 +152,20 @@
     card.append(head);
     var grid = el("div", "entry-grid");
     SECTION_FIELDS[section].forEach(function (field) {
-      var label = el("label");
+      var label = el("label", field[4] || undefined);
       var spanEl = el("span", undefined, tr(field[1], null, field[2]));
       spanEl.setAttribute("data-i18n", field[1]);
       label.append(spanEl);
-      var input = el(field[3] === "text" ? "input" : "textarea");
-      if (field[3] === "text") { input.type = "text"; input.autocomplete = "off"; }
+      var singleLine = field[3] === "text" || field[3] === "tags";
+      var input = el(singleLine ? "input" : "textarea");
+      if (singleLine) { input.type = "text"; input.autocomplete = "off"; }
       else { input.rows = 3; }
       input.value = fieldValue(entry, field[0], field[3]);
       input.setAttribute("data-field", field[0]);
       input.setAttribute("data-kind", field[3]);
-      input.setAttribute("data-i18n-auto-val", "");
+      if (field[0] !== "startDate" && field[0] !== "url") {
+        input.setAttribute("data-i18n-auto-val", "");
+      }
       label.append(input);
       grid.append(label);
     });
@@ -171,15 +205,15 @@
       return { network: parts[0].trim(), username: "", url: parts.slice(1).join("|").trim() };
     }).filter(function (profile) { return profile && profile.url; });
     return {
-      name: document.getElementById("f-name").value.trim(),
-      label: document.getElementById("f-label").value.trim(),
+      name: canonicalInputText(document.getElementById("f-name")),
+      label: canonicalInputText(document.getElementById("f-label")),
       email: document.getElementById("f-email").value.trim(),
       phone: document.getElementById("f-phone").value.trim(),
       url: document.getElementById("f-url").value.trim(),
-      summary: document.getElementById("f-summary").value.trim(),
+      summary: canonicalInputText(document.getElementById("f-summary")),
       location: {
-        city: document.getElementById("f-city").value.trim(),
-        region: document.getElementById("f-region").value.trim(),
+        city: canonicalInputText(document.getElementById("f-city")),
+        region: canonicalInputText(document.getElementById("f-region")),
         countryCode: document.getElementById("f-countryCode").value.trim()
       },
       profiles: profiles
@@ -204,17 +238,18 @@
   function save(thenView) {
     var status = document.getElementById("save-state");
     status.textContent = tr("resume.saving", null, "保存中…");
+    var payloadObj = collect();
     fetch("/api/admin/projects/" + projectId, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": CSRF },
-      body: JSON.stringify({ content: JSON.stringify(collect()) })
+      body: JSON.stringify({ content: JSON.stringify(payloadObj) })
     }).then(function (response) {
       return response.json().then(function (data) {
         if (!response.ok || data.ok === false) {
           var errMsg = data.error ? (window.SiteFlowI18n ? window.SiteFlowI18n.translateText(data.error) : data.error) : tr("resume.save_failed", null, "保存失败");
           throw new Error(errMsg);
         }
-        state = collect();
+        state = payloadObj;
         Object.keys(SECTION_FIELDS).forEach(renderSection);
         var previewUrl = body.getAttribute("data-preview-url");
         var timeStr = new Date().toLocaleTimeString();

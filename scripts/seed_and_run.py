@@ -41,28 +41,51 @@ def seed():
     db.add(space1)
     db.commit()
 
+    bilingual_script = """  <script>
+    (function () {
+      function applyArtifactLang(rawLang) {
+        var isEn = String(rawLang || "").toLowerCase().indexOf("en") === 0;
+        document.documentElement.lang = isEn ? "en" : "zh-CN";
+        var docTitle = document.documentElement.getAttribute(isEn ? "data-title-en" : "data-title-zh");
+        if (docTitle) document.title = docTitle;
+        document.querySelectorAll("[data-zh][data-en]").forEach(function (el) {
+          el.textContent = el.getAttribute(isEn ? "data-en" : "data-zh");
+        });
+      }
+      var params = new URLSearchParams(window.location.search);
+      var initLang = params.get("lang") || "zh-CN";
+      applyArtifactLang(initLang);
+      window.addEventListener("message", function (e) {
+        if (e.data && e.data.type === "siteflow:lang") {
+          applyArtifactLang(e.data.lang);
+        }
+      });
+    })();
+  </script>"""
+
     # 2. Project inside Space: Astro / Vite Dashboard
     proj_dir = config.data / "projects" / "cloud-console"
     proj_dir.mkdir(parents=True, exist_ok=True)
     (proj_dir / "index.html").write_text(
-        """<!DOCTYPE html>
-<html lang="zh-CN">
+        f"""<!DOCTYPE html>
+<html lang="zh-CN" data-title-zh="CloudMonitor 控制台" data-title-en="CloudMonitor Telemetry Console">
 <head>
   <meta charset="utf-8">
   <title>CloudMonitor 控制台</title>
   <style>
-    body { font-family: -apple-system, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 40px; }
-    .card { background: #1e293b; border-radius: 12px; padding: 24px; max-width: 600px; margin: 0 auto; border: 1px solid #334155; }
-    h1 { margin-top: 0; color: #38bdf8; }
-    .badge { display: inline-block; background: #0284c7; color: #fff; padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }
+    body {{ font-family: -apple-system, sans-serif; background: #0f172a; color: #f8fafc; margin: 0; padding: 40px; }}
+    .card {{ background: #1e293b; border-radius: 12px; padding: 24px; max-width: 600px; margin: 0 auto; border: 1px solid #334155; }}
+    h1 {{ margin-top: 12px; color: #38bdf8; }}
+    .badge {{ display: inline-block; background: #0284c7; color: #fff; padding: 4px 10px; border-radius: 99px; font-size: 12px; font-weight: 600; }}
   </style>
 </head>
 <body>
   <div class="card">
     <span class="badge">Vite + Astro v5</span>
-    <h1>CloudMonitor 实时遥测控制台</h1>
-    <p>集群健康状态良好，28 个微服务节点在线，响应延迟 12ms。</p>
+    <h1 data-zh="CloudMonitor 实时遥测控制台" data-en="CloudMonitor Live Telemetry Console">CloudMonitor 实时遥测控制台</h1>
+    <p data-zh="集群健康状态良好，28 个微服务节点在线，响应延迟 12ms。" data-en="Cluster health is optimal: 28 microservice nodes online, p95 latency 12ms.">集群健康状态良好，28 个微服务节点在线，响应延迟 12ms。</p>
   </div>
+{bilingual_script}
 </body>
 </html>""",
         encoding="utf-8",
@@ -84,33 +107,34 @@ def seed():
     pw_dir = config.data / "projects" / "playwright-e2e-report"
     pw_dir.mkdir(parents=True, exist_ok=True)
     (pw_dir / "index.html").write_text(
-        """<!DOCTYPE html>
-<html lang="zh-CN">
+        f"""<!DOCTYPE html>
+<html lang="zh-CN" data-title-zh="Playwright 自动化测试报告" data-title-en="Playwright E2E Regression Report">
 <head>
   <meta charset="utf-8">
   <title>Playwright 自动化测试报告</title>
   <style>
-    body { font-family: -apple-system, sans-serif; background: #0b0f19; color: #e2e8f0; margin: 0; padding: 40px; }
-    .container { max-width: 800px; margin: 0 auto; }
-    .stat-bar { display: flex; gap: 16px; margin: 20px 0; }
-    .stat { background: #1e293b; padding: 16px 24px; border-radius: 10px; flex: 1; border-left: 4px solid #10b981; }
-    .stat strong { font-size: 24px; color: #10b981; }
-    .test-row { background: #1e293b; padding: 12px 16px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+    body {{ font-family: -apple-system, sans-serif; background: #0b0f19; color: #e2e8f0; margin: 0; padding: 40px; }}
+    .container {{ max-width: 800px; margin: 0 auto; }}
+    .stat-bar {{ display: flex; gap: 16px; margin: 20px 0; }}
+    .stat {{ background: #1e293b; padding: 16px 24px; border-radius: 10px; flex: 1; border-left: 4px solid #10b981; }}
+    .stat strong {{ font-size: 24px; color: #10b981; }}
+    .test-row {{ background: #1e293b; padding: 12px 16px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; }}
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Playwright 全链路 E2E 自动化回归报告</h1>
-    <p>流水线构建 #10842 · 执行耗时 4m 12s · 浏览器引擎: Chromium 124</p>
+    <h1 data-zh="Playwright 全链路 E2E 自动化回归报告" data-en="Playwright Full-Stack E2E Regression Report">Playwright 全链路 E2E 自动化回归报告</h1>
+    <p data-zh="流水线构建 #10842 · 执行耗时 4m 12s · 浏览器引擎: Chromium 124" data-en="Pipeline Build #10842 · Duration 4m 12s · Browser Engine: Chromium 124">流水线构建 #10842 · 执行耗时 4m 12s · 浏览器引擎: Chromium 124</p>
     <div class="stat-bar">
-      <div class="stat"><span>通过用例</span><br><strong>142</strong></div>
-      <div class="stat" style="border-left-color: #38bdf8;"><span>跳过</span><br><strong style="color: #38bdf8;">3</strong></div>
-      <div class="stat" style="border-left-color: #ef4444;"><span>失败</span><br><strong style="color: #ef4444;">0</strong></div>
+      <div class="stat"><span data-zh="通过用例" data-en="Passed">通过用例</span><br><strong>142</strong></div>
+      <div class="stat" style="border-left-color: #38bdf8;"><span data-zh="跳过" data-en="Skipped">跳过</span><br><strong style="color: #38bdf8;">3</strong></div>
+      <div class="stat" style="border-left-color: #ef4444;"><span data-zh="失败" data-en="Failed">失败</span><br><strong style="color: #ef4444;">0</strong></div>
     </div>
-    <div class="test-row"><span>✓ 用户登录与二要素鉴权流程</span><span style="color:#10b981">通过 (820ms)</span></div>
-    <div class="test-row"><span>✓ 大文件分片上传与断点续传</span><span style="color:#10b981">通过 (1.4s)</span></div>
-    <div class="test-row"><span>✓ 跨租户数据隔离安全沙箱审计</span><span style="color:#10b981">通过 (640ms)</span></div>
+    <div class="test-row"><span data-zh="✓ 用户登录与二要素鉴权流程" data-en="✓ User Sign-In & 2FA Authentication Flow">✓ 用户登录与二要素鉴权流程</span><span style="color:#10b981" data-zh="通过 (820ms)" data-en="PASSED (820ms)">通过 (820ms)</span></div>
+    <div class="test-row"><span data-zh="✓ 大文件分片上传与断点续传" data-en="✓ Chunked File Upload & Resumable Transfer">✓ 大文件分片上传与断点续传</span><span style="color:#10b981" data-zh="通过 (1.4s)" data-en="PASSED (1.4s)">通过 (1.4s)</span></div>
+    <div class="test-row"><span data-zh="✓ 跨租户数据隔离安全沙箱审计" data-en="✓ Multi-Tenant CSP Sandbox Isolation Audit">✓ 跨租户数据隔离安全沙箱审计</span><span style="color:#10b981" data-zh="通过 (640ms)" data-en="PASSED (640ms)">通过 (640ms)</span></div>
   </div>
+{bilingual_script}
 </body>
 </html>""",
         encoding="utf-8",
@@ -131,13 +155,14 @@ def seed():
     api_dir = config.data / "projects" / "payment-api-docs"
     api_dir.mkdir(parents=True, exist_ok=True)
     (api_dir / "index.html").write_text(
-        """<!DOCTYPE html>
-<html>
-<head><title>Payment Gateway API</title><style>body { font-family: monospace; padding: 40px; background: #18181b; color: #fafafa; } .tag { color: #10b981; }</style></head>
+        f"""<!DOCTYPE html>
+<html lang="zh-CN" data-title-zh="Payment Gateway API 规范" data-title-en="Payment Gateway OpenAPI v3.1">
+<head><meta charset="utf-8"><title>Payment Gateway API</title><style>body {{ font-family: monospace; padding: 40px; background: #18181b; color: #fafafa; }} .tag {{ color: #10b981; font-weight: 700; }}</style></head>
 <body>
-  <h1>Payment Gateway OpenAPI v3.1</h1>
-  <p><span class="tag">POST</span> /v1/charges - 创建支付交易</p>
-  <p><span class="tag">GET</span> /v1/refunds - 查询退款流水</p>
+  <h1 data-zh="Payment Gateway OpenAPI v3.1 接口规范" data-en="Payment Gateway OpenAPI v3.1 Reference">Payment Gateway OpenAPI v3.1 接口规范</h1>
+  <p><span class="tag">POST</span> /v1/charges - <span data-zh="创建支付交易" data-en="Create a payment charge">创建支付交易</span></p>
+  <p><span class="tag">GET</span> /v1/refunds - <span data-zh="查询退款流水" data-en="List refund transactions">查询退款流水</span></p>
+{bilingual_script}
 </body>
 </html>""",
         encoding="utf-8",
@@ -157,13 +182,14 @@ def seed():
     secret_dir = config.data / "projects" / "q3-audit-dashboard"
     secret_dir.mkdir(parents=True, exist_ok=True)
     (secret_dir / "index.html").write_text(
-        """<!DOCTYPE html>
-<html>
-<head><title>2026 Q3 财务审计看板</title><style>body { font-family: sans-serif; padding: 40px; background: #0f172a; color: #fff; }</style></head>
+        f"""<!DOCTYPE html>
+<html lang="zh-CN" data-title-zh="2026 Q3 财务审计看板" data-title-en="2026 Q3 Financial Audit Dashboard">
+<head><meta charset="utf-8"><title>2026 Q3 财务审计看板</title><style>body {{ font-family: sans-serif; padding: 40px; background: #0f172a; color: #fff; }}</style></head>
 <body>
-  <h1>2026 第三季度财务审计与预算决算报告</h1>
-  <p style="color: #ef4444;">绝密文件：仅限审计委员会与公司高管查阅。</p>
-  <p>净利润率同比增长 28.4%，研发投入比 34.2%。</p>
+  <h1 data-zh="2026 第三季度财务审计与预算决算报告" data-en="2026 Q3 Financial Audit & Budget Report">2026 第三季度财务审计与预算决算报告</h1>
+  <p style="color: #ef4444;" data-zh="绝密文件：仅限审计委员会与公司高管查阅。" data-en="CONFIDENTIAL: Restricted to Audit Committee & Executive Leadership.">绝密文件：仅限审计委员会与公司高管查阅。</p>
+  <p data-zh="净利润率同比增长 28.4%，研发投入比 34.2%。" data-en="Net profit margin grew +28.4% YoY; R&D investment ratio at 34.2%.">净利润率同比增长 28.4%，研发投入比 34.2%。</p>
+{bilingual_script}
 </body>
 </html>""",
         encoding="utf-8",
@@ -195,7 +221,32 @@ def seed():
     neon_dir = config.data / "projects" / "2048-neon"
     neon_dir.mkdir(parents=True, exist_ok=True)
     (neon_dir / "index.html").write_text(
-        "<!DOCTYPE html><html><body style='background:#0f172a;color:#38bdf8;'><h1>2048 Neon</h1></body></html>",
+        f"""<!DOCTYPE html>
+<html lang="zh-CN" data-title-zh="2048 Neon 赛博朋克版" data-title-en="2048 Neon Cyberpunk Edition">
+<head>
+  <meta charset="utf-8">
+  <title>2048 Neon</title>
+  <style>
+    body {{ font-family: -apple-system, sans-serif; background: #090d16; color: #f8fafc; margin: 0; padding: 32px; text-align: center; }}
+    h1 {{ color: #38bdf8; margin: 0 0 8px; text-shadow: 0 0 14px rgba(56,189,248,.45); }}
+    p {{ color: #94a3b8; margin: 0 0 20px; font-size: 14px; }}
+    .board {{ display: grid; grid-template-columns: repeat(4, 68px); gap: 10px; justify-content: center; background: #1e293b; padding: 14px; border-radius: 14px; width: max-content; margin: 0 auto; border: 1px solid #334155; }}
+    .tile {{ width: 68px; height: 68px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 20px; background: #0f172a; color: #38bdf8; box-shadow: inset 0 0 10px rgba(56,189,248,.2); }}
+    .tile.hi {{ background: #0284c7; color: #fff; box-shadow: 0 0 14px rgba(56,189,248,.5); }}
+  </style>
+</head>
+<body>
+  <h1 data-zh="2048 Neon · 赛博矩阵" data-en="2048 Neon · Cyber Matrix">2048 Neon · 赛博矩阵</h1>
+  <p data-zh="使用方向键或滑动合并霓虹能量块 · 当前最高分: 16,480" data-en="Use arrow keys or swipe to merge neon tiles · Best Score: 16,480">使用方向键或滑动合并霓虹能量块 · 当前最高分: 16,480</p>
+  <div class="board">
+    <div class="tile">2</div><div class="tile">4</div><div class="tile">16</div><div class="tile hi">64</div>
+    <div class="tile"></div><div class="tile">8</div><div class="tile hi">128</div><div class="tile hi">512</div>
+    <div class="tile">4</div><div class="tile">32</div><div class="tile hi">256</div><div class="tile hi">2048</div>
+    <div class="tile">2</div><div class="tile"></div><div class="tile">8</div><div class="tile">16</div>
+  </div>
+{bilingual_script}
+</body>
+</html>""",
         encoding="utf-8",
     )
     proj_neon = Project(

@@ -76,6 +76,21 @@
     }
   }
 
+  function getCurrentLang() {
+    if (window.SiteFlowI18n && window.SiteFlowI18n.getLang) {
+      return window.SiteFlowI18n.getLang();
+    }
+    return document.documentElement.getAttribute("data-lang") || "zh";
+  }
+
+  function syncFrameLang(langOverride) {
+    if (!frame || !frame.contentWindow) return;
+    var lang = langOverride || getCurrentLang();
+    try {
+      frame.contentWindow.postMessage({ type: "siteflow:lang", lang: lang }, "*");
+    } catch (e) {}
+  }
+
   function openPreview(slug, title, type, triggerEl) {
     currentSlug = slug;
     var origZhTitle = "";
@@ -87,10 +102,13 @@
       rawTitle = window.SiteFlowI18n.toZhText(rawTitle);
     }
     titleEl.removeAttribute("data-i18n");
+    titleEl.setAttribute("data-i18n-auto", "");
     titleEl.setAttribute("data-zh-orig", rawTitle);
     titleEl.textContent = translateText(rawTitle);
     badgeEl.textContent = (type || "HTML").toUpperCase();
     var projectUrl = "/projects/" + slug + "/";
+    var langParam = getCurrentLang() === "en" ? "en" : "zh-CN";
+    var frameUrl = projectUrl + "?lang=" + encodeURIComponent(langParam);
     openLink.href = projectUrl;
     openLink.target = "_blank";
 
@@ -100,8 +118,9 @@
 
     frame.onload = function () {
       loader.hidden = true;
+      syncFrameLang();
     };
-    frame.src = projectUrl;
+    frame.src = frameUrl;
 
     modal.hidden = false;
     modal.setAttribute("aria-hidden", "false");
@@ -177,6 +196,17 @@
       } else {
         closePreview();
       }
+    }
+  });
+
+  window.addEventListener("siteflow:langchange", function (e) {
+    if (!modal.hidden) {
+      var nextLang = (e && e.detail && e.detail.lang) ? e.detail.lang : getCurrentLang();
+      var origZh = titleEl.getAttribute("data-zh-orig") || "";
+      if (origZh) {
+        titleEl.textContent = translateText(origZh);
+      }
+      syncFrameLang(nextLang);
     }
   });
 
