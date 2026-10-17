@@ -23,9 +23,24 @@
   var currentVp = "100%";
   var isRotated = false;
 
+  function t(key, fallback) {
+    if (window.SiteFlowI18n && window.SiteFlowI18n.t) {
+      return window.SiteFlowI18n.t(key);
+    }
+    return fallback || key;
+  }
+
+  function translateText(str) {
+    if (window.SiteFlowI18n && window.SiteFlowI18n.translateText) {
+      return window.SiteFlowI18n.translateText(str);
+    }
+    return str;
+  }
+
   function closeQr() {
     if (qrPopover) qrPopover.hidden = true;
     if (qrBackdrop) qrBackdrop.hidden = true;
+    if (qrToggle) qrToggle.classList.remove("is-open");
   }
 
   function setViewport(vp) {
@@ -63,7 +78,10 @@
 
   function openPreview(slug, title, type) {
     currentSlug = slug;
-    titleEl.textContent = title || slug;
+    var rawTitle = title || slug;
+    titleEl.removeAttribute("data-i18n");
+    titleEl.setAttribute("data-zh-orig", rawTitle);
+    titleEl.textContent = translateText(rawTitle);
     badgeEl.textContent = (type || "HTML").toUpperCase();
     var projectUrl = "/projects/" + slug + "/";
     openLink.href = projectUrl;
@@ -98,21 +116,25 @@
     }
     qrPopover.hidden = false;
     if (qrBackdrop) qrBackdrop.hidden = false;
+    if (qrToggle) {
+      qrToggle.classList.add("is-open");
+      if (qrToggle.blur) qrToggle.blur();
+    }
 
     var fullUrl = location.origin + "/projects/" + currentSlug + "/";
     qrUrlText.textContent = fullUrl;
-    qrImgWrap.innerHTML = '<div class="qr-loading">生成二维码中...</div>';
+    qrImgWrap.innerHTML = '<div class="qr-loading">' + t("preview.qr_loading", "生成二维码中...") + '</div>';
 
     fetch("/api/qrcode?url=" + encodeURIComponent(fullUrl))
       .then(function (res) {
-        if (!res.ok) throw new Error("二维码生成失败");
+        if (!res.ok) throw new Error(t("preview.qr_error", "二维码生成失败"));
         return res.text();
       })
       .then(function (svgHtml) {
         qrImgWrap.innerHTML = svgHtml;
       })
       .catch(function (err) {
-        qrImgWrap.innerHTML = '<div class="qr-error">' + (err.message || "无法加载") + '</div>';
+        qrImgWrap.innerHTML = '<div class="qr-error">' + (err.message || t("preview.qr_load_error", "无法加载")) + '</div>';
       });
   }
 

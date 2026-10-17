@@ -5,15 +5,20 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>登录 - {{ site_title }}</title>
   <link rel="stylesheet" href="/static/css/app.css">
+  <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 </head>
 <body class="login-body">
+  <div class="floating-top-actions">
+    <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
+  </div>
   <form class="login-card" method="post" action="/login">
-    <h1>{{ site_title }}</h1>
-    <input type="password" name="password" placeholder="管理员密码" required autofocus autocomplete="current-password">
+    <h1 data-i18n-auto>{{ site_title }}</h1>
+    <input type="password" name="password" placeholder="管理员密码" data-i18n-placeholder="login.password_placeholder" required autofocus autocomplete="current-password">
     <input type="hidden" name="csrf" value="{{ csrf }}">
     <input type="hidden" name="next" value="{{ next }}">
-    {% if error %}<p class="login-error">{{ error }}</p>{% endif %}
-    <button type="submit">登录</button>
+    {% if error %}<p class="login-error" data-i18n-auto>{{ error }}</p>{% endif %}
+    <button type="submit" data-i18n="login.submit">登录</button>
   </form>
+  <script src="/static/js/i18n.js" defer></script>
 </body>
 </html>

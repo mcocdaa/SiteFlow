@@ -14,16 +14,17 @@
   <header class="site-header">
     <div class="wrap row-between">
       <div>
-        <p class="crumbs"><a href="/admin">管理</a>{% if parent %} <span class="muted">/</span> <a href="/admin/projects/{{ parent.id }}">{{ parent.title }}</a>{% endif %} <span class="muted">/</span> <span>{{ project.title }}</span></p>
-        <p class="brand">{{ project.title }}</p>
-        {% if project.description %}<p class="tagline">{{ project.description }}</p>{% endif %}
+        <p class="crumbs"><a href="/admin" data-i18n="admin.crumb_admin">管理</a>{% if parent %} <span class="muted">/</span> <a href="/admin/projects/{{ parent.id }}" data-i18n-auto>{{ parent.title }}</a>{% endif %} <span class="muted">/</span> <span data-i18n-auto>{{ project.title }}</span></p>
+        <p class="brand" data-i18n-auto>{{ project.title }}</p>
+        {% if project.description %}<p class="tagline" data-i18n-auto>{{ project.description }}</p>{% endif %}
       </div>
       <div class="row-actions header-actions">
-        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索" aria-label="搜索">
+        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索" data-i18n-tip="common.search" aria-label="搜索" data-i18n-aria-label="common.search">
           {{ icons.icon("search", 16) }}
         </button>
-        <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}查看</a>
-        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}退出登录</button>
+        <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}<span data-i18n="row.view">查看</span></a>
+        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
+        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
       </div>
     </div>
   </header>
@@ -31,37 +32,37 @@
     {% if stats %}
     <section class="admin-stats-card">
       <div class="stats-col">
-        <span class="stats-label">今日访问</span>
+        <span class="stats-label" data-i18n="admin.stats_today">今日访问</span>
         <div class="stats-val"><strong>{{ stats.today_pv }}</strong> <span class="muted">PV</span> · <strong>{{ stats.today_uv }}</strong> <span class="muted">UV</span></div>
       </div>
       <div class="stats-col">
-        <span class="stats-label">7天总访问</span>
+        <span class="stats-label" data-i18n="admin.stats_7d">7天总访问</span>
         <div class="stats-val"><strong>{{ stats.total_pv_7d }}</strong> <span class="muted">PV</span> · <strong>{{ stats.total_uv_7d }}</strong> <span class="muted">UV</span></div>
       </div>
-      <div class="stats-col stats-chart" title="过去 7 天 PV 趋势">
-        <span class="stats-label">7天趋势</span>
+      <div class="stats-col stats-chart" title="过去 7 天 PV 趋势" data-i18n-title="admin.stats_trend_tip">
+        <span class="stats-label" data-i18n="admin.stats_trend">7天趋势</span>
         {{ stats.sparkline_svg | safe }}
       </div>
     </section>
     {% endif %}
 
     {% if project.type == 'space' %}
-    <h2 class="section-title">空间独立主题定制</h2>
+    <h2 class="section-title" data-i18n="theme.section_title">空间独立主题定制</h2>
     <section class="plugin-block theme-block" id="space-theme-section">
       <div class="block-head">
-        <h2>外观与视觉风格</h2>
-        <span class="muted">定制此空间的独立强调色、字体风格与卡片圆角</span>
+        <h2 data-i18n="theme.head_title">外观与视觉风格</h2>
+        <span class="muted" data-i18n="theme.head_sub">定制此空间的独立强调色、字体风格与卡片圆角</span>
       </div>
       <div class="theme-grid">
         <div class="theme-field">
-          <label>强调色 (Accent Color)</label>
+          <label data-i18n="theme.label_accent">强调色 (Accent Color)</label>
           <div class="color-swatches" id="color-swatches">
-            <button type="button" class="swatch" style="--c: #4f46e5;" data-color="#4f46e5" title="经典靛蓝"></button>
-            <button type="button" class="swatch" style="--c: #0284c7;" data-color="#0284c7" title="极客天蓝"></button>
-            <button type="button" class="swatch" style="--c: #10b981;" data-color="#10b981" title="自然翡翠"></button>
-            <button type="button" class="swatch" style="--c: #f59e0b;" data-color="#f59e0b" title="温暖琥珀"></button>
-            <button type="button" class="swatch" style="--c: #f43f5e;" data-color="#f43f5e" title="现代玫瑰"></button>
-            <button type="button" class="swatch" style="--c: #8b5cf6;" data-color="#8b5cf6" title="极光紫"></button>
+            <button type="button" class="swatch" style="--c: #4f46e5;" data-color="#4f46e5" title="经典靛蓝" data-i18n-title="theme.swatch_indigo"></button>
+            <button type="button" class="swatch" style="--c: #0284c7;" data-color="#0284c7" title="极客天蓝" data-i18n-title="theme.swatch_sky"></button>
+            <button type="button" class="swatch" style="--c: #10b981;" data-color="#10b981" title="自然翡翠" data-i18n-title="theme.swatch_emerald"></button>
+            <button type="button" class="swatch" style="--c: #f59e0b;" data-color="#f59e0b" title="温暖琥珀" data-i18n-title="theme.swatch_amber"></button>
+            <button type="button" class="swatch" style="--c: #f43f5e;" data-color="#f43f5e" title="现代玫瑰" data-i18n-title="theme.swatch_rose"></button>
+            <button type="button" class="swatch" style="--c: #8b5cf6;" data-color="#8b5cf6" title="极光紫" data-i18n-title="theme.swatch_violet"></button>
           </div>
           <div class="color-input-wrap">
             <input type="color" id="theme-accent-picker" value="{{ space_theme.accent if space_theme and space_theme.accent else '#4f46e5' }}">
@@ -70,94 +71,95 @@
         </div>
 
         <div class="theme-field">
-          <label>字体风格 (Typography)</label>
+          <label data-i18n="theme.label_font">字体风格 (Typography)</label>
           <select id="theme-font">
-            <option value="" {% if not space_theme or not space_theme.font_family %}selected{% endif %}>默认无衬线 (System Sans)</option>
-            <option value="sans" {% if space_theme and space_theme.font_family == 'sans' %}selected{% endif %}>现代无衬线 (Modern Sans)</option>
-            <option value="serif" {% if space_theme and space_theme.font_family == 'serif' %}selected{% endif %}>典雅衬线 (Elegant Serif)</option>
-            <option value="mono" {% if space_theme and space_theme.font_family == 'mono' %}selected{% endif %}>极客等宽 (Tech Monospace)</option>
+            <option value="" data-i18n="theme.font_default" {% if not space_theme or not space_theme.font_family %}selected{% endif %}>默认无衬线 (System Sans)</option>
+            <option value="sans" data-i18n="theme.font_sans" {% if space_theme and space_theme.font_family == 'sans' %}selected{% endif %}>现代无衬线 (Modern Sans)</option>
+            <option value="serif" data-i18n="theme.font_serif" {% if space_theme and space_theme.font_family == 'serif' %}selected{% endif %}>典雅衬线 (Elegant Serif)</option>
+            <option value="mono" data-i18n="theme.font_mono" {% if space_theme and space_theme.font_family == 'mono' %}selected{% endif %}>极客等宽 (Tech Monospace)</option>
           </select>
         </div>
 
         <div class="theme-field">
-          <label>卡片圆角 (Card Border Radius)</label>
+          <label data-i18n="theme.label_radius">卡片圆角 (Card Border Radius)</label>
           <select id="theme-radius">
-            <option value="" {% if not space_theme or not space_theme.radius_card %}selected{% endif %}>默认圆角 (14px)</option>
-            <option value="0px" {% if space_theme and space_theme.radius_card == '0px' %}selected{% endif %}>直角锐利 (0px)</option>
-            <option value="6px" {% if space_theme and space_theme.radius_card == '6px' %}selected{% endif %}>微圆角 (6px)</option>
-            <option value="10px" {% if space_theme and space_theme.radius_card == '10px' %}selected{% endif %}>适中圆角 (10px)</option>
-            <option value="14px" {% if space_theme and space_theme.radius_card == '14px' %}selected{% endif %}>现代圆角 (14px)</option>
-            <option value="20px" {% if space_theme and space_theme.radius_card == '20px' %}selected{% endif %}>圆润大圆角 (20px)</option>
+            <option value="" data-i18n="theme.radius_default" {% if not space_theme or not space_theme.radius_card %}selected{% endif %}>默认圆角 (14px)</option>
+            <option value="0px" data-i18n="theme.radius_0" {% if space_theme and space_theme.radius_card == '0px' %}selected{% endif %}>直角锐利 (0px)</option>
+            <option value="6px" data-i18n="theme.radius_6" {% if space_theme and space_theme.radius_card == '6px' %}selected{% endif %}>微圆角 (6px)</option>
+            <option value="10px" data-i18n="theme.radius_10" {% if space_theme and space_theme.radius_card == '10px' %}selected{% endif %}>适中圆角 (10px)</option>
+            <option value="14px" data-i18n="theme.radius_14" {% if space_theme and space_theme.radius_card == '14px' %}selected{% endif %}>现代圆角 (14px)</option>
+            <option value="20px" data-i18n="theme.radius_20" {% if space_theme and space_theme.radius_card == '20px' %}selected{% endif %}>圆润大圆角 (20px)</option>
           </select>
         </div>
       </div>
       <div class="theme-actions mt-3">
-        <button type="button" class="btn primary" id="save-theme-btn">{{ icons.icon("check") }}保存空间主题</button>
+        <button type="button" class="btn primary" id="save-theme-btn">{{ icons.icon("check") }}<span data-i18n="theme.save_btn">保存空间主题</span></button>
         <span class="theme-save-tip muted" id="theme-save-tip"></span>
       </div>
     </section>
     {% endif %}
 
     {% if not plugin_leaf %}
-    <h2 class="section-title">添加内容</h2>
+    <h2 class="section-title" data-i18n="admin.section_add_content">添加内容</h2>
     <section class="dropzone" id="dropzone">
       <div class="dropzone-idle" id="dropzone-idle">
         <span class="dropzone-icon">{{ icons.icon("upload", 28) }}</span>
-        <p><strong>拖拽 HTML 或 ZIP 到这里</strong></p>
-        <p class="muted">添加到「{{ project.title }}」 · 也可以在下方添加外链 / 新建子应用</p>
+        <p><strong data-i18n="admin.drop_title">拖拽 HTML 或 ZIP 到这里</strong></p>
+        <p class="muted" data-i18n="admin.drop_sub_space">添加到「{{ project.title }}」 · 也可以在下方添加外链 / 新建子应用</p>
       </div>
       <div class="dropzone-stages" id="dropzone-stages" hidden>
         <div class="stage-flow">
           <div class="stage-step" data-step="1">
             <span class="step-num">1</span>
-            <span class="step-text">上传</span>
+            <span class="step-text" data-i18n="admin.step_upload">上传</span>
           </div>
           <span class="step-arrow">➔</span>
           <div class="stage-step" data-step="2">
             <span class="step-num">2</span>
-            <span class="step-text">安全沙箱审计</span>
+            <span class="step-text" data-i18n="admin.step_audit">安全沙箱审计</span>
           </div>
           <span class="step-arrow">➔</span>
           <div class="stage-step" data-step="3">
             <span class="step-num">3</span>
-            <span class="step-text">解压与嗅探</span>
+            <span class="step-text" data-i18n="admin.step_extract">解压与嗅探</span>
           </div>
           <span class="step-arrow">➔</span>
           <div class="stage-step" data-step="4">
             <span class="step-num">4</span>
-            <span class="step-text">就绪</span>
+            <span class="step-text" data-i18n="admin.step_ready">就绪</span>
           </div>
         </div>
         <div class="stage-progress">
           <div class="stage-progress-bar" id="stage-progress-bar" style="width: 0%;"></div>
         </div>
-        <p class="stage-status-msg" id="stage-status-msg">准备上传...</p>
+        <p class="stage-status-msg" id="stage-status-msg" data-i18n="admin.stage_prep">准备上传...</p>
       </div>
       <input type="file" id="file-input" accept=".html,.htm,.zip" hidden>
     </section>
     <section class="link-row">
-      <input type="url" id="link-url" placeholder="https://example.com 链接">
-      <button class="btn primary" data-action="add-link">{{ icons.icon("plus") }}添加链接</button>
+      <input type="url" id="link-url" placeholder="https://example.com 链接" data-i18n-placeholder="admin.link_placeholder">
+      <button class="btn primary" data-action="add-link">{{ icons.icon("plus") }}<span data-i18n="admin.add_link">添加链接</span></button>
     </section>
     {% if can_nest %}
-    <h2 class="section-title">应用</h2>
+    <h2 class="section-title" data-i18n="admin.section_apps">应用</h2>
     <section class="app-create">
       {% for app in app_choices %}
-      <button class="btn" data-action="create-app" data-type="{{ app.type }}">{{ icons.icon(app.icon) }}新建{{ app.label }}</button>
+      <button class="btn" data-action="create-app" data-type="{{ app.type }}">{{ icons.icon(app.icon) }}<span data-i18n="admin.new_{{ app.type }}">新建{{ app.label }}</span></button>
       {% endfor %}
     </section>
     {% endif %}
     {{ rows.rows(children, plugin_types) }}
     {% else %}
     <section class="info-panel">
-      <p>「{{ project.title }}」暂无可编辑内容。</p>
-      <p class="muted">插件应用可按插件提供的内容编辑器扩展。</p>
-      <p><a class="btn" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}打开应用</a></p>
+      <p><span data-i18n-auto>{{ project.title }}</span> <span data-i18n="admin.plugin_no_content">暂无可编辑内容。</span></p>
+      <p class="muted" data-i18n="admin.plugin_ext_hint">插件应用可按插件提供的内容编辑器扩展。</p>
+      <p><a class="btn" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}<span data-i18n="admin.open_app">打开应用</span></a></p>
     </section>
     {% endif %}
   </main>
   {% include "_preview_modal.html" %}
   {% include "_command_palette.html" %}
+  <script src="/static/js/i18n.js" defer></script>
   <script src="/static/js/preview.js" defer></script>
   <script src="/static/js/palette.js" defer></script>
   <script src="/static/js/admin.js" defer></script>

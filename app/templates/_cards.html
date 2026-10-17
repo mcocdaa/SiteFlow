@@ -17,17 +17,17 @@
         {% if project.type in app_icons %}{{ icons.icon(app_icons[project.type], 12) }}{% endif %}
         {{ project.type | upper }}
       </span>
-      {% if project.password_hash %}<span class="card-lock" title="受密码保护">{{ icons.icon("lock", 13) }}</span>{% endif %}
+      {% if project.password_hash %}<span class="card-lock" title="受密码保护" data-i18n-title="card.locked">{{ icons.icon("lock", 13) }}</span>{% endif %}
       {% if project.type not in ('link', 'space') %}
-      <button type="button" class="card-preview-btn" data-action="quick-preview" data-slug="{{ project.slug }}" data-title="{{ project.title }}" data-type="{{ project.type }}" data-tip="视口预览" aria-label="视口预览">
+      <button type="button" class="card-preview-btn" data-action="quick-preview" data-slug="{{ project.slug }}" data-title="{{ project.title }}" data-type="{{ project.type }}" data-tip="视口预览" data-i18n-tip="card.preview" aria-label="视口预览" data-i18n-aria-label="card.preview">
         {{ icons.icon("maximize", 14) }}
       </button>
       {% endif %}
-      {% if project.pinned %}<span class="pin" title="置顶">{{ icons.icon("pin", 14) }}</span>{% endif %}
+      {% if project.pinned %}<span class="pin" title="置顶" data-i18n-title="card.pinned">{{ icons.icon("pin", 14) }}</span>{% endif %}
     </div>
     <div class="card-body">
-      <h3>{{ project.title }}</h3>
-      {% if project.description %}<p>{{ project.description }}</p>{% endif %}
+      <h3 data-i18n-auto>{{ project.title }}</h3>
+      {% if project.description %}<p data-i18n-auto>{{ project.description }}</p>{% endif %}
     </div>
   </a>
   {% endfor %}

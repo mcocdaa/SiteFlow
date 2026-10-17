@@ -31,15 +31,16 @@
   <header class="site-header">
     <div class="wrap row-between">
       <div>
-        <p class="crumbs"><a href="/">{{ site_title }}</a> <span class="muted">/</span> <span>{{ project.title }}</span></p>
-        <a class="brand" href="/projects/{{ project.slug }}/">{{ project.title }}</a>
-        {% if project.description %}<p class="tagline">{{ project.description }}</p>{% endif %}
+        <p class="crumbs"><a href="/" data-i18n-auto>{{ site_title }}</a> <span class="muted">/</span> <span data-i18n-auto>{{ project.title }}</span></p>
+        <a class="brand" href="/projects/{{ project.slug }}/" data-i18n-auto>{{ project.title }}</a>
+        {% if project.description %}<p class="tagline" data-i18n-auto>{{ project.description }}</p>{% endif %}
       </div>
       <div class="header-actions">
-        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索" aria-label="搜索">
+        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索" data-i18n-tip="common.search" aria-label="搜索" data-i18n-aria-label="common.search">
           {{ icons.icon("search", 16) }}
         </button>
-        <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" aria-label="管理入口">{{ icons.icon("settings") }}</a>
+        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
+        <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings") }}</a>
       </div>
     </div>
   </header>
@@ -48,8 +49,8 @@
     {{ cards.cards(projects, hue) }}
     {% else %}
     <div class="empty">
-      <h2>这个空间还是空的</h2>
-      <p>{% if is_admin %}去管理台添加内容吧。{% else %}稍后再来看看。{% endif %}</p>
+      <h2 data-i18n="space.empty_title">这个空间还是空的</h2>
+      <p>{% if is_admin %}<span data-i18n="space.empty_admin">去管理台添加内容吧。</span>{% else %}<span data-i18n="space.empty_guest">稍后再来看看。</span>{% endif %}</p>
     </div>
     {% endif %}
   </main>
@@ -58,6 +59,7 @@
   </footer>
   {% include "_preview_modal.html" %}
   {% include "_command_palette.html" %}
+  <script src="/static/js/i18n.js" defer></script>
   <script src="/static/js/preview.js" defer></script>
   <script src="/static/js/palette.js" defer></script>
 </body>

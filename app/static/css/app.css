@@ -350,6 +350,11 @@ main.wrap { padding: 28px 24px 72px; }
   transform: none;
 }
 
+#preview-qr-toggle.is-open::after,
+#preview-qr-toggle.is-open::before {
+  opacity: 0 !important;
+}
+
 .editor .field { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); }
 .file-picker { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .file-button {
@@ -394,6 +399,28 @@ main.wrap { padding: 28px 24px 72px; }
 .plugin-block input, .plugin-block textarea, .plugin-block select {
   padding: 9px 12px; border: 1px solid var(--border); border-radius: var(--radius-btn);
   background: var(--bg); color: var(--text); font-size: 14px; font-family: inherit; width: 100%; resize: vertical;
+  transition: border-color .15s, box-shadow .15s;
+}
+.plugin-block select {
+  appearance: none;
+  -webkit-appearance: none;
+  padding-right: 36px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239aa1ac' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 11px center;
+  cursor: pointer;
+}
+.plugin-block select:hover, .plugin-block input:hover {
+  border-color: var(--border-hover);
+}
+.plugin-block select:focus, .plugin-block input:focus, .plugin-block textarea:focus {
+  outline: 2px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  outline-offset: 1px;
+  border-color: var(--accent);
+}
+.plugin-block select option {
+  background: var(--surface);
+  color: var(--text);
 }
 .stack { margin-top: 12px; }
 .entry-card { border: 1px solid var(--border); border-radius: var(--radius-btn); padding: 14px; margin-bottom: 12px; background: var(--bg); }
@@ -1386,4 +1413,43 @@ main.wrap { padding: 28px 24px 72px; }
   letter-spacing: .05em;
   opacity: .5;
   white-space: nowrap;
+}
+.hint-text {
+  font-style: normal;
+}
+
+/* Bilingual Toggle Button & Floating Actions */
+.lang-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  height: 36px;
+  padding: 0 11px;
+  border-radius: var(--radius-btn);
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 600;
+  font-family: inherit;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  flex-shrink: 0;
+  transition: all .15s ease;
+}
+.lang-toggle-btn:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--bg-hover);
+}
+.floating-top-actions {
+  position: fixed;
+  top: 20px;
+  right: 24px;
+  z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }

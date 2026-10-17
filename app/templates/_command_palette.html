@@ -1,19 +1,19 @@
 {% import "icons.html" as icons %}
-<div id="cmd-palette" class="palette-overlay" hidden aria-hidden="true" role="dialog" aria-label="全局命令与搜索">
+<div id="cmd-palette" class="palette-overlay" hidden aria-hidden="true" role="dialog" aria-label="全局命令与搜索" data-i18n-aria-label="palette.aria_label">
   <div class="palette-card">
     <div class="palette-header">
       <span class="palette-search-icon">{{ icons.icon("search", 18) }}</span>
-      <input id="palette-input" type="text" placeholder="搜索项目、空间或快捷命令..." autocomplete="off" spellcheck="false" autofocus>
-      <button type="button" class="palette-close-btn" id="palette-close" aria-label="关闭搜索">{{ icons.icon("x", 16) }}</button>
+      <input id="palette-input" type="text" placeholder="搜索项目、空间或快捷命令..." data-i18n-placeholder="palette.placeholder" autocomplete="off" spellcheck="false" autofocus>
+      <button type="button" class="palette-close-btn" id="palette-close" aria-label="关闭搜索" data-i18n-aria-label="palette.close">{{ icons.icon("x", 16) }}</button>
     </div>
     <div class="palette-body" id="palette-results" role="listbox">
       <!-- Dynamically filled by palette.js -->
     </div>
     <div class="palette-footer">
       <div class="palette-hints">
-        <span><kbd class="kbd-arrow">{{ icons.icon("arrow-up", 11) }}</kbd><kbd class="kbd-arrow">{{ icons.icon("arrow-down", 11) }}</kbd> 导航</span>
-        <span><kbd>Enter</kbd> 打开</span>
-        <span><kbd>ESC</kbd> 关闭</span>
+        <span><kbd class="kbd-arrow">{{ icons.icon("arrow-up", 11) }}</kbd><kbd class="kbd-arrow">{{ icons.icon("arrow-down", 11) }}</kbd> <em class="hint-text" data-i18n="palette.hint_nav">导航</em></span>
+        <span><kbd>Enter</kbd> <em class="hint-text" data-i18n="palette.hint_open">打开</em></span>
+        <span><kbd>ESC</kbd> <em class="hint-text" data-i18n="palette.hint_close">关闭</em></span>
       </div>
       <div class="palette-brand">SiteFlow</div>
     </div>

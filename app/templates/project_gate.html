@@ -5,27 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>访问受限 - {{ project.title }} - {{ site_title }}</title>
   <link rel="stylesheet" href="/static/css/app.css">
+  <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 </head>
 <body class="login-body">
   {% import "icons.html" as icons %}
+  <div class="floating-top-actions">
+    <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
+  </div>
   <div class="login-card gate-card">
     <div class="gate-icon-wrapper">
       {{ icons.icon("lock", 32) }}
     </div>
-    <h1>{{ project.title }}</h1>
-    <p class="tagline text-center">此作品已设置访问密码保护</p>
+    <h1 data-i18n-auto>{{ project.title }}</h1>
+    <p class="tagline text-center" data-i18n="gate.subtitle">此作品已设置访问密码保护</p>
 
     {% if error %}
-    <p class="login-error text-center">{{ error }}</p>
+    <p class="login-error text-center" data-i18n-auto>{{ error }}</p>
     {% endif %}
 
     <form method="post" action="/projects/{{ project.slug }}/unlock" class="gate-form">
-      <input type="password" name="password" placeholder="请输入访问密码" required autofocus>
-      <button type="submit" class="btn primary btn-block">{{ icons.icon("check") }}解锁并访问</button>
+      <input type="password" name="password" placeholder="请输入访问密码" data-i18n-placeholder="gate.password_placeholder" required autofocus>
+      <button type="submit" class="btn primary btn-block">{{ icons.icon("check") }}<span data-i18n="gate.unlock_btn">解锁并访问</span></button>
     </form>
     <p class="text-center mt-2">
-      <a href="/" class="muted-link">{{ icons.icon("arrow-left", 14) }}返回画廊首页</a>
+      <a href="/" class="muted-link">{{ icons.icon("arrow-left", 14) }}<span data-i18n="gate.back_home">返回画廊首页</span></a>
     </p>
   </div>
+  <script src="/static/js/i18n.js" defer></script>
 </body>
 </html>

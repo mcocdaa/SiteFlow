@@ -12,37 +12,64 @@
   var items = [];
   var debounceTimer = null;
 
-  var systemCommands = [
-    {
-      id: "cmd-theme",
-      title: "切换外观模式 (浅色 / 暗色)",
-      description: "在暗夜黑与清爽白外观之间无缝切换",
-      type: "action",
-      action: function () {
-        var isDark = document.documentElement.getAttribute("data-theme") === "dark" ||
-          (!document.documentElement.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
-        var nextTheme = isDark ? "light" : "dark";
-        document.documentElement.setAttribute("data-theme", nextTheme);
-        try {
-          localStorage.setItem("sf_theme", nextTheme);
-        } catch (e) {}
-      }
-    },
-    {
-      id: "cmd-gallery",
-      title: "返回画廊首页",
-      description: "浏览聚合展示的所有静态作品与空间",
-      type: "nav",
-      url: "/"
-    },
-    {
-      id: "cmd-admin",
-      title: "进入管理控制台",
-      description: "上传作品、配置空间主题与查看访问统计",
-      type: "nav",
-      url: "/admin"
+  function t(key, fallback) {
+    if (window.SiteFlowI18n && window.SiteFlowI18n.t) {
+      return window.SiteFlowI18n.t(key);
     }
-  ];
+    return fallback || key;
+  }
+
+  function translateText(str) {
+    if (window.SiteFlowI18n && window.SiteFlowI18n.translateText) {
+      return window.SiteFlowI18n.translateText(str);
+    }
+    return str;
+  }
+
+  function getSystemCommands() {
+    return [
+      {
+        id: "cmd-theme",
+        title: t("palette.cmd_theme_title", "切换外观模式 (浅色 / 暗色)"),
+        description: t("palette.cmd_theme_desc", "在暗夜黑与清爽白外观之间无缝切换"),
+        type: "action",
+        action: function () {
+          var isDark = document.documentElement.getAttribute("data-theme") === "dark" ||
+            (!document.documentElement.getAttribute("data-theme") && window.matchMedia("(prefers-color-scheme: dark)").matches);
+          var nextTheme = isDark ? "light" : "dark";
+          document.documentElement.setAttribute("data-theme", nextTheme);
+          try {
+            localStorage.setItem("sf_theme", nextTheme);
+          } catch (e) {}
+        }
+      },
+      {
+        id: "cmd-lang",
+        title: t("palette.cmd_lang_title", "切换界面语言 (中文 / EN)"),
+        description: t("palette.cmd_lang_desc", "在中文与英文界面之间即时切换"),
+        type: "action",
+        action: function () {
+          if (window.SiteFlowI18n && window.SiteFlowI18n.toggleLang) {
+            window.SiteFlowI18n.toggleLang();
+          }
+        }
+      },
+      {
+        id: "cmd-gallery",
+        title: t("palette.cmd_gallery_title", "返回画廊首页"),
+        description: t("palette.cmd_gallery_desc", "浏览聚合展示的所有静态作品与空间"),
+        type: "nav",
+        url: "/"
+      },
+      {
+        id: "cmd-admin",
+        title: t("palette.cmd_admin_title", "进入管理控制台"),
+        description: t("palette.cmd_admin_desc", "上传作品、配置空间主题与查看访问统计"),
+        type: "nav",
+        url: "/admin"
+      }
+    ];
+  }
 
   // Restore saved theme on load
   try {
@@ -74,13 +101,13 @@
   function renderList() {
     resultsBox.innerHTML = "";
     if (items.length === 0) {
-      resultsBox.innerHTML = '<div class="palette-empty">无匹配结果，尝试更换搜索关键词</div>';
+      resultsBox.innerHTML = '<div class="palette-empty">' + escapeHtml(t("palette.empty", "无匹配结果，尝试更换搜索关键词")) + '</div>';
       return;
     }
 
     var currentGroup = "";
     items.forEach(function (item, idx) {
-      var groupName = item.group || (item.type === "action" || item.type === "nav" ? "快捷操作" : "空间与作品");
+      var groupName = item.group || (item.type === "action" || item.type === "nav" ? t("palette.group_actions", "快捷操作") : t("palette.group_projects", "空间与作品"));
       if (groupName !== currentGroup) {
         currentGroup = groupName;
         var groupEl = document.createElement("div");
@@ -95,18 +122,22 @@
       el.setAttribute("data-index", idx);
 
       var typeBadge = item.type.toUpperCase();
+      var dispTitle = translateText(item.title);
+      var dispSpace = item.space ? translateText(item.space) : "";
+      var dispDesc = item.description ? translateText(item.description) : "";
+
       var metaHtml = "";
-      if (item.space) {
-        metaHtml += '<span class="palette-space-tag">' + escapeHtml(item.space) + '</span>';
+      if (dispSpace) {
+        metaHtml += '<span class="palette-space-tag">' + escapeHtml(dispSpace) + '</span>';
       }
-      if (item.description) {
-        metaHtml += '<span class="palette-item-desc">' + escapeHtml(item.description) + '</span>';
+      if (dispDesc) {
+        metaHtml += '<span class="palette-item-desc">' + escapeHtml(dispDesc) + '</span>';
       }
 
       el.innerHTML =
         '<div class="palette-item-main">' +
           '<div class="palette-item-title">' +
-            '<span>' + escapeHtml(item.title) + '</span>' +
+            '<span>' + escapeHtml(dispTitle) + '</span>' +
             '<span class="palette-badge palette-badge-' + item.type + '">' + typeBadge + '</span>' +
           '</div>' +
           (metaHtml ? '<div class="palette-item-meta">' + metaHtml + '</div>' : '') +
@@ -139,7 +170,8 @@
 
   function fetchResults(query) {
     var q = query.trim().toLowerCase();
-    var filteredCmds = systemCommands.filter(function (cmd) {
+    var sysCmds = getSystemCommands();
+    var filteredCmds = sysCmds.filter(function (cmd) {
       return !q || cmd.title.toLowerCase().indexOf(q) !== -1 || cmd.description.toLowerCase().indexOf(q) !== -1;
     });
 
@@ -171,6 +203,12 @@
       location.href = item.url;
     }
   }
+
+  window.addEventListener("siteflow:langchange", function () {
+    if (!overlay.hidden) {
+      fetchResults(input.value);
+    }
+  });
 
   // Keyboard navigation inside palette
   input.addEventListener("keydown", function (e) {

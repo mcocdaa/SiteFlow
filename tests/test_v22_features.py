@@ -357,3 +357,48 @@ def test_headless_bearer_api_and_idempotent_deploy() -> None:
         assert "复制 API 密钥" in admin_html
         assert f'data-token="{token}"' in admin_html
         assert "curl -X PUT" not in admin_html
+
+
+def test_bilingual_i18n_assets_and_toggle_controls() -> None:
+    with TestClient(app) as client:
+        # 1. Verify /static/js/i18n.js serves the bilingual dictionary and SiteFlowI18n API
+        i18n_js = client.get("/static/js/i18n.js")
+        assert i18n_js.status_code == 200
+        assert "siteflow_lang" in i18n_js.text
+        assert "SiteFlowI18n" in i18n_js.text
+        assert "Space Theme Customizer" in i18n_js.text
+        assert "LAN QR Preview" in i18n_js.text
+
+        # 2. Verify #lang-toggle-btn and i18n.js on public gallery and login pages
+        gallery_html = client.get("/").text
+        assert 'id="lang-toggle-btn"' in gallery_html
+        assert "/static/js/i18n.js" in gallery_html
+        assert "data-i18n=" in gallery_html
+
+        login_html = client.get("/login").text
+        assert 'id="lang-toggle-btn"' in login_html
+        assert "/static/js/i18n.js" in login_html
+
+        # 3. Verify #lang-toggle-btn and data-i18n on admin, space, and space detail pages
+        csrf = login(client)
+        admin_html = client.get("/admin").text
+        assert 'id="lang-toggle-btn"' in admin_html
+        assert 'data-i18n="admin.copy_api_key"' in admin_html
+        assert 'data-i18n="admin.new_space"' in admin_html
+
+        space_resp = client.post(
+            "/api/admin/projects/app",
+            json={"type": "space", "title": "双语测试空间"},
+            headers=auth_headers(csrf),
+        )
+        assert space_resp.status_code == 200
+        space_proj = space_resp.json()["project"]
+
+        space_admin_html = client.get(f"/admin/projects/{space_proj['id']}").text
+        assert 'id="lang-toggle-btn"' in space_admin_html
+        assert 'data-i18n="theme.section_title"' in space_admin_html
+        assert 'data-i18n="theme.save_btn"' in space_admin_html
+
+        space_pub_html = client.get(f"/projects/{space_proj['slug']}/").text
+        assert 'id="lang-toggle-btn"' in space_pub_html
+        assert "/static/js/i18n.js" in space_pub_html
