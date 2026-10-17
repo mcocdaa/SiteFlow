@@ -32,8 +32,10 @@ jobs:
           cache: pip
       - run: pip install -r requirements-dev.txt
       - run: pytest -q
-      - run: ruff check app tests
+      - run: ruff check .
+      - run: ruff format --check .
       - run: mypy app tests
+      - run: node --check app/static/js/*.js
 
   publish:
     name: Publish image to GHCR
