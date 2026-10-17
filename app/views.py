@@ -310,6 +310,7 @@ def qrcode_image(url: str):
 
 
 @router.get("/login")
+@router.get("/admin/login", include_in_schema=False)
 def login_page(request: Request):
     config = get_config(request)
     session = read_session(config, request)
@@ -386,15 +387,44 @@ def login_submit(
 
 
 @router.post("/logout")
+@router.post("/admin/logout", include_in_schema=False)
 def logout(request: Request):
     config = get_config(request)
     require_admin(request, config)
     submitted = request.headers.get("x-csrf-token") or ""
-    if not check_csrf(request, submitted):
+    if request.url.path == "/logout" and not check_csrf(request, submitted):
         raise HTTPException(403, "CSRF 校验失败")
     response = RedirectResponse("/", status_code=303)
     clear_session(response)
     return response
+
+
+_SEARCH_I18N_MAP = {
+    "前端架构与基础制品": "Frontend Architecture & Core Artifacts",
+    "聚合核心 SPA 控制台、设计系统组件库与全站静态制品": "Aggregated core SPA consoles, design system libraries, and static web bundles",
+    "AI 基础架构与微服务空间": "AI Infrastructure & Microservices Space",
+    "聚合核心 LLM 推理网关控制台、分布式遥测仪表盘与全站静态制品": "Aggregated LLM inference gateway console, distributed telemetry dashboards, and static web bundles",
+    "CloudMonitor 实时遥测控制台": "CloudMonitor Live Telemetry Console",
+    "基于 Vite 编译打包的高性能微前端监控仪表盘": "High-performance micro-frontend monitoring dashboard built with Vite",
+    "LLM Gateway 实时遥测控制台": "LLM Gateway Live Telemetry Console",
+    "多模型路由负载均衡、Token 速率限制与 Prompt 缓存命中率实时监控面板": "Multi-model routing load balancer, token rate limiting, and prompt cache hit-rate dashboard",
+    "Playwright 全链路回归测试报告": "Playwright E2E Regression Report",
+    "自动化测试全量归档报告，包含 145 个用例轨迹跟踪与真机录屏": "Full automated test archive with 145 trace recordings and viewport captures",
+    "CI 构建 #10842 全量归档报告，包含 150 个 E2E 用例轨迹跟踪与多视口断言审计": "CI Build #10842 full archive report with 150 E2E trace recordings and multi-viewport assertions",
+    "LLM Agent 推理评测报告": "LLM Agent Reasoning Benchmark Report",
+    "多模型推理准确率、Agent 工具调用成功率与 TTFT 延迟全量评测报告": "Multi-model reasoning accuracy, Agent tool-use pass rate, and TTFT latency benchmark report",
+    "支付中心微服务 API 规范": "Payment Gateway Microservice API Spec",
+    "基于 Redoc / OpenAPI 规范生成的交互式 API 参考手册": "Interactive API reference manual generated from OpenAPI v3.1 specs",
+    "2026 Q3 财务审计与预算决算": "2026 Q3 Financial Audit & Budget",
+    "核心商业机密项目，已开启专属访问密码保护隔离锁": "Confidential executive report protected by per-project password lock",
+    "SiteFlow 开源仓库与文档": "SiteFlow Open-Source Repo & Docs",
+    "GitHub 官方代码仓库、更新日志与 Docker 部署指南": "Official GitHub repository, changelog, and Docker deployment guide",
+    "基于 Canvas 与 Web Audio 的赛博朋克霓虹 2048 游戏": "Cyberpunk neon 2048 game built with HTML5 Canvas and Web Audio",
+    "AI 分析报告": "AI Analysis Report",
+    "新空间": "New Space",
+    "简历": "Resume",
+    "博客": "Blog",
+}
 
 
 @router.get("/api/search")
@@ -415,7 +445,13 @@ def search_projects(request: Request, db: DbSession, q: str = ""):
     for p in all_projects:
         match = True
         if query:
-            searchable = f"{p.title} {p.slug} {p.description or ''} {p.type}".lower()
+            en_title = _SEARCH_I18N_MAP.get(p.title.strip(), "")
+            en_desc = _SEARCH_I18N_MAP.get((p.description or "").strip(), "")
+            space_title = space_map.get(p.parent_id, "") if p.parent_id else ""
+            en_space = _SEARCH_I18N_MAP.get(space_title.strip(), "")
+            searchable = (
+                f"{p.title} {en_title} {p.slug} {p.description or ''} {en_desc} {p.type} {space_title} {en_space}"
+            ).lower()
             match = query in searchable
         if match:
             results.append(

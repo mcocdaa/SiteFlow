@@ -3,7 +3,11 @@
 <section class="list" id="project-list">
   {% for project in projects %}
   <div class="row" data-id="{{ project.id }}" data-slug="{{ project.slug }}" data-title="{{ project.title }}" data-type="{{ project.type }}">
-    <img class="thumb" src="{% if project.cover %}/media/covers/{{ project.cover }}{% else %}/media/placeholder/{{ project.slug }}.svg{% endif %}" alt="">
+    {% if project.cover %}
+    <img class="thumb" src="/media/covers/{{ project.cover }}" alt="">
+    {% else %}
+    {{ svg_cover(project.slug, project.title, project.type, "thumb") | safe }}
+    {% endif %}
     <div class="row-main">
       <div class="row-title-wrap">
         <strong data-i18n-auto>{{ project.title }}</strong>

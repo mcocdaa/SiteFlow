@@ -402,3 +402,89 @@ def test_bilingual_i18n_assets_and_toggle_controls() -> None:
         space_pub_html = client.get(f"/projects/{space_proj['slug']}/").text
         assert 'id="lang-toggle-btn"' in space_pub_html
         assert "/static/js/i18n.js" in space_pub_html
+
+        # 4. Verify Round 3 audit additions in i18n.js, preview.js, admin.js, and _admin_rows.html
+        for expected in (
+            '"简历": "Resume"',
+            '"博客": "Blog"',
+            '"已经在边界": "Already at the boundary"',
+            '"标题不能为空": "Title cannot be empty"',
+            '"未找到该项目": "Project not found"',
+            '"简": "R"',
+            '"博": "B"',
+            '"新": "N"',
+            "toZhText",
+        ):
+            assert expected in i18n_js.text
+
+        preview_js = client.get("/static/js/preview.js").text
+        assert "data-zh-title-orig" in preview_js
+        assert "data-zh-orig" in preview_js
+
+        admin_js = client.get("/static/js/admin.js").text
+        assert "SiteFlowI18n.translateText(data.error)" in admin_js
+
+        # Verify inline SVG cover in /admin rows
+        admin_rows_html = client.get("/admin").text
+        assert 'class="cover-svg thumb"' in admin_rows_html
+
+        # 5. Verify English search queries match Chinese seeded titles
+        fin_resp = client.post(
+            "/api/admin/projects/app",
+            json={"type": "space", "title": "2026 Q3 财务审计与预算决算"},
+            headers=auth_headers(csrf),
+        )
+        assert fin_resp.status_code == 200
+        search_en = client.get("/api/search?q=Financial").json()
+        assert any(it["title"] == "2026 Q3 财务审计与预算决算" for it in search_en)
+
+        # 6. Verify all 5 plugin templates (resume, resume_admin, blog, blog_admin, blog_post) have i18n & toggle
+        resume_resp = client.post(
+            "/api/admin/projects/app",
+            json={"type": "resume", "title": "简历"},
+            headers=auth_headers(csrf),
+        )
+        assert resume_resp.status_code == 200
+        resume_proj = resume_resp.json()["project"]
+
+        resume_pub = client.get(f"/projects/{resume_proj['slug']}/").text
+        assert "/static/js/i18n.js" in resume_pub
+        assert 'id="lang-toggle-btn"' in resume_pub
+        assert 'data-i18n="resume.print_pdf"' in resume_pub
+
+        resume_adm = client.get(f"/admin/projects/{resume_proj['id']}").text
+        assert "/static/js/i18n.js" in resume_adm
+        assert 'id="lang-toggle-btn"' in resume_adm
+        assert 'data-i18n="resume.basic_info"' in resume_adm
+        assert "/admin/logout" in resume_adm
+
+        blog_resp = client.post(
+            "/api/admin/projects/app",
+            json={"type": "blog", "title": "博客"},
+            headers=auth_headers(csrf),
+        )
+        assert blog_resp.status_code == 200
+        blog_proj = blog_resp.json()["project"]
+        client.patch(
+            f"/api/admin/projects/{blog_proj['id']}",
+            json={
+                "content": '{"title":"技术博客","description":"架构笔记","posts":[{"slug":"hello","title":"第一篇","date":"2026-10-17","tags":["AI"],"summary":"摘要","body":"正文内容"}]}'
+            },
+            headers=auth_headers(csrf),
+        )
+
+        blog_pub = client.get(f"/projects/{blog_proj['slug']}/").text
+        assert "/static/js/i18n.js" in blog_pub
+        assert 'id="lang-toggle-btn"' in blog_pub
+        assert 'data-i18n="blog.read_more"' in blog_pub
+
+        blog_post_pub = client.get(f"/projects/{blog_proj['slug']}/posts/hello").text
+        assert "/static/js/i18n.js" in blog_post_pub
+        assert 'id="lang-toggle-btn"' in blog_post_pub
+        assert 'data-i18n="blog.back_to_list"' in blog_post_pub
+
+        blog_adm = client.get(f"/admin/projects/{blog_proj['id']}").text
+        assert "/static/js/i18n.js" in blog_adm
+        assert 'id="lang-toggle-btn"' in blog_adm
+        assert 'data-i18n="blog.info_title"' in blog_adm
+        assert "/admin/logout" in blog_adm

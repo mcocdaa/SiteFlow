@@ -168,6 +168,24 @@
     });
   }
 
+  function matchesProjectQuery(p, q) {
+    if (!q) return true;
+    var dispTitle = translateText(p.title || "");
+    var dispDesc = translateText(p.description || "");
+    var dispSpace = translateText(p.space || "");
+    var haystack = [
+      p.title || "",
+      dispTitle,
+      p.slug || "",
+      p.description || "",
+      dispDesc,
+      p.type || "",
+      p.space || "",
+      dispSpace
+    ].join(" ").toLowerCase();
+    return haystack.indexOf(q) !== -1;
+  }
+
   function fetchResults(query) {
     var q = query.trim().toLowerCase();
     var sysCmds = getSystemCommands();
@@ -179,6 +197,16 @@
       .then(function (res) {
         if (!res.ok) return [];
         return res.json();
+      })
+      .then(function (projects) {
+        if (q && projects.length === 0) {
+          return fetch("/api/search?q=")
+            .then(function (r) { return r.ok ? r.json() : []; })
+            .then(function (allProjects) {
+              return allProjects.filter(function (p) { return matchesProjectQuery(p, q); });
+            });
+        }
+        return projects;
       })
       .then(function (projects) {
         items = filteredCmds.concat(projects);

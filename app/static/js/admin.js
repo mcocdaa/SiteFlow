@@ -20,7 +20,8 @@
     return fetch("/api/admin" + path, options).then(function (response) {
       return response.json().then(function (data) {
         if (!response.ok || data.ok === false) {
-          throw new Error(data.error || t("js.req_failed", null, "请求失败"));
+          var rawErr = data.error ? (window.SiteFlowI18n ? window.SiteFlowI18n.translateText(data.error) : data.error) : t("js.req_failed", null, "请求失败");
+          throw new Error(rawErr);
         }
         return data;
       });
@@ -29,7 +30,13 @@
 
   function refresh() { location.reload(); }
 
-  function onError(error) { alert(error.message || String(error)); }
+  function onError(error) {
+    var msg = (error && error.message) ? error.message : String(error);
+    if (window.SiteFlowI18n && window.SiteFlowI18n.translateText) {
+      msg = window.SiteFlowI18n.translateText(msg);
+    }
+    alert(msg);
+  }
 
   var dropzone = document.getElementById("dropzone");
   var fileInput = document.getElementById("file-input");
@@ -114,7 +121,10 @@
     xhr.onload = function () {
       try {
         var data = JSON.parse(xhr.responseText);
-        if (xhr.status >= 400 || data.ok === false) throw new Error(data.error || t("js.upload_failed", null, "上传失败"));
+        if (xhr.status >= 400 || data.ok === false) {
+          var upErr = data.error ? (window.SiteFlowI18n ? window.SiteFlowI18n.translateText(data.error) : data.error) : t("js.upload_failed", null, "上传失败");
+          throw new Error(upErr);
+        }
         setStage(4, 100, t("js.upload_done", null, "制品安全就绪！正在同步画廊..."));
         setTimeout(refresh, 500);
       } catch (error) {
