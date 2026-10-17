@@ -26,13 +26,13 @@
       {% for post in posts %}
       <li class="post-item">
         <a class="post-link" href="/projects/{{ project.slug }}/posts/{{ post.slug }}">
-          <h2>{{ post.title }}</h2>
+          <h2 data-i18n-auto>{{ post.title }}</h2>
           <p class="post-meta">
             {% if post.date %}<span>{{ post.date }}</span>{% endif %}
-            {% for tag in post.tags %}<span class="chip">{{ tag }}</span>{% endfor %}
+            {% for tag in post.tags %}<span class="chip" data-i18n-auto>{{ tag }}</span>{% endfor %}
             {% if post.body %}<span class="post-length">{{ post.body | length }} <span data-i18n="blog.chars_unit">字</span></span>{% endif %}
           </p>
-          {% if post.summary %}<p class="post-summary">{{ post.summary }}</p>{% endif %}
+          {% if post.summary %}<p class="post-summary" data-i18n-auto>{{ post.summary }}</p>{% endif %}
           <span class="post-more"><span data-i18n="blog.read_more">阅读全文</span>{{ icons.icon("arrow-right", 14) }}</span>
         </a>
       </li>

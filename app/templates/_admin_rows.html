@@ -31,8 +31,8 @@
       <button class="btn danger icon-btn" data-action="delete" data-tip="删除" data-i18n-tip="row.delete" aria-label="删除" data-i18n-aria-label="row.delete">{{ icons.icon("trash") }}</button>
     </div>
     <div class="editor" hidden>
-      <label><span data-i18n="row.label_title">标题</span> <input name="title" value="{{ project.title }}"></label>
-      <label><span data-i18n="row.label_desc">描述</span> <input name="description" value="{{ project.description }}"></label>
+      <label><span data-i18n="row.label_title">标题</span> <input name="title" value="{{ project.title }}" data-i18n-auto-val></label>
+      <label><span data-i18n="row.label_desc">描述</span> <input name="description" value="{{ project.description }}" data-i18n-auto-val></label>
       {% if project.type == 'link' %}<label><span data-i18n="row.label_url">链接</span> <input name="url" value="{{ project.url }}"></label>{% endif %}
       <label>
         <span class="label-text">

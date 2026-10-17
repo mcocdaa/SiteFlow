@@ -27,16 +27,16 @@
     <section class="plugin-block">
       <h2 data-i18n="resume.basic_info">基本信息</h2>
       <div class="editor-grid">
-        <label><span data-i18n="resume.field_name">姓名</span> <input id="f-name" autocomplete="off"></label>
-        <label><span data-i18n="resume.field_label">职位 / 头衔</span> <input id="f-label" autocomplete="off"></label>
+        <label><span data-i18n="resume.field_name">姓名</span> <input id="f-name" autocomplete="off" data-i18n-auto-val></label>
+        <label><span data-i18n="resume.field_label">职位 / 头衔</span> <input id="f-label" autocomplete="off" data-i18n-auto-val></label>
         <label><span data-i18n="resume.field_email">邮箱</span> <input id="f-email" type="email" autocomplete="off"></label>
         <label><span data-i18n="resume.field_phone">电话</span> <input id="f-phone" autocomplete="off"></label>
         <label><span data-i18n="resume.field_url">网站</span> <input id="f-url" placeholder="https://..." autocomplete="off"></label>
-        <label><span data-i18n="resume.field_city">城市</span> <input id="f-city" autocomplete="off"></label>
-        <label><span data-i18n="resume.field_region">地区</span> <input id="f-region" autocomplete="off"></label>
+        <label><span data-i18n="resume.field_city">城市</span> <input id="f-city" autocomplete="off" data-i18n-auto-val></label>
+        <label><span data-i18n="resume.field_region">地区</span> <input id="f-region" autocomplete="off" data-i18n-auto-val></label>
         <label><span data-i18n="resume.field_country">国家代码</span> <input id="f-countryCode" placeholder="CN" autocomplete="off"></label>
       </div>
-      <label class="stack"><span data-i18n="resume.field_summary">简介</span> <textarea id="f-summary" rows="3"></textarea></label>
+      <label class="stack"><span data-i18n="resume.field_summary">简介</span> <textarea id="f-summary" rows="3" data-i18n-auto-val></textarea></label>
       <label class="stack"><span data-i18n="resume.field_links">链接（每行一条：名称|https://...）</span><textarea id="f-links" rows="3" placeholder="GitHub|https://github.com/me"></textarea></label>
     </section>
     {% for section_key, section_title in [("work", "工作经历"), ("education", "教育经历"), ("projects", "项目"), ("skills", "技能")] %}
@@ -131,6 +131,7 @@
       input.value = fieldValue(entry, field[0], field[3]);
       input.setAttribute("data-field", field[0]);
       input.setAttribute("data-kind", field[3]);
+      input.setAttribute("data-i18n-auto-val", "");
       label.append(input);
       grid.append(label);
     });
@@ -143,6 +144,9 @@
     (state[section] || []).forEach(function (entry, index) {
       container.append(renderEntry(section, entry, index));
     });
+    if (window.SiteFlowI18n && window.SiteFlowI18n.applyI18n) {
+      window.SiteFlowI18n.applyI18n();
+    }
   }
   function loadBasics() {
     var basics = state.basics || {};

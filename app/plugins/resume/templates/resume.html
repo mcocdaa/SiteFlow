@@ -23,14 +23,14 @@
       {% if avatar %}<img class="resume-avatar" src="/media/covers/{{ avatar }}" alt="">{% endif %}
       <div>
         <h1 data-i18n-auto>{{ resume.basics.name or project.title }}</h1>
-        {% if resume.basics.label %}<p class="resume-label">{{ resume.basics.label }}</p>{% endif %}
-        {% if resume.basics.summary %}<p class="resume-summary">{{ resume.basics.summary }}</p>{% endif %}
+        {% if resume.basics.label %}<p class="resume-label" data-i18n-auto>{{ resume.basics.label }}</p>{% endif %}
+        {% if resume.basics.summary %}<p class="resume-summary" data-i18n-auto>{{ resume.basics.summary }}</p>{% endif %}
         <ul class="resume-contact">
           {% if resume.basics.email %}<li>{{ icons.icon("mail", 14) }}<a href="mailto:{{ resume.basics.email }}">{{ resume.basics.email }}</a></li>{% endif %}
           {% if resume.basics.phone %}<li>{{ icons.icon("phone", 14) }}<span>{{ resume.basics.phone }}</span></li>{% endif %}
           {% if resume.basics.url %}<li>{{ icons.icon("globe", 14) }}<a href="{{ resume.basics.url }}" target="_blank" rel="noopener">{{ resume.basics.url }}</a></li>{% endif %}
           {% set loc = resume.basics.location %}
-          {% if loc.city or loc.region %}<li>{{ icons.icon("map-pin", 14) }}<span>{{ loc.city }}{% if loc.region %} · {{ loc.region }}{% endif %}</span></li>{% endif %}
+          {% if loc.city or loc.region %}<li>{{ icons.icon("map-pin", 14) }}<span><span data-i18n-auto>{{ loc.city }}</span>{% if loc.region %} · <span data-i18n-auto>{{ loc.region }}</span>{% endif %}</span></li>{% endif %}
           {% for profile in resume.basics.profiles %}{% if profile.url %}<li>{{ icons.icon("link", 14) }}<a href="{{ profile.url }}" target="_blank" rel="noopener">{{ profile.network or profile.username or profile.url }}</a></li>{% endif %}{% endfor %}
         </ul>
       </div>
@@ -43,7 +43,7 @@
       {% if section_key == "skills" %}
       <ul class="skill-list">
         {% for item in resume[section_key] %}
-        <li><strong>{{ item.name }}</strong>{% for kw in item.keywords %}<span class="chip">{{ kw }}</span>{% endfor %}</li>
+        <li><strong data-i18n-auto>{{ item.name }}</strong>{% for kw in item.keywords %}<span class="chip" data-i18n-auto>{{ kw }}</span>{% endfor %}</li>
         {% endfor %}
       </ul>
       {% else %}
@@ -51,19 +51,19 @@
       <article class="resume-entry">
         <div class="resume-entry-head">
           <strong>
-            {% if section_key == "work" %}{{ item.position }}{% if item.position and item.name %} · {% endif %}{{ item.name }}
-            {% elif section_key == "education" %}{{ item.institution }}{% if item.area %} · {{ item.area }}{% endif %}
-            {% else %}{{ item.name }}{% endif %}
+            {% if section_key == "work" %}<span data-i18n-auto>{{ item.position }}</span>{% if item.position and item.name %} · {% endif %}<span data-i18n-auto>{{ item.name }}</span>
+            {% elif section_key == "education" %}<span data-i18n-auto>{{ item.institution }}</span>{% if item.area %} · <span data-i18n-auto>{{ item.area }}</span>{% endif %}
+            {% else %}<span data-i18n-auto>{{ item.name }}</span>{% endif %}
           </strong>
           <span class="muted">
-            {% if section_key == "work" %}{{ item.startDate }}{% if item.startDate and item.endDate %} - {% endif %}{{ item.endDate }}
-            {% elif section_key == "education" %}{{ item.studyType }}{% if item.studyType and (item.startDate or item.endDate) %} · {% endif %}{{ item.startDate }}{% if item.startDate and item.endDate %} - {% endif %}{{ item.endDate }}{% endif %}
+            {% if section_key == "work" %}<span data-i18n-auto>{{ item.startDate }}</span>{% if item.startDate and item.endDate %} - {% endif %}<span data-i18n-auto>{{ item.endDate }}</span>
+            {% elif section_key == "education" %}<span data-i18n-auto>{{ item.studyType }}</span>{% if item.studyType and (item.startDate or item.endDate) %} · {% endif %}<span data-i18n-auto>{{ item.startDate }}</span>{% if item.startDate and item.endDate %} - {% endif %}<span data-i18n-auto>{{ item.endDate }}</span>{% endif %}
           </span>
         </div>
-        {% if item.summary %}<p>{{ item.summary }}</p>{% endif %}
-        {% if item.description %}<p>{{ item.description }}</p>{% endif %}
-        {% if item.highlights %}<ul>{% for line in item.highlights %}<li>{{ line }}</li>{% endfor %}</ul>{% endif %}
-        {% if item.keywords %}<p>{% for kw in item.keywords %}<span class="chip">{{ kw }}</span>{% endfor %}</p>{% endif %}
+        {% if item.summary %}<p data-i18n-auto>{{ item.summary }}</p>{% endif %}
+        {% if item.description %}<p data-i18n-auto>{{ item.description }}</p>{% endif %}
+        {% if item.highlights %}<ul>{% for line in item.highlights %}<li data-i18n-auto>{{ line }}</li>{% endfor %}</ul>{% endif %}
+        {% if item.keywords %}<p>{% for kw in item.keywords %}<span class="chip" data-i18n-auto>{{ kw }}</span>{% endfor %}</p>{% endif %}
         {% if item.url %}<p><a href="{{ item.url }}" target="_blank" rel="noopener">{{ item.url }}</a></p>{% endif %}
       </article>
       {% endfor %}

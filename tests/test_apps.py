@@ -390,3 +390,16 @@ def test_plugin_pages_show_admin_entry() -> None:
 
         post_page = client.get(f"/projects/{blog['slug']}/posts/p1")
         assert f'href="/admin/projects/{blog["id"]}"' in post_page.text
+
+        # Friendly redirects for /p/{slug}/admin and /p/{slug}/post/{post_slug}
+        r_res_admin = client.get(f"/p/{resume['slug']}/admin", follow_redirects=False)
+        assert r_res_admin.status_code == 302
+        assert r_res_admin.headers["location"] == f"/admin/projects/{resume['id']}"
+
+        r_blog_admin = client.get(f"/p/{blog['slug']}/admin", follow_redirects=False)
+        assert r_blog_admin.status_code == 302
+        assert r_blog_admin.headers["location"] == f"/admin/projects/{blog['id']}"
+
+        r_singular_post = client.get(f"/p/{blog['slug']}/post/p1", follow_redirects=False)
+        assert r_singular_post.status_code == 302
+        assert r_singular_post.headers["location"] == f"/projects/{blog['slug']}/posts/p1"

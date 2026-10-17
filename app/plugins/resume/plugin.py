@@ -1,7 +1,7 @@
 import json
 
 from fastapi import Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
 from app.models import Project
@@ -133,6 +133,8 @@ class ResumeApp:
         return validate_content(raw)
 
     def route(self, request: Request, project: Project, path: str, db: Session):
+        if path.strip("/") == "admin":
+            return RedirectResponse(f"/admin/projects/{project.id}", status_code=302)
         return None
 
     def render(self, request: Request, project: Project, db: Session) -> HTMLResponse:

@@ -2,7 +2,7 @@ import json
 import re
 
 from fastapi import Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse
 from markdown_it import MarkdownIt
 from sqlalchemy.orm import Session
 
@@ -91,6 +91,12 @@ class BlogApp:
         return validate_content(raw)
 
     def route(self, request: Request, project: Project, path: str, db: Session):
+        clean = path.strip("/")
+        if clean == "admin":
+            return RedirectResponse(f"/admin/projects/{project.id}", status_code=302)
+        if clean.startswith("post/"):
+            post_slug = clean[len("post/") :].strip("/")
+            return RedirectResponse(f"/projects/{project.slug}/posts/{post_slug}", status_code=302)
         if not path.startswith("posts/"):
             return None
         slug = path[len("posts/") :].strip("/")
