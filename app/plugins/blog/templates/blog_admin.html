@@ -27,8 +27,8 @@
     <section class="plugin-block">
       <h2 data-i18n="blog.info_title">博客信息</h2>
       <div class="editor-grid">
-        <label><span data-i18n="row.label_title">标题</span> <input id="f-title" autocomplete="off"></label>
-        <label><span data-i18n="row.label_desc">描述</span> <input id="f-description" autocomplete="off"></label>
+        <label><span data-i18n="row.label_title">标题</span> <input id="f-title" autocomplete="off" data-i18n-auto-val></label>
+        <label><span data-i18n="row.label_desc">描述</span> <input id="f-description" autocomplete="off" data-i18n-auto-val></label>
       </div>
     </section>
     <section class="plugin-block" data-section="posts">
@@ -103,6 +103,7 @@
     var head = el("div", "entry-head");
     var untitledText = tr("blog.untitled", null, "（未命名）");
     var title = el("span", "entry-title", post.title || untitledText);
+    title.setAttribute("data-i18n-auto", "");
     var toggle = el("button", "btn ghost icon-btn entry-toggle");
     toggle.type = "button";
     var toggleKey = expanded ? "blog.collapse" : "blog.expand";
@@ -155,11 +156,15 @@
       input.value = valueOf(post, field[0], field[3]);
       input.setAttribute("data-field", field[0]);
       input.setAttribute("data-kind", field[3]);
+      if (field[0] !== "slug" && field[0] !== "date") {
+        input.setAttribute("data-i18n-auto-val", "");
+      }
       label.append(input);
       grid.append(label);
     });
     grid.querySelector('[data-field="title"]').addEventListener("input", function (event) {
       title.textContent = event.target.value.trim() || tr("blog.untitled", null, "（未命名）");
+      title.removeAttribute("data-zh-orig");
     });
     card.append(grid);
     return card;
@@ -171,6 +176,9 @@
       container.append(renderPost(post, index, index === expandedIndex));
     });
     document.getElementById("post-count").textContent = String((state.posts || []).length);
+    if (window.SiteFlowI18n && window.SiteFlowI18n.applyI18n) {
+      window.SiteFlowI18n.applyI18n();
+    }
   }
   function collectPosts() {
     var rows = [];
@@ -248,6 +256,12 @@
       var card = toggle.closest(".entry-card");
       card.classList.toggle("collapsed");
       var collapsed = card.classList.contains("collapsed");
+      var cardIdx = parseInt(card.getAttribute("data-index"), 10);
+      if (!collapsed) {
+        expandedIndex = cardIdx;
+      } else if (expandedIndex === cardIdx) {
+        expandedIndex = -1;
+      }
       toggle.innerHTML = collapsed ? ICONS.expand : ICONS.collapse;
       var tText = tr(collapsed ? "blog.expand" : "blog.collapse", null, collapsed ? "展开" : "折叠");
       toggle.setAttribute("aria-label", tText);

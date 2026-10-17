@@ -71,6 +71,8 @@
       "admin.drop_title": "拖拽 HTML 或 ZIP 到这里",
       "admin.drop_sub": "或点击选择文件 · 也可以在下方添加外链 / 新建应用",
       "admin.drop_sub_space": "或点击选择文件 · 也可以在下方添加外链 / 新建子应用",
+      "admin.drop_sub_space_prefix": "添加到「",
+      "admin.drop_sub_space_suffix": "」 · 也可以在下方添加外链 / 新建子应用",
       "admin.step_upload": "上传",
       "admin.step_audit": "安全沙箱审计",
       "admin.step_extract": "解压与嗅探",
@@ -145,7 +147,7 @@
       "js.upload_done": "制品安全就绪！正在同步画廊...",
       "js.network_error": "网络错误，上传中断",
       "js.theme_saved": "✓ 空间主题已保存生效",
-      "js.new_space_default": "新空间",
+      "js.new_space_default": "新建空间",
       "js.api_copied": "已复制密钥",
       "js.confirm_clear_pwd": "确定清除此作品的访问密码？清除后任何人均可公开直接访问。",
       "js.cover_failed": "封面上传失败",
@@ -277,6 +279,8 @@
       "admin.drop_title": "Drop HTML or ZIP here",
       "admin.drop_sub": "Or click to browse files · Add external links or create apps below",
       "admin.drop_sub_space": "Or click to browse files · Add external links or sub-apps below",
+      "admin.drop_sub_space_prefix": "Add to \"",
+      "admin.drop_sub_space_suffix": "\" · Or add external links / sub-apps below",
       "admin.step_upload": "Upload",
       "admin.step_audit": "Security Audit",
       "admin.step_extract": "Extract & Inspect",
@@ -443,10 +447,63 @@
     "GitHub 官方代码仓库、更新日志与 Docker 部署指南": "Official GitHub repository, changelog, and Docker deployment guide",
     "基于 Canvas 与 Web Audio 的赛博朋克霓虹 2048 游戏": "Cyberpunk neon 2048 game built with HTML5 Canvas and Web Audio",
     "AI 分析报告": "AI Analysis Report",
+    "新建空间": "New Space",
     "新空间": "New Space",
     "简历": "Resume",
     "博客": "Blog",
     "未命名作品": "Untitled Project",
+    "林深 · 首席系统架构师简历": "Lin Shen · Principal Systems Architect Resume",
+    "12 年分布式系统、云原生沙箱与高并发微服务架构设计经验": "12+ years in distributed systems, cloud-native sandboxes, and high-concurrency microservices",
+    "林深": "Lin Shen",
+    "首席系统架构师": "Principal Systems Architect",
+    "专注于大规模分布式系统、安全沙箱隔离引擎与高吞吐微服务网关架构，主导过多款开源云原生基础设施产品。": "Focused on large-scale distributed systems, secure sandbox isolation engines, and high-throughput microservice gateways.",
+    "上海": "Shanghai",
+    "中国": "China",
+    "星云科技": "Nebula Tech",
+    "至今": "Present",
+    "负责下一代多租户云原生制品托管与零信任安全沙箱平台架构设计。": "Architected the next-generation multi-tenant cloud-native artifact hosting and zero-trust sandbox platform.",
+    "主导设计零信任 CSP 沙箱与 ZipBomb 防御引擎，日均拦截 10 万+ 异常制品上传": "Architected zero-trust CSP sandbox and ZipBomb defense engine blocking 100k+ anomalous uploads daily",
+    "构建高并发边缘静态分发网关，将全球 P99 响应延迟从 48ms 降至 9ms": "Built high-concurrency edge static delivery gateway reducing global P99 latency from 48ms to 9ms",
+    "极光云基础设施": "Aurora Cloud Infrastructure",
+    "高级分布式系统工程师": "Senior Distributed Systems Engineer",
+    "核心参与容器调度网络与分布式遥测存储引擎研发。": "Core contributor to container scheduling networking and distributed telemetry storage engine.",
+    "研发高吞吐时序遥测聚合管道，支撑每秒 500 万指标写入与亚秒级查询": "Developed high-throughput time-series telemetry pipeline supporting 5M metrics/sec ingestion and sub-second queries",
+    "上海交通大学": "Shanghai Jiao Tong University",
+    "计算机科学与技术": "Computer Science & Technology",
+    "硕士": "M.S.",
+    "SiteFlow 安全沙箱制品引擎": "SiteFlow Sandboxed Artifact Engine",
+    "零构建、内联 SVG 视觉封面与单进程 SQLite WAL 驱动的静态制品托管画廊。": "Zero-build static artifact gallery powered by procedural SVG covers and single-process SQLite WAL.",
+    "实现多编码嗅探转码、流式解压审计与空间独立主题定制系统": "Implemented multi-encoding sniffing, streaming extraction auditing, and per-space theme customization",
+    "系统架构与后端": "Systems Architecture & Backend",
+    "分布式系统": "Distributed Systems",
+    "云原生与安全隔离": "Cloud Native & Security Isolation",
+    "CSP 沙箱": "CSP Sandbox",
+    "零信任架构": "Zero-Trust Architecture",
+    "系统架构与工程实践专栏": "Systems Architecture & Engineering Blog",
+    "关于零信任静态托管、安全沙箱隔离与现代前端工程化的深度技术笔记": "In-depth technical notes on zero-trust static hosting, sandbox isolation, and modern frontend engineering",
+    "为什么现代静态制品托管需要零信任 CSP 沙箱与流式审计": "Why Modern Artifact Hosting Needs Zero-Trust CSP Sandboxes & Streaming Audits",
+    "架构": "Architecture",
+    "安全沙箱": "Security Sandbox",
+    "工程实践": "Engineering",
+    "深入剖析多租户 HTML 与 ZIP 制品托管中的 XSS 隔离、ZipBomb 防御以及编码自愈机制。": "Deep dive into XSS isolation, ZipBomb defense, and encoding auto-healing in multi-tenant HTML and ZIP hosting.",
+    "在托管第三方或 CI 流水线自动生成的静态 HTML 制品时，传统的静态文件服务器往往面临两大核心风险：跨站脚本执行（XSS）污染主站会话与恶意压缩包（ZipBomb / 路径穿越）耗尽磁盘资源。": "When hosting third-party or CI-generated static HTML artifacts, traditional static file servers face two core risks: cross-site scripting (XSS) polluting the main session and malicious archives (ZipBombs / path traversal) exhausting disk resources.",
+    "1. 严格的 CSP Sandbox 隔离": "1. Strict CSP Sandbox Isolation",
+    "### 1. 严格的 CSP Sandbox 隔离": "### 1. Strict CSP Sandbox Isolation",
+    "通过为静态制品响应头注入独立的 Content-Security-Policy 沙箱策略，我们可以在允许制品内部交互脚本正常运行的同时，阻断其对主站 Cookie 与管理员会话的读取权限。": "By injecting an isolated Content-Security-Policy sandbox header on artifact responses, interactive scripts inside artifacts run normally while being blocked from reading main-site cookies or admin sessions.",
+    "2. 流式解压与膨胀比审计": "2. Streaming Extraction & Expansion Ratio Auditing",
+    "### 2. 流式解压与膨胀比审计": "### 2. Streaming Extraction & Expansion Ratio Auditing",
+    "在解压阶段对单文件膨胀比、总解压字节数与目录 Inode 上限进行实时熔断校验，确保任何异常压缩包在落盘前即被安全拦截。": "Real-time circuit-breaker checks on single-file expansion ratios, total extracted bytes, and inode limits during extraction ensure anomalous archives are safely blocked before hitting disk.",
+    "单机十万级并发读写的 SQLite WAL 调优实践": "Tuning SQLite WAL for 100k+ Concurrent Reads and Writes on a Single Node",
+    "数据库": "Database",
+    "性能优化": "Performance",
+    "无需引入沉重的外部数据库集群，通过 WAL 模式与内存映射实现微秒级元数据检索与 PV/UV 统计。": "Achieving microsecond metadata queries and PV/UV analytics with SQLite WAL and mmap without heavy external DB clusters.",
+    "对于轻量级自托管平台而言，维护独立的外部数据库实例往往带来额外的运维负担。通过合理配置 SQLite 的 WAL 日志模式与同步级别，单机即可轻松支撑高并发读与高频统计写入。": "For lightweight self-hosted platforms, maintaining external DB clusters adds operational overhead. With proper SQLite WAL mode and sync settings, a single node easily handles high-concurrency reads and analytics writes.",
+    "核心调优参数": "Core Tuning Parameters",
+    "### 核心调优参数": "### Core Tuning Parameters",
+    "开启 WAL 日志模式实现读写并发不阻塞": "Enable WAL journal mode for non-blocking concurrent reads and writes",
+    "- 开启 WAL 日志模式实现读写并发不阻塞": "- Enable WAL journal mode for non-blocking concurrent reads and writes",
+    "使用确定性唯一索引实现每日 PV / UV 的幂等原子累加": "Use deterministic unique indexes for idempotent atomic daily PV/UV increments",
+    "- 使用确定性唯一索引实现每日 PV / UV 的幂等原子累加": "- Use deterministic unique indexes for idempotent atomic daily PV/UV increments",
     "密码不正确": "Incorrect password",
     "密码不正确，请重新输入": "Incorrect password, please try again",
     "尝试次数过多，请稍后再试": "Too many attempts, please try again later",
@@ -493,6 +550,7 @@
       AUTO_TEXT_MAP_ZH[enVal] = zhKey;
     }
   });
+  AUTO_TEXT_MAP_ZH["New Space"] = "新建空间";
 
   var MONOGRAM_MAP_EN = {
     "前": "F",
@@ -502,7 +560,9 @@
     "简": "R",
     "博": "B",
     "新": "N",
-    "未": "U"
+    "未": "U",
+    "林": "L",
+    "系": "S"
   };
 
   function getLang() {
@@ -547,6 +607,42 @@
     return text;
   }
 
+  function translateValueText(rawVal, targetLang) {
+    if (!rawVal) return rawVal;
+    var map = targetLang === "en" ? AUTO_TEXT_MAP_EN : AUTO_TEXT_MAP_ZH;
+    var trimmed = rawVal.trim();
+    if (map[trimmed]) {
+      return map[trimmed];
+    }
+    if (rawVal.indexOf("\n") !== -1) {
+      var lines = rawVal.split("\n");
+      var changedLine = false;
+      var mappedLines = lines.map(function (line) {
+        var lt = line.trim();
+        if (lt && map[lt]) {
+          changedLine = true;
+          return map[lt];
+        }
+        return line;
+      });
+      if (changedLine) return mappedLines.join("\n");
+    }
+    if (rawVal.indexOf(",") !== -1 && rawVal.indexOf("\n") === -1) {
+      var parts = rawVal.split(",");
+      var changedPart = false;
+      var mappedParts = parts.map(function (part) {
+        var pt = part.trim();
+        if (pt && map[pt]) {
+          changedPart = true;
+          return map[pt];
+        }
+        return part.trim();
+      });
+      if (changedPart) return mappedParts.join(", ");
+    }
+    return rawVal;
+  }
+
   function applyI18n(langOverride) {
     var lang = langOverride || getLang();
     document.documentElement.lang = lang === "en" ? "en" : "zh-CN";
@@ -589,29 +685,45 @@
       el.setAttribute("data-tip", t(key));
     });
 
-    // 6. Update [data-i18n-auto] dynamic/seeded text nodes
-    document.querySelectorAll("[data-i18n-auto]").forEach(function (el) {
+    // 6. Update [data-i18n-auto] dynamic/seeded text nodes & blog markdown post body blocks
+    document.querySelectorAll("[data-i18n-auto], .post-body h2, .post-body h3, .post-body p, .post-body li").forEach(function (el) {
       if (!el.hasAttribute("data-zh-orig")) {
-        el.setAttribute("data-zh-orig", el.textContent);
+        var initTxt = (el.textContent || "").trim();
+        el.setAttribute("data-zh-orig", AUTO_TEXT_MAP_ZH[initTxt] || el.textContent);
       }
       var orig = (el.getAttribute("data-zh-orig") || "").trim();
       if (lang === "en" && AUTO_TEXT_MAP_EN[orig]) {
         el.textContent = AUTO_TEXT_MAP_EN[orig];
       } else if (lang === "zh") {
-        el.textContent = el.getAttribute("data-zh-orig");
+        el.textContent = AUTO_TEXT_MAP_ZH[orig] || el.getAttribute("data-zh-orig");
+      }
+    });
+
+    // 6b. Update [data-i18n-auto-val] input/textarea values
+    document.querySelectorAll("[data-i18n-auto-val]").forEach(function (el) {
+      var cur = el.value || "";
+      if (!el.dataset.zhOrigVal && cur) {
+        el.dataset.zhOrigVal = translateValueText(cur, "zh");
+      }
+      var zhOrig = el.dataset.zhOrigVal || "";
+      if (!zhOrig) return;
+      var enTrans = translateValueText(zhOrig, "en");
+      if (cur.trim() === zhOrig.trim() || cur.trim() === enTrans.trim()) {
+        el.value = lang === "en" ? enTrans : zhOrig;
       }
     });
 
     // 7. Update card/row data-title attributes for preview modal
     document.querySelectorAll("[data-title]").forEach(function (el) {
       if (!el.hasAttribute("data-zh-title-orig")) {
-        el.setAttribute("data-zh-title-orig", el.getAttribute("data-title") || "");
+        var rawAttr = (el.getAttribute("data-title") || "").trim();
+        el.setAttribute("data-zh-title-orig", AUTO_TEXT_MAP_ZH[rawAttr] || rawAttr);
       }
       var origTitle = (el.getAttribute("data-zh-title-orig") || "").trim();
       if (lang === "en" && AUTO_TEXT_MAP_EN[origTitle]) {
         el.setAttribute("data-title", AUTO_TEXT_MAP_EN[origTitle]);
       } else if (lang === "zh") {
-        el.setAttribute("data-title", origTitle);
+        el.setAttribute("data-title", AUTO_TEXT_MAP_ZH[origTitle] || origTitle);
       }
     });
 

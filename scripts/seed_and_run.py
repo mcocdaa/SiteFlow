@@ -209,6 +209,122 @@ def seed():
     )
     db.add(proj_neon)
 
+    # 8. Resume App (/p/resume)
+    import json
+
+    resume_data = {
+        "basics": {
+            "name": "林深",
+            "label": "首席系统架构师",
+            "image": "",
+            "email": "linshen@nebula-tech.io",
+            "phone": "+86 138-0013-8000",
+            "url": "https://linshen.dev",
+            "summary": "专注于大规模分布式系统、安全沙箱隔离引擎与高吞吐微服务网关架构，主导过多款开源云原生基础设施产品。",
+            "location": {"city": "上海", "region": "中国", "countryCode": "CN"},
+            "profiles": [
+                {"network": "GitHub", "username": "linshen", "url": "https://github.com/linshen"},
+            ],
+        },
+        "work": [
+            {
+                "name": "星云科技",
+                "position": "首席系统架构师",
+                "startDate": "2022-03",
+                "endDate": "至今",
+                "url": "https://nebula-tech.io",
+                "summary": "负责下一代多租户云原生制品托管与零信任安全沙箱平台架构设计。",
+                "highlights": [
+                    "主导设计零信任 CSP 沙箱与 ZipBomb 防御引擎，日均拦截 10 万+ 异常制品上传",
+                    "构建高并发边缘静态分发网关，将全球 P99 响应延迟从 48ms 降至 9ms",
+                ],
+            },
+            {
+                "name": "极光云基础设施",
+                "position": "高级分布式系统工程师",
+                "startDate": "2018-07",
+                "endDate": "2022-02",
+                "url": "https://aurora-cloud.io",
+                "summary": "核心参与容器调度网络与分布式遥测存储引擎研发。",
+                "highlights": [
+                    "研发高吞吐时序遥测聚合管道，支撑每秒 500 万指标写入与亚秒级查询",
+                ],
+            },
+        ],
+        "education": [
+            {
+                "institution": "上海交通大学",
+                "area": "计算机科学与技术",
+                "studyType": "硕士",
+                "startDate": "2015-09",
+                "endDate": "2018-06",
+            }
+        ],
+        "projects": [
+            {
+                "name": "SiteFlow 安全沙箱制品引擎",
+                "url": "https://github.com/mcocdaa/SiteFlow",
+                "description": "零构建、内联 SVG 视觉封面与单进程 SQLite WAL 驱动的静态制品托管画廊。",
+                "highlights": [
+                    "实现多编码嗅探转码、流式解压审计与空间独立主题定制系统",
+                ],
+                "keywords": ["FastAPI", "SQLite WAL", "CSP 沙箱"],
+            }
+        ],
+        "skills": [
+            {
+                "name": "系统架构与后端",
+                "keywords": ["Python", "Rust", "Go", "FastAPI", "分布式系统"],
+            },
+            {
+                "name": "云原生与安全隔离",
+                "keywords": ["Docker", "Kubernetes", "CSP 沙箱", "零信任架构"],
+            },
+        ],
+    }
+    proj_resume = Project(
+        slug="resume",
+        type="resume",
+        title="林深 · 首席系统架构师简历",
+        description="12 年分布式系统、云原生沙箱与高并发微服务架构设计经验",
+        content=json.dumps(resume_data, ensure_ascii=False),
+        sort_order=6,
+    )
+    db.add(proj_resume)
+
+    # 9. Blog App (/p/blog)
+    blog_data = {
+        "title": "系统架构与工程实践专栏",
+        "description": "关于零信任静态托管、安全沙箱隔离与现代前端工程化的深度技术笔记",
+        "posts": [
+            {
+                "slug": "sandbox-architecture",
+                "title": "为什么现代静态制品托管需要零信任 CSP 沙箱与流式审计",
+                "date": "2026-10-15",
+                "tags": ["架构", "安全沙箱", "工程实践"],
+                "summary": "深入剖析多租户 HTML 与 ZIP 制品托管中的 XSS 隔离、ZipBomb 防御以及编码自愈机制。",
+                "body": "在托管第三方或 CI 流水线自动生成的静态 HTML 制品时，传统的静态文件服务器往往面临两大核心风险：跨站脚本执行（XSS）污染主站会话与恶意压缩包（ZipBomb / 路径穿越）耗尽磁盘资源。\n\n### 1. 严格的 CSP Sandbox 隔离\n\n通过为静态制品响应头注入独立的 Content-Security-Policy 沙箱策略，我们可以在允许制品内部交互脚本正常运行的同时，阻断其对主站 Cookie 与管理员会话的读取权限。\n\n### 2. 流式解压与膨胀比审计\n\n在解压阶段对单文件膨胀比、总解压字节数与目录 Inode 上限进行实时熔断校验，确保任何异常压缩包在落盘前即被安全拦截。",
+            },
+            {
+                "slug": "sqlite-wal-performance",
+                "title": "单机十万级并发读写的 SQLite WAL 调优实践",
+                "date": "2026-10-08",
+                "tags": ["数据库", "性能优化", "架构"],
+                "summary": "无需引入沉重的外部数据库集群，通过 WAL 模式与内存映射实现微秒级元数据检索与 PV/UV 统计。",
+                "body": "对于轻量级自托管平台而言，维护独立的外部数据库实例往往带来额外的运维负担。通过合理配置 SQLite 的 WAL 日志模式与同步级别，单机即可轻松支撑高并发读与高频统计写入。\n\n### 核心调优参数\n\n- 开启 WAL 日志模式实现读写并发不阻塞\n- 使用确定性唯一索引实现每日 PV / UV 的幂等原子累加",
+            },
+        ],
+    }
+    proj_blog = Project(
+        slug="blog",
+        type="blog",
+        title="系统架构与工程实践专栏",
+        description="关于零信任静态托管、安全沙箱隔离与现代前端工程化的深度技术笔记",
+        content=json.dumps(blog_data, ensure_ascii=False),
+        sort_order=7,
+    )
+    db.add(proj_blog)
+
     db.commit()
 
     # Seed some sample 7-day visit stats for the dashboard sparkline

@@ -191,6 +191,9 @@ def project_file(request: Request, slug: str, path: str, db: DbSession):
         stats.record_visit(db, request, project_id=project.id)
         return project_home(request, config, project, db)
 
+    if path.strip("/") == "admin":
+        return RedirectResponse(f"/admin/projects/{project.id}", status_code=302)
+
     plugin = registry.get(project.type)
     if plugin is not None:
         response = plugin.route(request, project, path, db)
@@ -422,8 +425,13 @@ _SEARCH_I18N_MAP = {
     "基于 Canvas 与 Web Audio 的赛博朋克霓虹 2048 游戏": "Cyberpunk neon 2048 game built with HTML5 Canvas and Web Audio",
     "AI 分析报告": "AI Analysis Report",
     "新空间": "New Space",
+    "新建空间": "New Space",
     "简历": "Resume",
     "博客": "Blog",
+    "林深 · 首席系统架构师简历": "Lin Shen · Principal Systems Architect Resume",
+    "12 年分布式系统、云原生沙箱与高并发微服务架构设计经验": "12+ years in distributed systems, cloud-native sandboxes, and high-concurrency microservices",
+    "系统架构与工程实践专栏": "Systems Architecture & Engineering Blog",
+    "关于零信任静态托管、安全沙箱隔离与现代前端工程化的深度技术笔记": "In-depth technical notes on zero-trust static hosting, sandbox isolation, and modern frontend engineering",
 }
 
 
