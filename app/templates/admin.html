@@ -13,17 +13,18 @@
   {% import "_admin_rows.html" as rows %}
   <header class="site-header">
     <div class="wrap row-between">
-      <a class="brand" href="/">{{ icons.icon("arrow-left") }}{{ site_title }}</a>
+      <a class="brand" href="/">{{ icons.icon("arrow-left") }}<span data-i18n-auto>{{ site_title }}</span></a>
       <div class="header-actions">
-        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索" aria-label="搜索">
+        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索" data-i18n-tip="common.search" aria-label="搜索" data-i18n-aria-label="common.search">
           {{ icons.icon("search", 16) }}
         </button>
         {% if api_token %}
-        <button type="button" class="btn ghost" data-action="copy-api-token" id="copy-api-token-btn" data-token="{{ api_token }}" data-tip="复制无头部署 API 密钥">
-          {{ icons.icon("key", 15) }}<span>复制 API 密钥</span>
+        <button type="button" class="btn ghost" data-action="copy-api-token" id="copy-api-token-btn" data-token="{{ api_token }}" data-tip="复制无头部署 API 密钥" data-i18n-tip="admin.copy_api_tip">
+          {{ icons.icon("key", 15) }}<span data-i18n="admin.copy_api_key">复制 API 密钥</span>
         </button>
         {% endif %}
-        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}退出登录</button>
+        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
+        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
       </div>
     </div>
   </header>
@@ -31,71 +32,72 @@
     {% if stats %}
     <section class="admin-stats-card">
       <div class="stats-col">
-        <span class="stats-label">今日访问</span>
+        <span class="stats-label" data-i18n="admin.stats_today">今日访问</span>
         <div class="stats-val"><strong>{{ stats.today_pv }}</strong> <span class="muted">PV</span> · <strong>{{ stats.today_uv }}</strong> <span class="muted">UV</span></div>
       </div>
       <div class="stats-col">
-        <span class="stats-label">7天总访问</span>
+        <span class="stats-label" data-i18n="admin.stats_7d">7天总访问</span>
         <div class="stats-val"><strong>{{ stats.total_pv_7d }}</strong> <span class="muted">PV</span> · <strong>{{ stats.total_uv_7d }}</strong> <span class="muted">UV</span></div>
       </div>
-      <div class="stats-col stats-chart" title="过去 7 天 PV 趋势">
-        <span class="stats-label">7天趋势</span>
+      <div class="stats-col stats-chart" title="过去 7 天 PV 趋势" data-i18n-title="admin.stats_trend_tip">
+        <span class="stats-label" data-i18n="admin.stats_trend">7天趋势</span>
         {{ stats.sparkline_svg | safe }}
       </div>
     </section>
     {% endif %}
 
-    <h2 class="section-title">应用</h2>
+    <h2 class="section-title" data-i18n="admin.section_apps">应用</h2>
 
     <section class="app-create">
       {% for app in app_choices %}
-      <button class="btn" data-action="create-app" data-type="{{ app.type }}">{{ icons.icon(app.icon) }}新建{{ app.label }}</button>
+      <button class="btn" data-action="create-app" data-type="{{ app.type }}">{{ icons.icon(app.icon) }}<span data-i18n="admin.new_{{ app.type }}">新建{{ app.label }}</span></button>
       {% endfor %}
     </section>
-    <h2 class="section-title">项目</h2>
+    <h2 class="section-title" data-i18n="admin.section_projects">项目</h2>
     <section class="dropzone" id="dropzone">
       <div class="dropzone-idle" id="dropzone-idle">
         <span class="dropzone-icon">{{ icons.icon("upload", 28) }}</span>
-        <p><strong>拖拽 HTML 或 ZIP 到这里</strong></p>
-        <p class="muted">或点击选择文件 · 也可以在下方添加外链 / 新建应用</p>
+        <p><strong data-i18n="admin.drop_title">拖拽 HTML 或 ZIP 到这里</strong></p>
+        <p class="muted" data-i18n="admin.drop_sub">或点击选择文件 · 也可以在下方添加外链 / 新建应用</p>
       </div>
       <div class="dropzone-stages" id="dropzone-stages" hidden>
         <div class="stage-flow">
           <div class="stage-step" data-step="1">
             <span class="step-num">1</span>
-            <span class="step-text">上传</span>
+            <span class="step-text" data-i18n="admin.step_upload">上传</span>
           </div>
           <span class="step-arrow">➔</span>
           <div class="stage-step" data-step="2">
             <span class="step-num">2</span>
-            <span class="step-text">安全沙箱审计</span>
+            <span class="step-text" data-i18n="admin.step_audit">安全沙箱审计</span>
           </div>
           <span class="step-arrow">➔</span>
           <div class="stage-step" data-step="3">
             <span class="step-num">3</span>
-            <span class="step-text">解压与嗅探</span>
+            <span class="step-text" data-i18n="admin.step_extract">解压与嗅探</span>
           </div>
           <span class="step-arrow">➔</span>
           <div class="stage-step" data-step="4">
             <span class="step-num">4</span>
-            <span class="step-text">就绪</span>
+            <span class="step-text" data-i18n="admin.step_ready">就绪</span>
           </div>
         </div>
         <div class="stage-progress">
           <div class="stage-progress-bar" id="stage-progress-bar" style="width: 0%;"></div>
         </div>
-        <p class="stage-status-msg" id="stage-status-msg">准备上传...</p>
+        <p class="stage-status-msg" id="stage-status-msg" data-i18n="admin.stage_prep">准备上传...</p>
       </div>
       <input type="file" id="file-input" accept=".html,.htm,.zip" hidden>
     </section>
     <section class="link-row">
-      <input type="url" id="link-url" placeholder="https://example.com 作品链接">
-      <button class="btn primary" data-action="add-link">{{ icons.icon("plus") }}添加链接</button>
+      <input type="url" id="link-url" placeholder="https://example.com 作品链接" data-i18n-placeholder="admin.link_placeholder">
+      <button class="btn primary" data-action="add-link">{{ icons.icon("plus") }}<span data-i18n="admin.add_link">添加链接</span></button>
     </section>
     {{ rows.rows(projects, plugin_types) }}
   </main>
   {% include "_preview_modal.html" %}
   {% include "_command_palette.html" %}
+  <script src="/static/js/i18n.js" defer></script>
   <script src="/static/js/preview.js" defer></script>
   <script src="/static/js/palette.js" defer></script>
   <script src="/static/js/admin.js" defer></script>

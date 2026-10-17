@@ -6,56 +6,56 @@
     <img class="thumb" src="{% if project.cover %}/media/covers/{{ project.cover }}{% else %}/media/placeholder/{{ project.slug }}.svg{% endif %}" alt="">
     <div class="row-main">
       <div class="row-title-wrap">
-        <strong>{{ project.title }}</strong>
-        {% if project.password_hash %}<span class="badge-lock" title="受密码保护">{{ icons.icon("lock", 12) }}密码锁</span>{% endif %}
+        <strong data-i18n-auto>{{ project.title }}</strong>
+        {% if project.password_hash %}<span class="badge-lock" title="受密码保护" data-i18n-title="card.locked">{{ icons.icon("lock", 12) }}<span data-i18n="row.badge_locked">密码锁</span></span>{% endif %}
       </div>
-      <span class="muted">{{ project.type | upper }}{% if project.pinned %} · 置顶{% endif %}{% if not project.visible %} · 已隐藏{% endif %}</span>
+      <span class="muted">{{ project.type | upper }}{% if project.pinned %}<span data-i18n="row.meta_pinned"> · 置顶</span>{% endif %}{% if not project.visible %}<span data-i18n="row.meta_hidden"> · 已隐藏</span>{% endif %}</span>
     </div>
     <div class="row-actions">
       {% if project.type == "space" or project.type in plugin_types %}
-      <a class="btn ghost icon-btn" href="/admin/projects/{{ project.id }}" data-tip="进入管理" aria-label="进入管理">{{ icons.icon("settings") }}</a>
+      <a class="btn ghost icon-btn" href="/admin/projects/{{ project.id }}" data-tip="进入管理" data-i18n-tip="row.manage" aria-label="进入管理" data-i18n-aria-label="row.manage">{{ icons.icon("settings") }}</a>
       {% endif %}
       {% if project.type not in ('link', 'space') %}
-      <button class="btn ghost icon-btn" data-action="preview" data-slug="{{ project.slug }}" data-title="{{ project.title }}" data-type="{{ project.type }}" data-tip="视口预览" aria-label="视口预览">{{ icons.icon("maximize") }}</button>
+      <button class="btn ghost icon-btn" data-action="preview" data-slug="{{ project.slug }}" data-title="{{ project.title }}" data-type="{{ project.type }}" data-tip="视口预览" data-i18n-tip="card.preview" aria-label="视口预览" data-i18n-aria-label="card.preview">{{ icons.icon("maximize") }}</button>
       {% endif %}
-      <a class="btn ghost icon-btn" href="/projects/{{ project.slug }}/" target="_blank" data-tip="查看" aria-label="查看">{{ icons.icon("external-link") }}</a>
-      <button class="btn ghost icon-btn" data-action="edit" data-tip="编辑" aria-label="编辑">{{ icons.icon("pencil") }}</button>
-      <button class="btn ghost icon-btn{{ ' is-active' if project.pinned }}" data-action="toggle-pin" data-pinned="{{ 'true' if project.pinned else 'false' }}" data-tip="{{ '取消置顶' if project.pinned else '置顶' }}" aria-label="{{ '取消置顶' if project.pinned else '置顶' }}">{{ icons.icon("pin") }}</button>
-      <button class="btn ghost icon-btn" data-action="move-up" data-tip="上移" aria-label="上移">{{ icons.icon("arrow-up") }}</button>
-      <button class="btn ghost icon-btn" data-action="move-down" data-tip="下移" aria-label="下移">{{ icons.icon("arrow-down") }}</button>
-      <button class="btn ghost icon-btn" data-action="toggle-visible" data-visible="{{ 'true' if project.visible else 'false' }}" data-tip="{{ '隐藏' if project.visible else '显示' }}" aria-label="{{ '隐藏' if project.visible else '显示' }}">{% if project.visible %}{{ icons.icon("eye") }}{% else %}{{ icons.icon("eye-off") }}{% endif %}</button>
-      <button class="btn danger icon-btn" data-action="delete" data-tip="删除" aria-label="删除">{{ icons.icon("trash") }}</button>
+      <a class="btn ghost icon-btn" href="/projects/{{ project.slug }}/" target="_blank" data-tip="查看" data-i18n-tip="row.view" aria-label="查看" data-i18n-aria-label="row.view">{{ icons.icon("external-link") }}</a>
+      <button class="btn ghost icon-btn" data-action="edit" data-tip="编辑" data-i18n-tip="row.edit" aria-label="编辑" data-i18n-aria-label="row.edit">{{ icons.icon("pencil") }}</button>
+      <button class="btn ghost icon-btn{{ ' is-active' if project.pinned }}" data-action="toggle-pin" data-pinned="{{ 'true' if project.pinned else 'false' }}" data-tip="{{ '取消置顶' if project.pinned else '置顶' }}" data-i18n-tip="{{ 'row.unpin' if project.pinned else 'row.pin' }}" aria-label="{{ '取消置顶' if project.pinned else '置顶' }}" data-i18n-aria-label="{{ 'row.unpin' if project.pinned else 'row.pin' }}">{{ icons.icon("pin") }}</button>
+      <button class="btn ghost icon-btn" data-action="move-up" data-tip="上移" data-i18n-tip="row.move_up" aria-label="上移" data-i18n-aria-label="row.move_up">{{ icons.icon("arrow-up") }}</button>
+      <button class="btn ghost icon-btn" data-action="move-down" data-tip="下移" data-i18n-tip="row.move_down" aria-label="下移" data-i18n-aria-label="row.move_down">{{ icons.icon("arrow-down") }}</button>
+      <button class="btn ghost icon-btn" data-action="toggle-visible" data-visible="{{ 'true' if project.visible else 'false' }}" data-tip="{{ '隐藏' if project.visible else '显示' }}" data-i18n-tip="{{ 'row.hide' if project.visible else 'row.show' }}" aria-label="{{ '隐藏' if project.visible else '显示' }}" data-i18n-aria-label="{{ 'row.hide' if project.visible else 'row.show' }}">{% if project.visible %}{{ icons.icon("eye") }}{% else %}{{ icons.icon("eye-off") }}{% endif %}</button>
+      <button class="btn danger icon-btn" data-action="delete" data-tip="删除" data-i18n-tip="row.delete" aria-label="删除" data-i18n-aria-label="row.delete">{{ icons.icon("trash") }}</button>
     </div>
     <div class="editor" hidden>
-      <label>标题 <input name="title" value="{{ project.title }}"></label>
-      <label>描述 <input name="description" value="{{ project.description }}"></label>
-      {% if project.type == 'link' %}<label>链接 <input name="url" value="{{ project.url }}"></label>{% endif %}
+      <label><span data-i18n="row.label_title">标题</span> <input name="title" value="{{ project.title }}"></label>
+      <label><span data-i18n="row.label_desc">描述</span> <input name="description" value="{{ project.description }}"></label>
+      {% if project.type == 'link' %}<label><span data-i18n="row.label_url">链接</span> <input name="url" value="{{ project.url }}"></label>{% endif %}
       <label>
         <span class="label-text">
-          <span>访问密码</span>
-          {% if project.password_hash %}<span class="badge-lock">{{ icons.icon("lock", 10) }}已保护</span>{% endif %}
+          <span data-i18n="row.label_password">访问密码</span>
+          {% if project.password_hash %}<span class="badge-lock">{{ icons.icon("lock", 10) }}<span data-i18n="row.status_protected">已保护</span></span>{% endif %}
         </span>
-        <input type="text" name="password" autocomplete="off" placeholder="{% if project.password_hash %}输入新密码以修改（留空不变）{% else %}留空公开访问（输入密码开启）{% endif %}">
+        <input type="text" name="password" autocomplete="off" placeholder="{% if project.password_hash %}输入新密码以修改（留空不变）{% else %}留空公开访问（输入密码开启）{% endif %}" data-i18n-placeholder="{{ 'row.pwd_placeholder_change' if project.password_hash else 'row.pwd_placeholder_new' }}">
       </label>
       <div class="field">
-        <span>封面</span>
+        <span data-i18n="row.label_cover">封面</span>
         <span class="file-picker">
           <input type="file" name="cover" accept="image/*" hidden>
-          <button type="button" class="file-button">{{ icons.icon("image", 14) }}选择图片</button>
-          <span class="file-name">未选择</span>
+          <button type="button" class="file-button">{{ icons.icon("image", 14) }}<span data-i18n="row.choose_image">选择图片</span></button>
+          <span class="file-name" data-i18n="row.no_file">未选择</span>
         </span>
       </div>
       <div class="editor-actions">
         {% if project.password_hash %}
-        <button type="button" class="btn ghost btn-sm" data-action="clear-password">{{ icons.icon("unlock", 13) }}清除密码保护</button>
+        <button type="button" class="btn ghost btn-sm" data-action="clear-password">{{ icons.icon("unlock", 13) }}<span data-i18n="row.clear_password">清除密码保护</span></button>
         {% endif %}
-        <button class="btn primary" data-action="save">{{ icons.icon("check") }}保存</button>
+        <button class="btn primary" data-action="save">{{ icons.icon("check") }}<span data-i18n="row.save">保存</span></button>
       </div>
     </div>
   </div>
   {% else %}
   <div class="empty small">
-    <p>还没有内容。</p>
+    <p data-i18n="row.empty">还没有内容。</p>
   </div>
   {% endfor %}
 </section>

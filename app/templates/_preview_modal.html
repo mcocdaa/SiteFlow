@@ -5,30 +5,30 @@
     <header class="preview-header">
       <div class="preview-meta">
         <span class="preview-badge" id="preview-badge">HTML5</span>
-        <span class="preview-title" id="preview-title">作品预览</span>
+        <span class="preview-title" id="preview-title" data-i18n="preview.default_title" data-i18n-auto>作品预览</span>
       </div>
       <div class="preview-viewports" role="tablist">
-        <button type="button" class="preview-vbtn active" data-vp="100%" title="桌面端 (100%)">
-          {{ icons.icon("monitor", 16) }} <span>桌面端</span>
+        <button type="button" class="preview-vbtn active" data-vp="100%" title="桌面端 (100%)" data-i18n-title="preview.vp_desktop_title">
+          {{ icons.icon("monitor", 16) }} <span data-i18n="preview.vp_desktop">桌面端</span>
         </button>
-        <button type="button" class="preview-vbtn" data-vp="768px" title="平板 (768px)">
-          {{ icons.icon("tablet", 16) }} <span>平板 (768px)</span>
+        <button type="button" class="preview-vbtn" data-vp="768px" title="平板 (768px)" data-i18n-title="preview.vp_tablet_title">
+          {{ icons.icon("tablet", 16) }} <span data-i18n="preview.vp_tablet">平板 (768px)</span>
         </button>
-        <button type="button" class="preview-vbtn" data-vp="375px" title="手机 (375px)">
-          {{ icons.icon("smartphone", 16) }} <span>手机 (375px)</span>
+        <button type="button" class="preview-vbtn" data-vp="375px" title="手机 (375px)" data-i18n-title="preview.vp_mobile_title">
+          {{ icons.icon("smartphone", 16) }} <span data-i18n="preview.vp_mobile">手机 (375px)</span>
         </button>
-        <button type="button" class="preview-vbtn icon-only" id="preview-rotate" title="旋转屏幕 (横竖屏切换)" hidden>
+        <button type="button" class="preview-vbtn icon-only" id="preview-rotate" title="旋转屏幕 (横竖屏切换)" data-i18n-title="preview.rotate" hidden>
           {{ icons.icon("refresh-cw", 15) }}
         </button>
       </div>
       <div class="preview-actions">
-        <button type="button" class="btn ghost icon-btn preview-tool" id="preview-qr-toggle" data-tip="局域网真机调试二维码" aria-label="真机调试二维码">
-          {{ icons.icon("smartphone", 16) }}<span class="qr-btn-text">真机调试</span>
+        <button type="button" class="btn ghost icon-btn preview-tool" id="preview-qr-toggle" data-tip="局域网真机调试二维码" data-i18n-tip="preview.qr_tip" aria-label="真机调试二维码" data-i18n-aria-label="preview.qr_tip">
+          {{ icons.icon("smartphone", 16) }}<span class="qr-btn-text" data-i18n="preview.qr_btn">真机调试</span>
         </button>
-        <a class="btn ghost icon-btn preview-tool" id="preview-open-link" href="#" rel="noopener noreferrer" data-tip="全屏打开" aria-label="全屏打开">
+        <a class="btn ghost icon-btn preview-tool" id="preview-open-link" href="#" rel="noopener noreferrer" data-tip="全屏打开" data-i18n-tip="preview.open_new_tab" aria-label="全屏打开" data-i18n-aria-label="preview.open_new_tab">
           {{ icons.icon("external-link", 16) }}
         </a>
-        <button type="button" class="btn ghost icon-btn preview-close-btn" data-action="close-preview" data-tip="关闭 (Esc)" aria-label="关闭预览">
+        <button type="button" class="btn ghost icon-btn preview-close-btn" data-action="close-preview" data-tip="关闭 (Esc)" data-i18n-tip="preview.close_tip" aria-label="关闭预览" data-i18n-aria-label="preview.close_tip">
           {{ icons.icon("x", 18) }}
         </button>
       </div>
@@ -36,8 +36,8 @@
 
     <div class="preview-body" id="preview-body">
       <div class="preview-viewport-box" id="preview-box" style="width: 100%;">
-        <div class="preview-loader" id="preview-loader">{{ icons.icon("refresh-cw", 20) }} 正在加载安全沙箱...</div>
-        <iframe id="preview-frame" src="about:blank" title="预览视口" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"></iframe>
+        <div class="preview-loader" id="preview-loader">{{ icons.icon("refresh-cw", 20) }} <span data-i18n="preview.loading">正在加载安全沙箱...</span></div>
+        <iframe id="preview-frame" src="about:blank" title="预览视口" data-i18n-title="preview.iframe_title" sandbox="allow-scripts allow-forms allow-modals allow-popups allow-downloads"></iframe>
       </div>
     </div>
 
@@ -46,14 +46,14 @@
     <div class="qr-popover" id="qr-popover" hidden>
       <div class="qr-content">
         <div class="qr-head">
-          <strong>局域网真机调试</strong>
+          <strong data-i18n="preview.qr_title">局域网真机调试</strong>
           <button type="button" class="btn ghost icon-btn" id="qr-close">{{ icons.icon("x", 14) }}</button>
         </div>
         <div class="qr-img-wrap" id="qr-img-wrap">
-          <div class="qr-loading">生成二维码中...</div>
+          <div class="qr-loading" data-i18n="preview.qr_loading">生成二维码中...</div>
         </div>
         <p class="qr-url" id="qr-url-text"></p>
-        <p class="qr-tip">用手机与电脑连接同一局域网 / Wi-Fi 后扫码，即可在移动端真机预览调试。</p>
+        <p class="qr-tip" data-i18n="preview.qr_desc">用手机与电脑连接同一局域网 / Wi-Fi 后扫码，即可在移动端真机预览调试。</p>
       </div>
     </div>
   </div>

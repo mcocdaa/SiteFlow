@@ -4,6 +4,13 @@
   var csrfMeta = document.querySelector('meta[name="csrf"]');
   var CSRF = csrfMeta ? csrfMeta.getAttribute("content") : "";
 
+  function t(key, vars, fallback) {
+    if (window.SiteFlowI18n && window.SiteFlowI18n.t) {
+      return window.SiteFlowI18n.t(key, vars);
+    }
+    return fallback || key;
+  }
+
   function api(method, path, body) {
     var options = { method: method, headers: { "X-CSRF-Token": CSRF } };
     if (body !== undefined) {
@@ -13,7 +20,7 @@
     return fetch("/api/admin" + path, options).then(function (response) {
       return response.json().then(function (data) {
         if (!response.ok || data.ok === false) {
-          throw new Error(data.error || "请求失败");
+          throw new Error(data.error || t("js.req_failed", null, "请求失败"));
         }
         return data;
       });
@@ -83,7 +90,7 @@
       if (dropzone) dropzone.classList.remove("uploading");
     }
 
-    setStage(1, 10, "正在准备上传制品...");
+    setStage(1, 10, t("js.upload_prep", null, "正在准备上传制品..."));
 
     var xhr = new XMLHttpRequest();
     xhr.open("POST", "/api/admin/projects/upload");
@@ -92,22 +99,23 @@
     xhr.upload.onprogress = function (e) {
       if (e.lengthComputable) {
         var percent = Math.round((e.loaded / e.total) * 45);
-        setStage(1, Math.max(10, percent), "正在上传制品 (" + Math.round((e.loaded / e.total) * 100) + "%)...");
+        var pctText = Math.round((e.loaded / e.total) * 100);
+        setStage(1, Math.max(10, percent), t("js.uploading", { pct: pctText }, "正在上传制品 (" + pctText + "%)..."));
       }
     };
 
     xhr.upload.onload = function () {
-      setStage(2, 65, "执行安全沙箱审计（ZipBomb 防御与容错转码）...");
+      setStage(2, 65, t("js.upload_audit", null, "执行安全沙箱审计（ZipBomb 防御与容错转码）..."));
       setTimeout(function () {
-        setStage(3, 85, "结构嗅探与安全解压中...");
+        setStage(3, 85, t("js.upload_extract", null, "结构嗅探与安全解压中..."));
       }, 350);
     };
 
     xhr.onload = function () {
       try {
         var data = JSON.parse(xhr.responseText);
-        if (xhr.status >= 400 || data.ok === false) throw new Error(data.error || "上传失败");
-        setStage(4, 100, "制品安全就绪！正在同步画廊...");
+        if (xhr.status >= 400 || data.ok === false) throw new Error(data.error || t("js.upload_failed", null, "上传失败"));
+        setStage(4, 100, t("js.upload_done", null, "制品安全就绪！正在同步画廊..."));
         setTimeout(refresh, 500);
       } catch (error) {
         resetDropzone();
@@ -117,7 +125,7 @@
 
     xhr.onerror = function () {
       resetDropzone();
-      onError(new Error("网络错误，上传中断"));
+      onError(new Error(t("js.network_error", null, "网络错误，上传中断")));
     };
 
     xhr.send(form);
@@ -128,7 +136,7 @@
     if (!input.matches('input[type="file"][name="cover"]')) return;
     var picker = input.closest(".file-picker");
     var label = picker ? picker.querySelector(".file-name") : null;
-    if (label) label.textContent = input.files.length ? input.files[0].name : "未选择";
+    if (label) label.textContent = input.files.length ? input.files[0].name : t("row.no_file", null, "未选择");
   });
 
   var linkUrl = document.getElementById("link-url");
@@ -186,7 +194,7 @@
       api("PATCH", "/projects/" + pid, { theme: theme })
         .then(function () {
           if (tip) {
-            tip.textContent = "✓ 空间主题已保存生效";
+            tip.textContent = t("js.theme_saved", null, "✓ 空间主题已保存生效");
             tip.style.color = "var(--accent)";
             setTimeout(function () { tip.textContent = ""; }, 3000);
           }
@@ -212,7 +220,7 @@
       var appType = button.getAttribute("data-type");
       api("POST", "/projects/app", {
         type: appType,
-        title: appType === "space" ? "新空间" : "",
+        title: appType === "space" ? t("js.new_space_default", null, "新空间") : "",
         parent_id: parentId()
       }).then(function (data) {
         if (data.project && data.project.id) {
@@ -238,9 +246,9 @@
       var labelSpan = button.querySelector("span");
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(tokenVal).then(function () {
-          if (labelSpan) labelSpan.textContent = "已复制密钥";
+          if (labelSpan) labelSpan.textContent = t("js.api_copied", null, "已复制密钥");
           setTimeout(function () {
-            if (labelSpan) labelSpan.textContent = "复制 API 密钥";
+            if (labelSpan) labelSpan.textContent = t("admin.copy_api_key", null, "复制 API 密钥");
           }, 1800);
         }).catch(onError);
       }
@@ -253,7 +261,7 @@
       var editor = row.querySelector(".editor");
       editor.hidden = !editor.hidden;
     } else if (action === "clear-password") {
-      if (confirm("确定清除此作品的访问密码？清除后任何人均可公开直接访问。")) {
+      if (confirm(t("js.confirm_clear_pwd", null, "确定清除此作品的访问密码？清除后任何人均可公开直接访问。"))) {
         api("PATCH", "/projects/" + id, { password: "" }).then(refresh).catch(onError);
       }
     } else if (action === "save") {
@@ -278,7 +286,7 @@
             headers: { "X-CSRF-Token": CSRF },
             body: coverForm
           }).then(function (response) {
-            if (!response.ok) throw new Error("封面上传失败");
+            if (!response.ok) throw new Error(t("js.cover_failed", null, "封面上传失败"));
           });
         })
         .then(refresh)
@@ -294,7 +302,7 @@
     } else if (action === "move-down") {
       api("POST", "/projects/" + id + "/move", { direction: "down" }).then(refresh).catch(onError);
     } else if (action === "delete") {
-      if (confirm("确定删除该作品？文件将一并删除，不可恢复。")) {
+      if (confirm(t("js.confirm_delete", null, "确定删除该作品？文件将一并删除，不可恢复。"))) {
         api("DELETE", "/projects/" + id).then(refresh).catch(onError);
       }
     }
