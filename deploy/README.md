@@ -10,7 +10,7 @@ mkdir -p /root/workspace/siteflow && cd /root/workspace/siteflow
 cp .env.example .env
 vi .env                      # 设置 ADMIN_PASSWORD（必填）
 chmod 600 .env
-TAG=v1.0.0 ./init.sh         # 默认监听 127.0.0.1:8003
+TAG=v2.3.0 ./init.sh         # 默认监听 127.0.0.1:8003
 ```
 
 容器以 uid 1000 运行，`init.sh` 会自动把 `./data` 属主改为 1000:1000。
@@ -19,7 +19,7 @@ TAG=v1.0.0 ./init.sh         # 默认监听 127.0.0.1:8003
 
 | 变量 | 默认 | 说明 |
 |------|------|------|
-| `TAG` | `v1.0.0` | 镜像版本 |
+| `TAG` | `v2.3.0` | 镜像版本 |
 | `SITEFLOW_PORT` | `8003` | 宿主监听端口（仅本机） |
 | `SITEFLOW_NAME` | `siteflow` | 容器名 |
 

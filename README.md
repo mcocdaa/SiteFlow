@@ -45,7 +45,7 @@ ADMIN_PASSWORD=dev COOKIE_SECURE=false uv run uvicorn app.main:app --port 8000
 
 ## 🤖 AI / Headless API Deployment
 
-AI agents and CI jobs can publish or update single-file HTML reports and multi-file ZIP bundles idempotently using `SITEFLOW_API_TOKEN` (configured via `.env` or copied from `/admin`):
+AI agents and CI jobs can publish or update single-file HTML reports and multi-file ZIP bundles idempotently using `SITEFLOW_API_TOKEN` (configured via `.env` or derived automatically from `ADMIN_PASSWORD`):
 
 ```bash
 # Deploy or update a static HTML report or ZIP site
@@ -103,3 +103,7 @@ server {
 ```
 
 </details>
+
+## 📄 License
+
+Released under the [MIT License](LICENSE).

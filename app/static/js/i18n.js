@@ -773,7 +773,7 @@
     }
 
     // 10. Update language toggle button(s)
-    document.querySelectorAll("#lang-toggle-btn, [data-action='toggle-lang']").forEach(function (btn) {
+    document.querySelectorAll("#lang-toggle-btn, [data-action='toggle-lang'], [data-testid='locale-toggle']").forEach(function (btn) {
       btn.textContent = lang === "zh" ? "🌐 EN" : "🌐 中文";
       btn.removeAttribute("data-tip");
       btn.setAttribute("title", t("common.lang_tip"));
@@ -817,7 +817,7 @@
   });
 
   document.addEventListener("click", function (e) {
-    var btn = e.target.closest("#lang-toggle-btn, [data-action='toggle-lang']");
+    var btn = e.target.closest("#lang-toggle-btn, [data-action='toggle-lang'], [data-testid='locale-toggle']");
     if (btn) {
       e.preventDefault();
       if (btn.blur) btn.blur();
