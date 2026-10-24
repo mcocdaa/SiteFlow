@@ -18,12 +18,7 @@
         <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索" data-i18n-tip="common.search" aria-label="搜索" data-i18n-aria-label="common.search">
           {{ icons.icon("search", 16) }}
         </button>
-        {% if api_token %}
-        <button type="button" class="btn ghost" data-action="copy-api-token" id="copy-api-token-btn" data-token="{{ api_token }}" data-tip="复制无头部署 API 密钥" data-i18n-tip="admin.copy_api_tip">
-          {{ icons.icon("key", 15) }}<span data-i18n="admin.copy_api_key">复制 API 密钥</span>
-        </button>
-        {% endif %}
-        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
+        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
         <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
       </div>
     </div>

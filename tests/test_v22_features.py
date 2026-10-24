@@ -351,11 +351,11 @@ def test_headless_bearer_api_and_idempotent_deploy() -> None:
         slugs = [p["slug"] for p in all_resp.json()["projects"]]
         assert slugs.count("my-ai-report") == 1
 
-        # Verify Admin UI provides compact copy API key button in header without raw curl clutter
+        # Verify Admin UI header does not expose raw API token or curl clutter
         login(client)
         admin_html = client.get("/admin").text
-        assert "复制 API 密钥" in admin_html
-        assert f'data-token="{token}"' in admin_html
+        assert "copy-api-token-btn" not in admin_html
+        assert f'data-token="{token}"' not in admin_html
         assert "curl -X PUT" not in admin_html
 
 
@@ -383,7 +383,8 @@ def test_bilingual_i18n_assets_and_toggle_controls() -> None:
         csrf = login(client)
         admin_html = client.get("/admin").text
         assert 'id="lang-toggle-btn"' in admin_html
-        assert 'data-i18n="admin.copy_api_key"' in admin_html
+        assert 'data-testid="locale-toggle"' in admin_html
+        assert "copy-api-token-btn" not in admin_html
         assert 'data-i18n="admin.new_space"' in admin_html
 
         space_resp = client.post(

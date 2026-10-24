@@ -68,7 +68,7 @@ HTTPS 部署时保持 `COOKIE_SECURE=true`（默认）；纯本机 HTTP 调试�
 
 ```bash
 cp deploy/.env.example deploy/.env    # 设置 ADMIN_PASSWORD
-cd deploy && TAG=v1.0.0 ./init.sh     # 默认监听 127.0.0.1:8003
+cd deploy && TAG=v2.3.0 ./init.sh     # 默认监听 127.0.0.1:8003
 ```
 
 反向代理与 HTTPS 由部署者自行配置，容器只监听 `127.0.0.1`。

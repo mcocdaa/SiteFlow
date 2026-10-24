@@ -12,7 +12,7 @@
   <div class="blog-actions">
     <a class="btn ghost" href="/projects/{{ project.slug }}/">{{ icons.icon("arrow-left") }}<span data-i18n="blog.back_to_list">文章列表</span></a>
     <span class="actions-right">
-      <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
+      <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
       <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings") }}</a>
     </span>
   </div>

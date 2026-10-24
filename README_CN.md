@@ -31,7 +31,7 @@
 **方式 1 — Docker Compose（推荐）**
 
 ```bash
-cp .env.example .env   # set ADMIN_PASSWORD
+cp .env.example .env   # 设置管理员密码 ADMIN_PASSWORD
 docker compose up -d --build
 ```
 
@@ -45,7 +45,7 @@ ADMIN_PASSWORD=dev COOKIE_SECURE=false uv run uvicorn app.main:app --port 8000
 
 ## 🤖 AI 一键发布接口
 
-AI Agent 或自动化脚本可通过 `SITEFLOW_API_TOKEN`（可在 `.env` 中显式配置，或在 `/admin` 后台直接复制）幂等地创建或更新单文件 HTML 报告与多文件 ZIP 站点：
+AI Agent 或自动化脚本可通过 `SITEFLOW_API_TOKEN`（可在 `.env` 中显式配置，或由系统基于 `ADMIN_PASSWORD` 自动派生）幂等地创建或更新单文件 HTML 报告与多文件 ZIP 站点：
 
 ```bash
 # 一键部署或覆盖更新静态 HTML 报告 / ZIP 站点
@@ -65,7 +65,7 @@ curl -H "Authorization: Bearer <SITEFLOW_API_TOKEN>" \
 架构设计与安全边界详见 [DESIGN.md](DESIGN.md)，服务器免源码一键部署详见 [deploy/README.md](deploy/README.md)。
 
 <details>
-<summary>Environment Variables & Nginx Reverse Proxy</summary>
+<summary>环境变量与 Nginx 反向代理配置</summary>
 
 ### 环境变量（`.env`）
 
@@ -103,3 +103,7 @@ server {
 ```
 
 </details>
+
+## 📄 开源协议
+
+本项目基于 [MIT License](LICENSE) 开源。

@@ -4,7 +4,7 @@
     <div class="palette-header">
       <span class="palette-search-icon">{{ icons.icon("search", 18) }}</span>
       <input id="palette-input" type="text" placeholder="搜索项目、空间或快捷命令..." data-i18n-placeholder="palette.placeholder" autocomplete="off" spellcheck="false" autofocus>
-      <button type="button" class="btn btn-sm lang-toggle-btn" data-action="toggle-lang">🌐 EN</button>
+      <button type="button" class="btn btn-sm lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle">🌐 EN</button>
       <button type="button" class="palette-close-btn" id="palette-close" aria-label="关闭搜索" data-i18n-aria-label="palette.close">{{ icons.icon("x", 16) }}</button>
     </div>
     <div class="palette-body" id="palette-results" role="listbox">
