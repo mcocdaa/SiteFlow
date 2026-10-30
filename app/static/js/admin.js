@@ -187,55 +187,6 @@
     });
   }
 
-  // Space Theme customization
-  var saveThemeBtn = document.getElementById("save-theme-btn");
-  if (saveThemeBtn) {
-    var swatches = document.querySelectorAll(".swatch[data-color]");
-    var accentPicker = document.getElementById("theme-accent-picker");
-    var accentText = document.getElementById("theme-accent");
-    var fontSelect = document.getElementById("theme-font");
-    var radiusSelect = document.getElementById("theme-radius");
-    var tip = document.getElementById("theme-save-tip");
-
-    swatches.forEach(function (sw) {
-      sw.addEventListener("click", function () {
-        var c = sw.getAttribute("data-color");
-        if (accentText) accentText.value = c;
-        if (accentPicker) accentPicker.value = c;
-      });
-    });
-
-    if (accentPicker && accentText) {
-      accentPicker.addEventListener("input", function () {
-        accentText.value = accentPicker.value;
-      });
-      accentText.addEventListener("input", function () {
-        if (/^#[0-9a-fA-F]{6}$/.test(accentText.value)) {
-          accentPicker.value = accentText.value;
-        }
-      });
-    }
-
-    saveThemeBtn.addEventListener("click", function () {
-      var pid = parentId();
-      if (!pid) return;
-      var theme = {
-        accent: accentText ? accentText.value.trim() : "",
-        font_family: fontSelect ? fontSelect.value : "",
-        radius_card: radiusSelect ? radiusSelect.value : ""
-      };
-      api("PATCH", "/projects/" + pid, { theme: theme })
-        .then(function () {
-          if (tip) {
-            tip.textContent = t("js.theme_saved", null, "已保存");
-            tip.style.color = "var(--accent)";
-            setTimeout(function () { tip.textContent = ""; }, 3000);
-          }
-        })
-        .catch(onError);
-    });
-  }
-
   document.addEventListener("click", function (event) {
     var fileButton = event.target.closest(".file-button");
     if (fileButton) {

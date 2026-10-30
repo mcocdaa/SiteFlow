@@ -21,7 +21,7 @@ Self-hosted sandboxed gallery & headless deployment portal for HTML reports, sta
 
 - **Human via UI, AI via API**: One-command headless `PUT /api/admin/projects/{slug}/deploy` endpoint for AI agents and CI/CD pipelines alongside a full drag-and-drop Admin Console for humans.
 - **Zero-Trust Sandbox & ZipBomb Defense**: Hosted projects render inside a strict opaque-origin CSP sandbox (`allow-scripts` isolated from admin session cookies), backed by a hardened ZIP extractor with 100:1 compression-ratio circuit breakers, inode caps, and CP437/GBK filename transcoding.
-- **Multi-Tier Spaces & Custom Themes**: Organize HTML reports, static ZIP sites, external links, resumes, and CommonMark blogs into up to 3 levels of nested Spaces, each with customizable accent colors, typography (`Sans` / `Serif` / `Mono`), and card radii.
+- **Multi-Tier Spaces**: Organize HTML reports, static ZIP sites, external links, resumes, and CommonMark blogs into up to 3 levels of nested Spaces.
 - **Responsive Viewport Modal & `Cmd+K` Palette**: Preview artifacts across desktop (`100%`), tablet (`768px`), and mobile (`375px`) viewports with orientation toggle, LAN QR code debugging, and instant `Cmd+K` / `Ctrl+K` global search.
 - **Procedural Covers, Password Locks & Sparklines**: Deterministic geometric SVG/WebP cover generation per slug, Argon2id per-project password protection (`Path=/projects/{slug}/` scoped cookies), and privacy-first 7-day PV/UV SVG sparklines.
 - **Single-Container Footprint**: FastAPI + SQLite WAL in a <60 MB memory footprint with ETag/304 static caching and wildcard `BASE_DOMAIN` subdomain routing.

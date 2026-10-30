@@ -22,6 +22,24 @@ async function main() {
     await page.goto(base + '/login');
     await page.locator('input[name="password"]').fill(password);
     await Promise.all([page.waitForURL(base + '/admin'), page.locator('button[type="submit"]').click()]);
+    async function checkLocaleButtons() {
+      const state = await page.locator('[data-testid="locale-toggle"]').evaluateAll(buttons => buttons.map(button => ({
+        svg: button.querySelectorAll('svg.icon').length,
+        label: button.querySelector('.lang-label')?.textContent,
+        emoji: button.textContent.includes('🌐')
+      })));
+      assert(state.length > 0, '页面必须有语言切换按钮');
+      state.forEach(button => {
+        assert.equal(button.svg, 1, '语言切换使用一个 SVG 图标');
+        assert(['EN', '中文'].includes(button.label), '语言按钮文案必须正确');
+        assert.equal(button.emoji, false, '语言按钮不能使用表情图标');
+      });
+    }
+    await checkLocaleButtons();
+    await page.locator('#lang-toggle-btn svg').click();
+    await checkLocaleButtons();
+    await page.locator('#lang-toggle-btn').click();
+    await checkLocaleButtons();
     assert.equal(await page.locator('.content-choices .btn').count(), 5, '所有添加方式使用统一入口');
     await page.locator('[data-panel="upload-panel"]').click();
     assert.equal(await page.locator('#file-input').getAttribute('multiple'), '', '支持多选');
@@ -77,6 +95,7 @@ async function main() {
     await Promise.all([page.waitForEvent('load'), page.locator('#link-url').press('Enter')]);
     assert.equal(await page.locator('#project-list .row[data-type="link"]').count(), 1, '链接入口支持回车添加');
     await Promise.all([page.waitForURL(/\/admin\/projects\/\d+$/), page.locator('[data-action="create-app"][data-type="space"]').click()]);
+    assert.equal(await page.locator('#space-theme-section').count(), 0, '空间外观设置已移除');
     assert.equal(await page.locator('.content-choices .btn').count(), 5, '空间与根管理台使用相同添加入口');
     await page.locator('[data-panel="upload-panel"]').click();
     await page.locator('#file-input').setInputFiles([
@@ -125,6 +144,7 @@ async function main() {
     assert.equal(await page.locator('[name="body"]').inputValue(), '修改后的正文');
     const editUrl = page.url();
     await page.getByTestId('locale-toggle').click();
+    await checkLocaleButtons();
     assert.equal(await page.locator('#save-post').textContent(), 'Save post');
     assert.equal(await page.locator('[name="title"]').inputValue(), postTitle, '切换语言不能改写文章内容');
     await page.getByTestId('locale-toggle').click();

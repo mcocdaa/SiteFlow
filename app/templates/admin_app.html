@@ -23,7 +23,7 @@
           {{ icons.icon("search", 16) }}
         </button>
         <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}<span data-i18n="row.view">查看</span></a>
-        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
+        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
         <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
       </div>
     </div>
@@ -60,57 +60,6 @@
       <p><a class="btn" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}<span data-i18n="admin.open_app">打开应用</span></a></p>
     </section>
     {% endif %}
-    {% if project.type == 'space' %}
-    <details class="plugin-block theme-settings" id="space-theme-section">
-      <summary data-i18n="theme.section_title">空间外观</summary>
-      <div class="theme-content">
-        <div class="theme-grid">
-          <div class="theme-field">
-            <label for="theme-accent-picker" data-i18n="theme.label_accent">颜色</label>
-            <div class="color-swatches" id="color-swatches">
-              <button type="button" class="swatch" style="--c: #4f46e5;" data-color="#4f46e5" title="靛蓝" data-i18n-title="theme.swatch_indigo"></button>
-              <button type="button" class="swatch" style="--c: #0284c7;" data-color="#0284c7" title="天蓝" data-i18n-title="theme.swatch_sky"></button>
-              <button type="button" class="swatch" style="--c: #10b981;" data-color="#10b981" title="翠绿" data-i18n-title="theme.swatch_emerald"></button>
-              <button type="button" class="swatch" style="--c: #f59e0b;" data-color="#f59e0b" title="琥珀" data-i18n-title="theme.swatch_amber"></button>
-              <button type="button" class="swatch" style="--c: #f43f5e;" data-color="#f43f5e" title="玫红" data-i18n-title="theme.swatch_rose"></button>
-              <button type="button" class="swatch" style="--c: #8b5cf6;" data-color="#8b5cf6" title="紫色" data-i18n-title="theme.swatch_violet"></button>
-            </div>
-            <div class="color-input-wrap">
-              <input type="color" id="theme-accent-picker" value="{{ space_theme.accent if space_theme and space_theme.accent else '#4f46e5' }}">
-              <input type="text" id="theme-accent" aria-label="颜色值" data-i18n-aria-label="theme.color_value" placeholder="#4f46e5" value="{{ space_theme.accent if space_theme else '' }}">
-            </div>
-          </div>
-
-          <div class="theme-field">
-            <label for="theme-font" data-i18n="theme.label_font">字体</label>
-            <select id="theme-font">
-              <option value="" data-i18n="theme.font_default" {% if not space_theme or not space_theme.font_family %}selected{% endif %}>默认</option>
-              <option value="sans" data-i18n="theme.font_sans" {% if space_theme and space_theme.font_family == 'sans' %}selected{% endif %}>无衬线</option>
-              <option value="serif" data-i18n="theme.font_serif" {% if space_theme and space_theme.font_family == 'serif' %}selected{% endif %}>衬线</option>
-              <option value="mono" data-i18n="theme.font_mono" {% if space_theme and space_theme.font_family == 'mono' %}selected{% endif %}>等宽</option>
-            </select>
-          </div>
-
-          <div class="theme-field">
-            <label for="theme-radius" data-i18n="theme.label_radius">圆角</label>
-            <select id="theme-radius">
-              <option value="" data-i18n="theme.radius_default" {% if not space_theme or not space_theme.radius_card %}selected{% endif %}>默认</option>
-              <option value="0px" data-i18n="theme.radius_0" {% if space_theme and space_theme.radius_card == '0px' %}selected{% endif %}>直角</option>
-              <option value="6px" data-i18n="theme.radius_6" {% if space_theme and space_theme.radius_card == '6px' %}selected{% endif %}>6 px</option>
-              <option value="10px" data-i18n="theme.radius_10" {% if space_theme and space_theme.radius_card == '10px' %}selected{% endif %}>10 px</option>
-              <option value="14px" data-i18n="theme.radius_14" {% if space_theme and space_theme.radius_card == '14px' %}selected{% endif %}>14 px</option>
-              <option value="20px" data-i18n="theme.radius_20" {% if space_theme and space_theme.radius_card == '20px' %}selected{% endif %}>20 px</option>
-            </select>
-          </div>
-        </div>
-        <div class="theme-actions">
-          <button type="button" class="btn primary" id="save-theme-btn">{{ icons.icon("check") }}<span data-i18n="theme.save_btn">保存</span></button>
-          <span class="theme-save-tip muted" id="theme-save-tip" role="status" aria-live="polite"></span>
-        </div>
-      </div>
-    </details>
-    {% endif %}
-
   </main>
   {% include "_preview_modal.html" %}
   {% include "_command_palette.html" %}

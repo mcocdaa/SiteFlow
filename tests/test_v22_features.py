@@ -366,7 +366,6 @@ def test_bilingual_i18n_assets_and_toggle_controls() -> None:
         assert i18n_js.status_code == 200
         assert "siteflow_lang" in i18n_js.text
         assert "SiteFlowI18n" in i18n_js.text
-        assert '"theme.section_title": "Appearance"' in i18n_js.text
         assert "LAN QR Preview" in i18n_js.text
 
         # 2. Verify #lang-toggle-btn and i18n.js on public gallery and login pages
@@ -397,8 +396,8 @@ def test_bilingual_i18n_assets_and_toggle_controls() -> None:
 
         space_admin_html = client.get(f"/admin/projects/{space_proj['id']}").text
         assert 'id="lang-toggle-btn"' in space_admin_html
-        assert 'data-i18n="theme.section_title"' in space_admin_html
-        assert 'data-i18n="theme.save_btn"' in space_admin_html
+        assert 'id="space-theme-section"' not in space_admin_html
+        assert "空间外观" not in space_admin_html
 
         space_pub_html = client.get(f"/projects/{space_proj['slug']}/").text
         assert 'id="lang-toggle-btn"' in space_pub_html

@@ -5,7 +5,6 @@
 
   var DICT = {
     zh: {
-      "theme.color_value": "颜色值",
       "blog.tags_hint": "逗号分隔",
       "blog.saved_label": "已保存",
       "admin.max_depth": "已达最大嵌套深度（3 层），请返回上级添加内容。",
@@ -78,7 +77,7 @@
       "palette.cmd_gallery_title": "返回画廊首页",
       "palette.cmd_gallery_desc": "浏览聚合展示的所有静态作品与空间",
       "palette.cmd_admin_title": "进入管理控制台",
-      "palette.cmd_admin_desc": "上传作品、配置空间主题与查看访问统计",
+      "palette.cmd_admin_desc": "管理作品与查看访问统计",
       "admin.crumb_admin": "管理",
       "admin.copy_api_key": "复制 API 密钥",
       "admin.copy_api_tip": "复制无头部署 API 密钥",
@@ -108,27 +107,6 @@
       "admin.plugin_no_content": "暂无可编辑内容。",
       "admin.plugin_ext_hint": "插件应用可按插件提供的内容编辑器扩展。",
       "admin.open_app": "打开应用",
-      "theme.section_title": "空间外观",
-      "theme.label_accent": "颜色",
-      "theme.swatch_indigo": "靛蓝",
-      "theme.swatch_sky": "天蓝",
-      "theme.swatch_emerald": "翠绿",
-      "theme.swatch_amber": "琥珀",
-      "theme.swatch_rose": "玫红",
-      "theme.swatch_violet": "紫色",
-      "theme.label_font": "字体",
-      "theme.font_default": "默认",
-      "theme.font_sans": "无衬线",
-      "theme.font_serif": "衬线",
-      "theme.font_mono": "等宽",
-      "theme.label_radius": "圆角",
-      "theme.radius_default": "默认",
-      "theme.radius_0": "直角",
-      "theme.radius_6": "6 px",
-      "theme.radius_10": "10 px",
-      "theme.radius_14": "14 px",
-      "theme.radius_20": "20 px",
-      "theme.save_btn": "保存",
       "row.badge_locked": "密码锁",
       "row.meta_pinned": " · 置顶",
       "row.meta_hidden": " · 已隐藏",
@@ -169,7 +147,6 @@
       "js.upload_failed": "上传失败",
       "js.upload_done": "制品安全就绪！正在同步画廊...",
       "js.network_error": "网络错误，上传中断",
-      "js.theme_saved": "已保存",
       "js.new_space_default": "新建空间",
       "js.api_copied": "已复制密钥",
       "js.confirm_clear_pwd": "确定清除此作品的访问密码？清除后任何人均可公开直接访问。",
@@ -236,7 +213,6 @@
       "blog.next_post": "下一篇"
     },
     en: {
-      "theme.color_value": "Color value",
       "blog.tags_hint": "Comma-separated",
       "blog.saved_label": "Saved",
       "admin.max_depth": "Maximum depth (3 levels) reached. Add content in the parent space.",
@@ -309,7 +285,7 @@
       "palette.cmd_gallery_title": "Back to Gallery",
       "palette.cmd_gallery_desc": "Browse all static sites, reports, and spaces",
       "palette.cmd_admin_title": "Open Admin Console",
-      "palette.cmd_admin_desc": "Upload artifacts, customize space themes, and view analytics",
+      "palette.cmd_admin_desc": "Manage projects and view analytics",
       "admin.crumb_admin": "Admin",
       "admin.copy_api_key": "API Key",
       "admin.copy_api_tip": "Copy Headless Deploy API Key",
@@ -339,27 +315,6 @@
       "admin.plugin_no_content": "No editable content.",
       "admin.plugin_ext_hint": "Plugin apps can be extended with custom content editors.",
       "admin.open_app": "Open App",
-      "theme.section_title": "Appearance",
-      "theme.label_accent": "Color",
-      "theme.swatch_indigo": "Indigo",
-      "theme.swatch_sky": "Sky blue",
-      "theme.swatch_emerald": "Emerald",
-      "theme.swatch_amber": "Amber",
-      "theme.swatch_rose": "Rose",
-      "theme.swatch_violet": "Violet",
-      "theme.label_font": "Font",
-      "theme.font_default": "Default",
-      "theme.font_sans": "Sans serif",
-      "theme.font_serif": "Serif",
-      "theme.font_mono": "Monospace",
-      "theme.label_radius": "Corners",
-      "theme.radius_default": "Default",
-      "theme.radius_0": "Square",
-      "theme.radius_6": "6 px",
-      "theme.radius_10": "10 px",
-      "theme.radius_14": "14 px",
-      "theme.radius_20": "20 px",
-      "theme.save_btn": "Save",
       "row.badge_locked": "Locked",
       "row.meta_pinned": " · Pinned",
       "row.meta_hidden": " · Hidden",
@@ -400,7 +355,6 @@
       "js.upload_failed": "Upload failed",
       "js.upload_done": "Artifact ready! Syncing gallery...",
       "js.network_error": "Network error, upload interrupted",
-      "js.theme_saved": "Saved",
       "js.new_space_default": "New Space",
       "js.api_copied": "Copied!",
       "js.confirm_clear_pwd": "Remove password protection from this project? Anyone will be able to access it.",
@@ -827,7 +781,8 @@
 
     // 10. Update language toggle button(s)
     document.querySelectorAll("#lang-toggle-btn, [data-action='toggle-lang'], [data-testid='locale-toggle']").forEach(function (btn) {
-      btn.textContent = lang === "zh" ? "🌐 EN" : "🌐 中文";
+      var label = btn.querySelector(".lang-label");
+      if (label) label.textContent = lang === "zh" ? "EN" : "中文";
       btn.removeAttribute("data-tip");
       btn.setAttribute("title", t("common.lang_tip"));
       btn.setAttribute("aria-label", t("common.lang_tip"));

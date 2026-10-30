@@ -21,7 +21,7 @@
 
 - **Human via UI, AI via API**：既为人类提供直观的拖拽管理后台，又为 AI Agent 与 CI/CD 流水线提供幂等的 `PUT /api/admin/projects/{slug}/deploy` 一键无头发布接口。
 - **零信任 CSP 沙箱与解压炸弹防御**：作品在同域下通过严格不透明源 CSP 沙箱（`allow-scripts` 强隔离管理员会话 Cookie）渲染，内置 100:1 压缩比熔断、Inode 上限保护与 Windows ZIP（CP437/GBK）智能无损转码。
-- **多级嵌套空间与独立主题**：支持单 HTML、ZIP 静态站点、外链、在线简历与 CommonMark 博客，最多 3 层空间嵌套，每个空间可独立定制强调色、字体（`Sans` / `Serif` / `Mono`）与卡片圆角。
+- **多级嵌套空间**：支持单 HTML、ZIP 静态站点、外链、在线简历与 CommonMark 博客，最多 3 层空间嵌套。
 - **响应式视口预览与 `Cmd+K` 命令面板**：站内模态框支持桌面（`100%`）、平板（`768px`）、手机（`375px`）视口切换、横竖屏旋转与局域网真机调试二维码，搭配 `Cmd+K` / `Ctrl+K` 全局瞬时检索。
 - **过程式矢量封面、密码锁与趋势折线**：按 Slug 确定性生成几何网格 SVG/WebP 封面，支持单项目 Argon2id 独立密码锁（签发 `Path=/projects/{slug}/` 隔离 Cookie）及隐私优先的 7 天 PV/UV 纯 SVG 趋势折线。
 - **极简轻量单容器**：FastAPI + SQLite WAL 架构，常驻内存 < 60MB，支持静态资源 ETag/304 协商缓存与 `BASE_DOMAIN` 泛解析子域名直连。
