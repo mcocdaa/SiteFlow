@@ -31,11 +31,11 @@
       </div>
       <div class="editor-grid">
         <label class="full"><span data-i18n="blog.col_title">标题</span><input name="title" id="post-title" required maxlength="200" value="{{ post.title if post else '' }}" autofocus></label>
-        <label><span data-i18n="blog.col_slug">Slug（URL，可中文）</span><input name="slug" maxlength="100" value="{{ post.slug if post else '' }}"><span class="muted" data-i18n="blog.slug_hint">留空时根据标题生成，用于文章链接。</span></label>
-        <label><span data-i18n="blog.col_date">日期（YYYY-MM-DD）</span><input type="date" name="date" value="{{ post.date if post else '' }}"></label>
-        <label class="full"><span data-i18n="blog.col_tags">标签（逗号分隔）</span><input name="tags" value="{{ post.tags | join(', ') if post else '' }}"></label>
+        <label><span data-i18n="blog.col_slug">网址标识</span><input name="slug" maxlength="100" placeholder="留空自动生成" data-i18n-placeholder="blog.slug_hint" value="{{ post.slug if post else '' }}"></label>
+        <label><span data-i18n="blog.col_date">日期</span><input type="date" name="date" value="{{ post.date if post else '' }}"></label>
+        <label class="full"><span data-i18n="blog.col_tags">标签</span><input name="tags" placeholder="逗号分隔" data-i18n-placeholder="blog.tags_hint" value="{{ post.tags | join(', ') if post else '' }}"></label>
         <label class="full"><span data-i18n="blog.col_summary">摘要</span><textarea name="summary" rows="2" maxlength="500">{{ post.summary if post else '' }}</textarea></label>
-        <label class="full"><span data-i18n="blog.col_body">正文（Markdown）</span><textarea name="body" class="mono post-body" rows="22" maxlength="200000">{{ post.body if post else '' }}</textarea></label>
+        <label class="full"><span data-i18n="blog.col_body">正文（Markdown）</span><textarea name="body" class="mono post-editor-body" rows="22" maxlength="200000">{{ post.body if post else '' }}</textarea></label>
       </div>
     </form>
     <div id="post-saved" class="post-saved plugin-block" hidden>

@@ -25,18 +25,17 @@
   </header>
   <main class="wrap">
     {% if stats %}
-    <p class="stats-note muted" data-i18n="admin.stats_note">按 UTC 日期统计：PV 为页面浏览次数，UV 按 IP 与浏览器每日去重；7 天 UV 为每日 UV 累计。排除管理员和内嵌预览。</p>
     <section class="admin-stats-card">
       <div class="stats-col">
         <span class="stats-label" data-i18n="admin.stats_today">今日访问</span>
         <div class="stats-val"><strong>{{ stats.today_pv }}</strong> <span class="muted">PV</span> · <strong>{{ stats.today_uv }}</strong> <span class="muted">UV</span></div>
       </div>
       <div class="stats-col">
-        <span class="stats-label" data-i18n="admin.stats_7d">7天累计访问</span>
+        <span class="stats-label" data-i18n="admin.stats_7d">近 7 天</span>
         <div class="stats-val"><strong>{{ stats.total_pv_7d }}</strong> <span class="muted">PV</span> · <strong>{{ stats.total_uv_7d }}</strong> <span class="muted">UV</span></div>
       </div>
       <div class="stats-col stats-chart" title="过去 7 天 PV 趋势" data-i18n-title="admin.stats_trend_tip">
-        <span class="stats-label" data-i18n="admin.stats_trend">7天趋势</span>
+        <span class="stats-label" data-i18n="admin.stats_trend">访问趋势</span>
         {{ stats.sparkline_svg | safe }}
       </div>
     </section>

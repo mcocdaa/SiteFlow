@@ -366,7 +366,7 @@ def test_bilingual_i18n_assets_and_toggle_controls() -> None:
         assert i18n_js.status_code == 200
         assert "siteflow_lang" in i18n_js.text
         assert "SiteFlowI18n" in i18n_js.text
-        assert "Space Theme Customizer" in i18n_js.text
+        assert '"theme.section_title": "Appearance"' in i18n_js.text
         assert "LAN QR Preview" in i18n_js.text
 
         # 2. Verify #lang-toggle-btn and i18n.js on public gallery and login pages

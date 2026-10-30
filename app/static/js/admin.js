@@ -227,7 +227,7 @@
       api("PATCH", "/projects/" + pid, { theme: theme })
         .then(function () {
           if (tip) {
-            tip.textContent = t("js.theme_saved", null, "✓ 空间主题已保存生效");
+            tip.textContent = t("js.theme_saved", null, "已保存");
             tip.style.color = "var(--accent)";
             setTimeout(function () { tip.textContent = ""; }, 3000);
           }
