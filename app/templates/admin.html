@@ -25,13 +25,14 @@
   </header>
   <main class="wrap">
     {% if stats %}
+    <p class="stats-note muted" data-i18n="admin.stats_note">按 UTC 日期统计：PV 为页面浏览次数，UV 按 IP 与浏览器每日去重；7 天 UV 为每日 UV 累计。排除管理员和内嵌预览。</p>
     <section class="admin-stats-card">
       <div class="stats-col">
         <span class="stats-label" data-i18n="admin.stats_today">今日访问</span>
         <div class="stats-val"><strong>{{ stats.today_pv }}</strong> <span class="muted">PV</span> · <strong>{{ stats.today_uv }}</strong> <span class="muted">UV</span></div>
       </div>
       <div class="stats-col">
-        <span class="stats-label" data-i18n="admin.stats_7d">7天总访问</span>
+        <span class="stats-label" data-i18n="admin.stats_7d">7天累计访问</span>
         <div class="stats-val"><strong>{{ stats.total_pv_7d }}</strong> <span class="muted">PV</span> · <strong>{{ stats.total_uv_7d }}</strong> <span class="muted">UV</span></div>
       </div>
       <div class="stats-col stats-chart" title="过去 7 天 PV 趋势" data-i18n-title="admin.stats_trend_tip">
@@ -41,53 +42,8 @@
     </section>
     {% endif %}
 
-    <h2 class="section-title" data-i18n="admin.section_apps">应用</h2>
-
-    <section class="app-create">
-      {% for app in app_choices %}
-      <button class="btn" data-action="create-app" data-type="{{ app.type }}">{{ icons.icon(app.icon) }}<span data-i18n="admin.new_{{ app.type }}">新建{{ app.label }}</span></button>
-      {% endfor %}
-    </section>
+    {% include "_add_content.html" %}
     <h2 class="section-title" data-i18n="admin.section_projects">项目</h2>
-    <section class="dropzone" id="dropzone">
-      <div class="dropzone-idle" id="dropzone-idle">
-        <span class="dropzone-icon">{{ icons.icon("upload", 28) }}</span>
-        <p><strong data-i18n="admin.drop_title">拖拽 HTML 或 ZIP 到这里</strong></p>
-        <p class="muted" data-i18n="admin.drop_sub">或点击选择文件 · 也可以在下方添加外链 / 新建应用</p>
-      </div>
-      <div class="dropzone-stages" id="dropzone-stages" hidden>
-        <div class="stage-flow">
-          <div class="stage-step" data-step="1">
-            <span class="step-num">1</span>
-            <span class="step-text" data-i18n="admin.step_upload">上传</span>
-          </div>
-          <span class="step-arrow">➔</span>
-          <div class="stage-step" data-step="2">
-            <span class="step-num">2</span>
-            <span class="step-text" data-i18n="admin.step_audit">安全沙箱审计</span>
-          </div>
-          <span class="step-arrow">➔</span>
-          <div class="stage-step" data-step="3">
-            <span class="step-num">3</span>
-            <span class="step-text" data-i18n="admin.step_extract">解压与嗅探</span>
-          </div>
-          <span class="step-arrow">➔</span>
-          <div class="stage-step" data-step="4">
-            <span class="step-num">4</span>
-            <span class="step-text" data-i18n="admin.step_ready">就绪</span>
-          </div>
-        </div>
-        <div class="stage-progress">
-          <div class="stage-progress-bar" id="stage-progress-bar" style="width: 0%;"></div>
-        </div>
-        <p class="stage-status-msg" id="stage-status-msg" data-i18n="admin.stage_prep">准备上传...</p>
-      </div>
-      <input type="file" id="file-input" accept=".html,.htm,.zip" hidden>
-    </section>
-    <section class="link-row">
-      <input type="url" id="link-url" placeholder="https://example.com 作品链接" data-i18n-placeholder="admin.link_placeholder">
-      <button class="btn primary" data-action="add-link">{{ icons.icon("plus") }}<span data-i18n="admin.add_link">添加链接</span></button>
-    </section>
     {{ rows.rows(projects, plugin_types) }}
   </main>
   {% include "_preview_modal.html" %}

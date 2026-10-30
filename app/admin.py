@@ -1,5 +1,6 @@
 import json
 import re
+import secrets
 import shutil
 from datetime import UTC, datetime
 from typing import Annotated
@@ -8,6 +9,7 @@ from urllib.parse import quote, urlparse
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
+from starlette.concurrency import run_in_threadpool
 
 from app import stats, store
 from app.auth import csrf_for, hash_project_password, read_session
@@ -16,6 +18,7 @@ from app.models import Project
 from app.og import fetch_image, fetch_og
 from app.plugins import registry
 from app.plugins.base import InvalidContent
+from app.plugins.blog.plugin import validate_content as blog_content
 from app.templating import templates
 from app.uploads import InvalidUpload, extract_site, make_cover, remove_tree, save_cover
 
@@ -141,9 +144,82 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
         "space_theme": plugin.validate_content(project.content) if project.type == "space" else None,
     }
     if plugin.admin_template:
-        context["content"] = plugin.validate_content(project.content)
+        context["content"] = (
+            blog_content(project.content)
+            if project.type == "blog"
+            else plugin.validate_content(project.content)
+        )
         return templates.TemplateResponse(request, plugin.admin_template, context)
     return templates.TemplateResponse(request, "admin_app.html", context)
+
+
+@router.get("/admin/projects/{project_id}/posts/new")
+@router.get("/admin/projects/{project_id}/posts/{post_slug}/edit")
+def admin_blog_post(request: Request, project_id: int, db: DbSession, post_slug: str | None = None):
+    config, _data, redirect = admin_scope(request, db)
+    if redirect is not None:
+        return redirect
+    project = store.by_id(db, project_id)
+    if project is None or project.type != "blog":
+        raise HTTPException(404)
+    content = blog_content(project.content)
+    post = next((post for post in content["posts"] if post["slug"] == post_slug), None)
+    if post_slug is not None and post is None:
+        raise HTTPException(404)
+    return templates.TemplateResponse(
+        request,
+        "blog_editor.html",
+        {
+            "site_title": config.site_title,
+            "csrf": csrf_for(request),
+            "project": project,
+            "post": post,
+            "parent": store.by_id(db, project.parent_id) if project.parent_id else None,
+        },
+    )
+
+
+@router.post("/api/admin/projects/{project_id}/posts")
+@router.patch("/api/admin/projects/{project_id}/posts/{post_slug}")
+def save_blog_post(
+    project_id: int, payload: dict, _auth: AdminConfig, db: DbSession, post_slug: str | None = None
+):
+    project = store.by_id(db, project_id)
+    if project is None or project.type != "blog":
+        return api_error("博客不存在", 404)
+    content = blog_content(project.content)
+    posts = content["posts"]
+    index = next((i for i, post in enumerate(posts) if post["slug"] == post_slug), None)
+    if post_slug is not None and index is None:
+        return api_error("文章不存在，请返回文章列表", 404)
+    if index is None:
+        posts.append(payload)
+    else:
+        posts[index] = payload
+    try:
+        validated = blog_content(json.dumps(content, ensure_ascii=False), strict=True)
+        saved = blog_content(json.dumps({"posts": [payload]}, ensure_ascii=False), strict=True)["posts"][0]
+    except InvalidContent as exc:
+        return api_error(str(exc), 422)
+    project.content = json.dumps(validated, ensure_ascii=False)
+    touch(project)
+    db.commit()
+    return {"ok": True, "post": saved}
+
+
+@router.delete("/api/admin/projects/{project_id}/posts/{post_slug}")
+def delete_blog_post(project_id: int, post_slug: str, _auth: AdminConfig, db: DbSession):
+    project = store.by_id(db, project_id)
+    if project is None or project.type != "blog":
+        return api_error("博客不存在", 404)
+    content = blog_content(project.content)
+    if not any(post["slug"] == post_slug for post in content["posts"]):
+        return api_error("文章不存在，请返回文章列表", 404)
+    content["posts"] = [post for post in content["posts"] if post["slug"] != post_slug]
+    project.content = json.dumps(content, ensure_ascii=False)
+    touch(project)
+    db.commit()
+    return {"ok": True}
 
 
 @router.get("/api/admin/projects")
@@ -407,6 +483,16 @@ def patch_project(
         except InvalidContent as exc:
             return api_error(str(exc), 422)
         project.content = json.dumps(validated, ensure_ascii=False)
+    if project.type == "blog" and ("title" in updates or "description" in updates):
+        blog = blog_content(project.content)
+        for field, limit in (("title", 200), ("description", 500)):
+            if field in updates:
+                value = updates[field].strip()[:limit]
+                if field == "title" and not value:
+                    return api_error("标题不能为空", 422)
+                updates[field] = value
+                blog[field] = value
+        project.content = json.dumps(blog, ensure_ascii=False)
     theme = updates.pop("theme", None)
     if theme is not None:
         if project.type != "space":
@@ -453,14 +539,18 @@ async def upload_cover(
     config: AdminConfig,
     db: DbSession,
 ):
-    project = store.by_id(db, project_id)
-    if project is None:
-        return api_error("作品不存在", 404)
-    raw = await file.read()
+    raw = await file.read(COVER_LIMIT + 1)
     await file.close()
     if len(raw) > COVER_LIMIT:
         return api_error("封面不能超过 10MB", 413)
-    filename = f"{project.slug}.webp"
+    return await run_in_threadpool(_replace_cover, project_id, raw, config, db)
+
+
+def _replace_cover(project_id: int, raw: bytes, config, db):
+    project = store.by_id(db, project_id)
+    if project is None:
+        return api_error("作品不存在", 404)
+    filename = f"{project.slug}-{secrets.token_hex(6)}.webp"
     destination = config.data / "media" / "covers" / filename
     destination.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -475,6 +565,20 @@ async def upload_cover(
         old_path = config.data / "media" / "covers" / old_name
         if old_path.exists():
             old_path.unlink()
+    return {"ok": True, "project": project.as_dict()}
+
+
+@router.delete("/api/admin/projects/{project_id}/cover")
+def delete_cover(project_id: int, config: AdminConfig, db: DbSession):
+    project = store.by_id(db, project_id)
+    if project is None:
+        return api_error("作品不存在", 404)
+    old_name = project.cover
+    project.cover = ""
+    touch(project)
+    db.commit()
+    if old_name:
+        (config.data / "media" / "covers" / old_name).unlink(missing_ok=True)
     return {"ok": True, "project": project.as_dict()}
 
 

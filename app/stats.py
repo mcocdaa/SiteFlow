@@ -1,64 +1,51 @@
 import hashlib
 import hmac
-import secrets
-from collections import defaultdict
 from datetime import UTC, datetime, timedelta
 
 from fastapi import Request
 from sqlalchemy import text
 from sqlalchemy.orm import Session
 
-from app.auth import client_ip
-
-_MAX_UV_KEYS = 10_000
-_MAX_UV_PER_KEY = 10_000
-_uv_cache: dict[tuple[str, int | None], set[str]] = defaultdict(set)
-_last_prune_date: str = ""
-_daily_salt: bytes = secrets.token_bytes(32)
-
-
-def _prune_cache(today: str) -> None:
-    global _last_prune_date, _daily_salt
-    if today == _last_prune_date:
-        return
-    _last_prune_date = today
-    _daily_salt = secrets.token_bytes(32)
-    # Keep only today and yesterday
-    yesterday = (datetime.now(UTC) - timedelta(days=1)).strftime("%Y-%m-%d")
-    valid_dates = {today, yesterday}
-    keys_to_remove = [k for k in _uv_cache if k[0] not in valid_dates]
-    for k in keys_to_remove:
-        _uv_cache.pop(k, None)
+from app.auth import client_ip, read_session
+from app.deps import get_config
 
 
 def record_visit(db: Session, request: Request, project_id: int | None = None) -> None:
+    config = get_config(request)
+    session = read_session(config, request)
+    if (session and session.get("admin") is True) or request.headers.get("sec-fetch-dest") in {
+        "iframe",
+        "frame",
+        "embed",
+        "object",
+    }:
+        return
     now = datetime.now(UTC)
     today = now.strftime("%Y-%m-%d")
-    _prune_cache(today)
-
-    ip = client_ip(request)
-    ua = request.headers.get("user-agent", "")
-    visitor_hash = hmac.new(_daily_salt, f"{today}:{ip}:{ua}".encode(), hashlib.sha256).hexdigest()[:16]
-
-    cache_key = (today, project_id)
-    if cache_key not in _uv_cache and len(_uv_cache) >= _MAX_UV_KEYS:
-        _uv_cache.pop(next(iter(_uv_cache)), None)
-    visitors = _uv_cache[cache_key]
-    if visitor_hash not in visitors:
-        if len(visitors) < _MAX_UV_PER_KEY:
-            visitors.add(visitor_hash)
-        uv_inc = 1
-    else:
-        uv_inc = 0
-
-    sql = text("""
-        INSERT INTO daily_stats (date, project_id, pv, uv)
-        VALUES (:date, :project_id, 1, :uv_inc)
-        ON CONFLICT(date, COALESCE(project_id, -1)) DO UPDATE SET
-            pv = pv + 1,
-            uv = uv + :uv_inc
-    """)
-    db.execute(sql, {"date": today, "project_id": project_id, "uv_inc": uv_inc})
+    identity = f"{today}:{client_ip(request)}:{request.headers.get('user-agent', '')}"
+    visitor_hash = hmac.new(config.secret.encode(), identity.encode(), hashlib.sha256).hexdigest()
+    scopes = [None] if project_id is None else [None, project_id]
+    for scope in scopes:
+        params = {"date": today, "scope": -1 if scope is None else scope, "visitor": visitor_hash}
+        result = db.execute(
+            text("""
+            INSERT INTO daily_visitors (date, scope, visitor)
+            VALUES (:date, :scope, :visitor)
+            ON CONFLICT DO NOTHING RETURNING visitor
+        """),
+            params,
+        )
+        uv_inc = int(result.scalar_one_or_none() is not None)
+        db.execute(
+            text("""
+            INSERT INTO daily_stats (date, project_id, pv, uv)
+            VALUES (:date, :project_id, 1, :uv_inc)
+            ON CONFLICT(date, COALESCE(project_id, -1)) DO UPDATE SET
+                pv = pv + 1, uv = uv + :uv_inc
+        """),
+            {"date": today, "project_id": scope, "uv_inc": uv_inc},
+        )
+    db.execute(text("DELETE FROM daily_visitors WHERE date < :today"), {"today": today})
     db.commit()
 
 
@@ -78,7 +65,6 @@ def generate_sparkline(values: list[int], width: int = 120, height: int = 32) ->
     points = []
     for i, v in enumerate(values):
         x = padding_x + i * step_x
-        # Invert y because SVG y goes downwards
         ratio = (v - min_val) / val_range if max_val > 0 else 0
         y = (height - padding_y) - ratio * usable_h
         points.append((round(x, 1), round(y, 1)))
@@ -110,7 +96,7 @@ def get_7day_stats(db: Session, project_id: int | None = None) -> dict:
         sql = text("""
             SELECT date, SUM(pv) as total_pv, SUM(uv) as total_uv
             FROM daily_stats
-            WHERE date >= :start_date
+            WHERE date >= :start_date AND project_id IS NULL
             GROUP BY date
         """)
         rows = db.execute(sql, {"start_date": start_date}).fetchall()

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ post.title if post else '新建文章' }} - {{ project.title }}</title>
+  <link rel="stylesheet" href="/static/css/app.css">
+  <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+  <meta name="csrf" content="{{ csrf }}">
+</head>
+<body data-plugin-id="{{ project.id }}" data-preview-url="/projects/{{ project.slug }}/" data-post-slug="{{ post.slug if post else '' }}">
+  {% import "icons.html" as icons %}
+  <header class="site-header">
+    <div class="wrap row-between">
+      <div>
+        <p class="crumbs"><a href="/admin" data-i18n="admin.crumb_admin">管理</a>{% if parent %} <span class="muted">/</span> <a href="/admin/projects/{{ parent.id }}" data-i18n-auto>{{ parent.title }}</a>{% endif %} <span class="muted">/</span> <a href="/admin/projects/{{ project.id }}">{{ project.title }}</a> <span class="muted">/</span> <span data-i18n="blog.edit_post">编辑文章</span></p>
+        <p class="brand" data-i18n="blog.edit_post">编辑文章</p>
+      </div>
+      <div class="row-actions header-actions">
+        <a class="btn ghost" href="/admin/projects/{{ project.id }}" data-i18n="blog.back_to_list">文章列表</a>
+        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
+        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
+      </div>
+    </div>
+  </header>
+  <main class="wrap blog-editor" data-blog-mode="editor">
+    <form id="post-form" class="plugin-block">
+      <div class="block-head editor-toolbar">
+        <span class="muted" id="save-state" role="status" aria-live="polite" tabindex="-1" data-i18n="{{ 'blog.saved_label' if post else 'blog.unsaved' }}">{{ '已保存' if post else '尚未保存' }}</span>
+        <button type="submit" class="btn primary" id="save-post" data-i18n="blog.save_post">保存文章</button>
+      </div>
+      <div class="editor-grid">
+        <label class="full"><span data-i18n="blog.col_title">标题</span><input name="title" id="post-title" required maxlength="200" value="{{ post.title if post else '' }}" autofocus></label>
+        <label><span data-i18n="blog.col_slug">Slug（URL，可中文）</span><input name="slug" maxlength="100" value="{{ post.slug if post else '' }}"><span class="muted" data-i18n="blog.slug_hint">留空时根据标题生成，用于文章链接。</span></label>
+        <label><span data-i18n="blog.col_date">日期（YYYY-MM-DD）</span><input type="date" name="date" value="{{ post.date if post else '' }}"></label>
+        <label class="full"><span data-i18n="blog.col_tags">标签（逗号分隔）</span><input name="tags" value="{{ post.tags | join(', ') if post else '' }}"></label>
+        <label class="full"><span data-i18n="blog.col_summary">摘要</span><textarea name="summary" rows="2" maxlength="500">{{ post.summary if post else '' }}</textarea></label>
+        <label class="full"><span data-i18n="blog.col_body">正文（Markdown）</span><textarea name="body" class="mono post-body" rows="22" maxlength="200000">{{ post.body if post else '' }}</textarea></label>
+      </div>
+    </form>
+    <div id="post-saved" class="post-saved plugin-block" hidden>
+      {{ icons.icon("check", 32) }}
+      <h2 data-i18n="blog.saved_title">文章已保存</h2>
+      <p id="saved-post-title"></p>
+      <div class="content-choices">
+        <a class="btn primary" id="view-post" data-i18n="blog.view_post">查看文章</a>
+        <a class="btn" id="continue-post" data-i18n="blog.continue_edit">继续编辑</a>
+        <a class="btn ghost" href="/admin/projects/{{ project.id }}" data-i18n="blog.back_to_list">文章列表</a>
+      </div>
+    </div>
+  </main>
+  <script src="/static/js/i18n.js" defer></script>
+  <script src="/static/js/blog.js" defer></script>
+  <script src="/static/js/admin.js" defer></script>
+</body>
+</html>

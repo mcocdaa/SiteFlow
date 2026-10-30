@@ -43,6 +43,21 @@ Open `http://127.0.0.1:8000` (Admin console: `/admin`).
 ADMIN_PASSWORD=dev COOKIE_SECURE=false uv run uvicorn app.main:app --port 8000
 ```
 
+## Managing content and writing
+
+The admin console and Spaces share one Add Content panel for HTML / ZIP uploads, links, Spaces, resumes,
+and blogs. Select or drop multiple files, see each result, and retry failed files separately.
+Project editors support replacing covers and restoring generated covers; replacements use fresh image URLs.
+
+Blogs use a post list and a dedicated Markdown editor per post. Empty URL identifiers are generated from
+the title; duplicates are rejected. After saving, view the post, continue editing, or return to the list.
+Save errors remain visible without clearing your input, and leaving with unsaved changes prompts a warning.
+
+Statistics use UTC dates. PV counts page views; UV deduplicates IP and browser per day across the site.
+Seven-day UV is the sum of daily UV. Admin visits, embedded previews, and entry redirects are excluded;
+blog post pages are counted. Daily visitor hashes persist across restarts and are retained only for the
+current day. Existing historical counts are not recalculated.
+
 ## 🤖 AI / Headless API Deployment
 
 AI agents and CI jobs can publish or update single-file HTML reports and multi-file ZIP bundles idempotently using `SITEFLOW_API_TOKEN` (configured via `.env` or derived automatically from `ADMIN_PASSWORD`):

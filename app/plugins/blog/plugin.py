@@ -21,7 +21,7 @@ def _text(value: object, limit: int) -> str:
 
 def _slug(value: object) -> str:
     text = _text(value, 100)
-    text = re.sub(r"\s+", "-", text)
+    text = re.sub(r"[\s%?#]+", "-", text)
     text = text.replace("/", "-").replace("\\", "-")
     return text.strip("-.")[:100]
 
@@ -36,15 +36,26 @@ def default_content() -> dict:
     return {"title": "", "description": "", "posts": []}
 
 
-def normalize(parsed: dict) -> dict:
+def normalize(parsed: dict, strict: bool = False) -> dict:
     posts_out: list[dict] = []
     seen: set[str] = set()
     posts = parsed.get("posts")
+    if strict and (not isinstance(posts, list) or len(posts) > MAX_POSTS):
+        raise InvalidContent("文章列表格式不正确或超过 200 篇")
     if isinstance(posts, list):
         for raw in posts[:MAX_POSTS]:
             if not isinstance(raw, dict):
+                if strict:
+                    raise InvalidContent("文章格式不正确")
                 continue
-            slug = _slug(raw.get("slug"))
+            title = _text(raw.get("title"), 200)
+            if strict and not title:
+                raise InvalidContent("文章标题不能为空")
+            slug = _slug(raw.get("slug")) or _slug(title)
+            if strict and len(str(raw.get("body", ""))) > MAX_BODY:
+                raise InvalidContent("文章正文不能超过 200000 字")
+            if strict and (not slug or slug in seen):
+                raise InvalidContent("文章网址标识不能为空或重复，请修改后重试")
             if not slug or slug in seen:
                 continue
             seen.add(slug)
@@ -66,14 +77,16 @@ def normalize(parsed: dict) -> dict:
     }
 
 
-def validate_content(raw: str) -> dict:
+def validate_content(raw: str, strict: bool = False) -> dict:
     try:
         parsed = json.loads(raw or "{}")
     except json.JSONDecodeError as exc:
         raise InvalidContent("博客内容不是合法 JSON") from exc
     if not isinstance(parsed, dict):
         raise InvalidContent("博客内容必须是 JSON 对象")
-    return normalize(parsed)
+    if strict and "posts" not in parsed:
+        parsed["posts"] = []
+    return normalize(parsed, strict=strict)
 
 
 class BlogApp:
@@ -88,7 +101,7 @@ class BlogApp:
         return default_content()
 
     def validate_content(self, raw: str) -> dict:
-        return validate_content(raw)
+        return validate_content(raw, strict=True)
 
     def route(self, request: Request, project: Project, path: str, db: Session):
         clean = path.strip("/")

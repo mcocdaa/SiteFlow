@@ -488,8 +488,9 @@ def test_bilingual_i18n_assets_and_toggle_controls() -> None:
         assert "/static/js/i18n.js" in blog_adm
         assert 'id="lang-toggle-btn"' in blog_adm
         assert 'data-i18n="blog.info_title"' in blog_adm
-        assert "/admin/logout" in blog_adm
-        assert "canonicalInputText" in blog_adm
+        assert "/static/js/admin.js" in blog_adm
+        assert 'data-action="logout"' in blog_adm
+        assert "/static/js/blog.js" in blog_adm
         assert "canonicalInputText" in resume_adm
         assert "dataset.zhVal" in admin_js
 
