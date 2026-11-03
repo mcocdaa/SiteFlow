@@ -283,7 +283,12 @@
             headers: { "X-CSRF-Token": CSRF },
             body: coverForm
           }).then(function (response) {
-            if (!response.ok) throw new Error(t("js.cover_failed", null, "封面上传失败"));
+            return response.json().catch(function () { return {}; }).then(function (data) {
+              if (!response.ok || data.ok === false) {
+                var rawErr = data.error ? (window.SiteFlowI18n ? window.SiteFlowI18n.translateText(data.error) : data.error) : t("js.cover_failed", null, "封面上传失败");
+                throw new Error(rawErr);
+              }
+            });
           });
         })
         .then(refresh)

@@ -163,6 +163,7 @@ async function main() {
     await page.screenshot({ path: path.join(artifacts, 'admin-mobile.png'), fullPage: true });
     await page.setViewportSize({ width: 1440, height: 1000 });
     await page.emulateMedia({ colorScheme: 'dark' });
+    await page.waitForTimeout(250);
     await page.screenshot({ path: path.join(artifacts, 'admin-dark.png'), fullPage: true });
     console.log('通过：独立文章编辑、HTTP/网络错误提示与输入保留、保存与继续编辑、中英切换、手机布局');
     assert.deepEqual(errors, [], '浏览器控制台不能有脚本异常');

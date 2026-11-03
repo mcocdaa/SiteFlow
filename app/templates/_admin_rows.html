@@ -6,7 +6,7 @@
     {% if project.cover %}
     <button type="button" class="cover-edit" data-action="edit" aria-label="更换封面" data-i18n-aria-label="row.replace_cover"><img class="thumb" src="/media/covers/{{ project.cover }}" alt=""></button>
     {% else %}
-    {{ svg_cover(project.slug, project.title, project.type, "thumb") | safe }}
+    <button type="button" class="cover-edit" data-action="edit" aria-label="更换封面" data-i18n-aria-label="row.replace_cover">{{ svg_cover(project.slug, project.title, project.type, "thumb") | safe }}</button>
     {% endif %}
     <div class="row-main">
       <div class="row-title-wrap">

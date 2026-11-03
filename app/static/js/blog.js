@@ -8,13 +8,28 @@
   var saving = false;
 
   function t(key) { return window.SiteFlowI18n.t(key); }
-  function message(text, error) {
+  if (status && status.getAttribute("data-i18n")) {
+    status.dataset.statusKey = status.getAttribute("data-i18n");
+  }
+  function message(text, error, statusKey) {
     status.textContent = text;
     status.classList.toggle("is-error", Boolean(error));
     status.setAttribute("role", error ? "alert" : "status");
     status.removeAttribute("data-i18n");
+    if (statusKey) {
+      status.dataset.statusKey = statusKey;
+    } else {
+      delete status.dataset.statusKey;
+    }
     if (error) { status.focus(); status.scrollIntoView({ block: "center", behavior: "smooth" }); }
   }
+  window.addEventListener("siteflow:langchange", function () {
+    if (status && status.dataset.statusKey) {
+      status.textContent = t(status.dataset.statusKey);
+    } else if (status && status.textContent && window.SiteFlowI18n && window.SiteFlowI18n.translateText) {
+      status.textContent = window.SiteFlowI18n.translateText(status.textContent);
+    }
+  });
   async function request(method, url, payload) {
     var response;
     try {
@@ -35,7 +50,7 @@
   }
   document.addEventListener("input", function () {
     dirty = true;
-    if (!saving) message(t("blog.unsaved"));
+    if (!saving) message(t("blog.unsaved"), false, "blog.unsaved");
   });
   window.addEventListener("beforeunload", function (event) {
     if (dirty) { event.preventDefault(); event.returnValue = ""; }

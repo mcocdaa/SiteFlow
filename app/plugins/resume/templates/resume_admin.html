@@ -237,6 +237,8 @@
   }
   function save(thenView) {
     var status = document.getElementById("save-state");
+    status.classList.remove("is-error");
+    status.setAttribute("role", "status");
     status.textContent = tr("resume.saving", null, "保存中…");
     var payloadObj = collect();
     fetch("/api/admin/projects/" + projectId, {
@@ -253,14 +255,17 @@
         Object.keys(SECTION_FIELDS).forEach(renderSection);
         var previewUrl = body.getAttribute("data-preview-url");
         var timeStr = new Date().toLocaleTimeString();
+        status.classList.remove("is-error");
+        status.setAttribute("role", "status");
         status.innerHTML = tr("resume.saved_at", { time: timeStr }, "已保存 " + timeStr) + ' · <a href="' + previewUrl + '" target="_blank">' + tr("resume.view_resume", null, "查看简历") + '</a>';
         if (thenView) window.location.href = previewUrl;
       });
     }).catch(function (error) {
-      status.textContent = "";
       var msg = error.message || String(error);
       if (window.SiteFlowI18n && window.SiteFlowI18n.translateText) msg = window.SiteFlowI18n.translateText(msg);
-      alert(msg);
+      status.textContent = tr("resume.save_failed", null, "保存失败") + "：" + msg;
+      status.classList.add("is-error");
+      status.setAttribute("role", "alert");
     });
   }
   loadBasics();
