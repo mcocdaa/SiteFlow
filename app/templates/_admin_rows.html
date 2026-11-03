@@ -4,9 +4,9 @@
   {% for project in projects %}
   <div class="row" data-id="{{ project.id }}" data-slug="{{ project.slug }}" data-title="{{ project.title }}" data-type="{{ project.type }}">
     {% if project.cover %}
-    <img class="thumb" src="/media/covers/{{ project.cover }}" alt="">
+    <button type="button" class="cover-edit" data-action="edit" aria-label="更换封面" data-i18n-aria-label="row.replace_cover"><img class="thumb" src="/media/covers/{{ project.cover }}" alt=""></button>
     {% else %}
-    {{ svg_cover(project.slug, project.title, project.type, "thumb") | safe }}
+    <button type="button" class="cover-edit" data-action="edit" aria-label="更换封面" data-i18n-aria-label="row.replace_cover">{{ svg_cover(project.slug, project.title, project.type, "thumb") | safe }}</button>
     {% endif %}
     <div class="row-main">
       <div class="row-title-wrap">
@@ -45,9 +45,10 @@
         <span data-i18n="row.label_cover">封面</span>
         <span class="file-picker">
           <input type="file" name="cover" accept="image/*" hidden>
-          <button type="button" class="file-button">{{ icons.icon("image", 14) }}<span data-i18n="row.choose_image">选择图片</span></button>
+          <button type="button" class="file-button">{{ icons.icon("image", 14) }}<span data-i18n="{{ 'row.replace_cover' if project.cover else 'row.choose_image' }}">{{ '更换封面' if project.cover else '选择图片' }}</span></button>
           <span class="file-name" data-i18n="row.no_file">未选择</span>
         </span>
+        {% if project.cover %}<button type="button" class="btn ghost btn-sm" data-action="remove-cover" data-i18n="row.remove_cover">恢复默认封面</button>{% endif %}
       </div>
       <div class="editor-actions">
         {% if project.password_hash %}

@@ -362,7 +362,7 @@ def test_blog_plugin_index_detail_and_markdown_safety() -> None:
         assert admin_page.status_code == 200
         assert 'id="plugin-data"' in admin_page.text
         assert "添加文章" in admin_page.text
-        assert "保存并查看" in admin_page.text
+        assert f"/admin/projects/{blog['id']}/posts/new" in admin_page.text
         assert 'data-preview-url="/projects/' in admin_page.text
         assert 'id="post-count"' in admin_page.text
 

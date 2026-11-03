@@ -9,5 +9,7 @@ uv run --frozen pytest -q
 uv run --frozen ruff check .
 uv run --frozen ruff format --check .
 uv run --frozen mypy app tests
-node --check app/static/js/*.js
+for script in app/static/js/*.js; do
+  node --check "$script"
+done
 echo "✓ 全部检查通过"

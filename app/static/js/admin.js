@@ -41,8 +41,25 @@
   var dropzone = document.getElementById("dropzone");
   var fileInput = document.getElementById("file-input");
 
+  var uploading = false;
+  var failedFiles = [];
+
+  document.querySelectorAll('[data-action="show-create"]').forEach(function (button) {
+    button.addEventListener("click", function () {
+      var panel = document.getElementById(button.dataset.panel);
+      var open = panel.hidden;
+      document.querySelectorAll(".create-panel").forEach(function (item) { item.hidden = true; });
+      document.querySelectorAll('[data-action="show-create"]').forEach(function (item) {
+        item.setAttribute("aria-expanded", "false");
+      });
+      panel.hidden = !open;
+      button.setAttribute("aria-expanded", String(open));
+      if (open && panel.id === "link-panel") panel.querySelector("input").focus();
+    });
+  });
+
   if (dropzone) {
-    dropzone.addEventListener("click", function () { fileInput.click(); });
+    dropzone.addEventListener("click", function () { if (!uploading) fileInput.click(); });
     dropzone.addEventListener("dragover", function (event) {
       event.preventDefault();
       dropzone.classList.add("active");
@@ -51,12 +68,14 @@
     dropzone.addEventListener("drop", function (event) {
       event.preventDefault();
       dropzone.classList.remove("active");
-      if (event.dataTransfer.files.length) uploadFile(event.dataTransfer.files[0]);
+      uploadFiles(Array.from(event.dataTransfer.files));
     });
     fileInput.addEventListener("change", function () {
-      if (!fileInput.files.length) return;
-      uploadFile(fileInput.files[0]);
+      uploadFiles(Array.from(fileInput.files));
       fileInput.value = "";
+    });
+    document.getElementById("retry-uploads").addEventListener("click", function () {
+      uploadFiles(failedFiles.slice());
     });
   }
 
@@ -65,81 +84,85 @@
     return value ? parseInt(value, 10) : null;
   }
 
-  function uploadFile(file) {
-    var form = new FormData();
-    form.append("file", file);
-    var parent = parentId();
-    if (parent) form.append("parent_id", String(parent));
-
-    var dropzoneIdle = document.getElementById("dropzone-idle");
-    var dropzoneStages = document.getElementById("dropzone-stages");
-    var progressBar = document.getElementById("stage-progress-bar");
-    var statusMsg = document.getElementById("stage-status-msg");
-    var stageSteps = dropzoneStages ? dropzoneStages.querySelectorAll(".stage-step") : [];
-
-    function setStage(stepNum, percent, message) {
-      if (!dropzoneStages) return;
-      dropzoneStages.hidden = false;
-      if (dropzoneIdle) dropzoneIdle.hidden = true;
-      if (dropzone) dropzone.classList.add("uploading");
-      stageSteps.forEach(function (el) {
-        var num = parseInt(el.getAttribute("data-step"), 10);
-        el.classList.toggle("active", num === stepNum);
-        el.classList.toggle("done", num < stepNum);
-      });
-      if (progressBar) progressBar.style.width = percent + "%";
-      if (statusMsg) statusMsg.textContent = message;
-    }
-
-    function resetDropzone() {
-      if (dropzoneStages) dropzoneStages.hidden = true;
-      if (dropzoneIdle) dropzoneIdle.hidden = false;
-      if (dropzone) dropzone.classList.remove("uploading");
-    }
-
-    setStage(1, 10, t("js.upload_prep", null, "正在准备上传制品..."));
-
-    var xhr = new XMLHttpRequest();
-    xhr.open("POST", "/api/admin/projects/upload");
-    xhr.setRequestHeader("X-CSRF-Token", CSRF);
-
-    xhr.upload.onprogress = function (e) {
-      if (e.lengthComputable) {
-        var percent = Math.round((e.loaded / e.total) * 45);
-        var pctText = Math.round((e.loaded / e.total) * 100);
-        setStage(1, Math.max(10, percent), t("js.uploading", { pct: pctText }, "正在上传制品 (" + pctText + "%)..."));
-      }
-    };
-
-    xhr.upload.onload = function () {
-      setStage(2, 65, t("js.upload_audit", null, "执行安全沙箱审计（ZipBomb 防御与容错转码）..."));
-      setTimeout(function () {
-        setStage(3, 85, t("js.upload_extract", null, "结构嗅探与安全解压中..."));
-      }, 350);
-    };
-
-    xhr.onload = function () {
-      try {
-        var data = JSON.parse(xhr.responseText);
-        if (xhr.status >= 400 || data.ok === false) {
-          var upErr = data.error ? (window.SiteFlowI18n ? window.SiteFlowI18n.translateText(data.error) : data.error) : t("js.upload_failed", null, "上传失败");
-          throw new Error(upErr);
-        }
-        setStage(4, 100, t("js.upload_done", null, "制品安全就绪！正在同步画廊..."));
-        setTimeout(refresh, 500);
-      } catch (error) {
-        resetDropzone();
-        onError(error);
-      }
-    };
-
-    xhr.onerror = function () {
-      resetDropzone();
-      onError(new Error(t("js.network_error", null, "网络错误，上传中断")));
-    };
-
-    xhr.send(form);
+  function uploadFile(file, status) {
+    return new Promise(function (resolve, reject) {
+      var form = new FormData();
+      form.append("file", file);
+      var parent = parentId();
+      if (parent) form.append("parent_id", String(parent));
+      var xhr = new XMLHttpRequest();
+      xhr.open("POST", "/api/admin/projects/upload");
+      xhr.setRequestHeader("X-CSRF-Token", CSRF);
+      xhr.timeout = 300000;
+      xhr.upload.onprogress = function (event) {
+        if (event.lengthComputable) status.textContent = Math.round(event.loaded / event.total * 100) + "%";
+      };
+      xhr.upload.onload = function () { status.textContent = t("admin.processing"); };
+      xhr.onload = function () {
+        try {
+          var data = JSON.parse(xhr.responseText);
+          if (xhr.status < 200 || xhr.status >= 300 || data.ok === false) {
+            throw new Error(data.error ? (window.SiteFlowI18n ? window.SiteFlowI18n.translateText(data.error) : data.error) : t("js.upload_failed"));
+          }
+          resolve(data);
+        } catch (error) { reject(error); }
+      };
+      xhr.onerror = xhr.ontimeout = function () { reject(new Error(t("js.network_error"))); };
+      xhr.send(form);
+    });
   }
+
+  async function uploadFiles(files) {
+    if (uploading || !files.length) return;
+    uploading = true;
+    failedFiles = [];
+    dropzone.disabled = true;
+    var results = document.getElementById("upload-results");
+    var retry = document.getElementById("retry-uploads");
+    results.textContent = "";
+    retry.hidden = true;
+    try {
+      for (var file of files) {
+        var item = document.createElement("div");
+        item.className = "upload-result";
+        var name = document.createElement("span");
+        name.textContent = file.name;
+        var status = document.createElement("span");
+        status.textContent = t("admin.processing");
+        item.append(name, status);
+        results.append(item);
+        try {
+          var data = await uploadFile(file, status);
+          status.textContent = "";
+          var link = document.createElement("a");
+          link.href = "/projects/" + data.project.slug + "/";
+          link.target = "_blank";
+          link.textContent = t("admin.upload_success");
+          status.append(link);
+        } catch (error) {
+          failedFiles.push(file);
+          status.textContent = t("js.upload_failed") + " · " + error.message;
+          item.classList.add("is-error");
+        }
+      }
+      var response = await fetch(location.href);
+      if (!response.ok) throw new Error(t("js.req_failed"));
+      var html = new DOMParser().parseFromString(await response.text(), "text/html");
+      var list = html.getElementById("project-list");
+      if (!list) throw new Error(t("js.req_failed"));
+      document.getElementById("project-list").replaceWith(list);
+      if (window.SiteFlowI18n) window.SiteFlowI18n.applyI18n();
+    } catch (error) { onError(error); }
+    finally {
+      uploading = false;
+      dropzone.disabled = false;
+      retry.hidden = !failedFiles.length;
+    }
+  }
+
+  window.addEventListener("beforeunload", function (event) {
+    if (uploading) { event.preventDefault(); event.returnValue = ""; }
+  });
 
   document.addEventListener("change", function (event) {
     var input = event.target;
@@ -151,65 +174,16 @@
 
   var linkUrl = document.getElementById("link-url");
   if (linkUrl) {
-    var addLink = document.querySelector('[data-action="add-link"]');
-    addLink.addEventListener("click", function () {
+    document.getElementById("link-panel").addEventListener("submit", function (event) {
+      event.preventDefault();
       var url = linkUrl.value.trim();
       if (!url) return;
+      var button = this.querySelector("button");
+      button.disabled = true;
       api("POST", "/projects/link", { url: url, parent_id: parentId() })
-        .then(function () {
-          linkUrl.value = "";
-          refresh();
-        })
-        .catch(onError);
-    });
-  }
-
-  // Space Theme customization
-  var saveThemeBtn = document.getElementById("save-theme-btn");
-  if (saveThemeBtn) {
-    var swatches = document.querySelectorAll(".swatch[data-color]");
-    var accentPicker = document.getElementById("theme-accent-picker");
-    var accentText = document.getElementById("theme-accent");
-    var fontSelect = document.getElementById("theme-font");
-    var radiusSelect = document.getElementById("theme-radius");
-    var tip = document.getElementById("theme-save-tip");
-
-    swatches.forEach(function (sw) {
-      sw.addEventListener("click", function () {
-        var c = sw.getAttribute("data-color");
-        if (accentText) accentText.value = c;
-        if (accentPicker) accentPicker.value = c;
-      });
-    });
-
-    if (accentPicker && accentText) {
-      accentPicker.addEventListener("input", function () {
-        accentText.value = accentPicker.value;
-      });
-      accentText.addEventListener("input", function () {
-        if (/^#[0-9a-fA-F]{6}$/.test(accentText.value)) {
-          accentPicker.value = accentText.value;
-        }
-      });
-    }
-
-    saveThemeBtn.addEventListener("click", function () {
-      var pid = parentId();
-      if (!pid) return;
-      var theme = {
-        accent: accentText ? accentText.value.trim() : "",
-        font_family: fontSelect ? fontSelect.value : "",
-        radius_card: radiusSelect ? radiusSelect.value : ""
-      };
-      api("PATCH", "/projects/" + pid, { theme: theme })
-        .then(function () {
-          if (tip) {
-            tip.textContent = t("js.theme_saved", null, "✓ 空间主题已保存生效");
-            tip.style.color = "var(--accent)";
-            setTimeout(function () { tip.textContent = ""; }, 3000);
-          }
-        })
-        .catch(onError);
+        .then(refresh)
+        .catch(onError)
+        .finally(function () { button.disabled = false; });
     });
   }
 
@@ -270,6 +244,8 @@
     if (action === "edit") {
       var editor = row.querySelector(".editor");
       editor.hidden = !editor.hidden;
+    } else if (action === "remove-cover") {
+      api("DELETE", "/projects/" + id + "/cover").then(refresh).catch(onError);
     } else if (action === "clear-password") {
       if (confirm(t("js.confirm_clear_pwd", null, "确定清除此作品的访问密码？清除后任何人均可公开直接访问。"))) {
         api("PATCH", "/projects/" + id, { password: "" }).then(refresh).catch(onError);
@@ -295,6 +271,7 @@
       if (pwdInput && pwdInput.value.trim() !== "") {
         payload.password = pwdInput.value.trim();
       }
+      button.disabled = true;
       api("PATCH", "/projects/" + id, payload)
         .then(function () {
           var coverInput = row.querySelector('[name="cover"]');
@@ -306,11 +283,17 @@
             headers: { "X-CSRF-Token": CSRF },
             body: coverForm
           }).then(function (response) {
-            if (!response.ok) throw new Error(t("js.cover_failed", null, "封面上传失败"));
+            return response.json().catch(function () { return {}; }).then(function (data) {
+              if (!response.ok || data.ok === false) {
+                var rawErr = data.error ? (window.SiteFlowI18n ? window.SiteFlowI18n.translateText(data.error) : data.error) : t("js.cover_failed", null, "封面上传失败");
+                throw new Error(rawErr);
+              }
+            });
           });
         })
         .then(refresh)
-        .catch(onError);
+        .catch(onError)
+        .finally(function () { button.disabled = false; });
     } else if (action === "toggle-pin") {
       var pinned = button.getAttribute("data-pinned") === "true";
       api("PATCH", "/projects/" + id, { pinned: !pinned }).then(refresh).catch(onError);

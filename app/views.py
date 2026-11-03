@@ -140,7 +140,8 @@ def project_root(request: Request, slug: str, db: DbSession):
             "project_gate.html",
             {"site_title": config.site_title, "project": project, "error": None},
         )
-    stats.record_visit(db, request, project_id=project.id)
+    if registry.get(project.type) is not None:
+        stats.record_visit(db, request, project_id=project.id)
     return project_home(request, config, project, db)
 
 
@@ -189,7 +190,8 @@ def project_file(request: Request, slug: str, path: str, db: DbSession):
         raise HTTPException(401, "需要访问密码")
 
     if not path:
-        stats.record_visit(db, request, project_id=project.id)
+        if registry.get(project.type) is not None:
+            stats.record_visit(db, request, project_id=project.id)
         return project_home(request, config, project, db)
 
     if path.strip("/") == "admin":
@@ -200,6 +202,8 @@ def project_file(request: Request, slug: str, path: str, db: DbSession):
         response = plugin.route(request, project, path, db)
         if response is None:
             raise HTTPException(404)
+        if response.status_code == 200:
+            stats.record_visit(db, request, project_id=project.id)
         return response
 
     if project.type not in ("html", "zip", "static"):

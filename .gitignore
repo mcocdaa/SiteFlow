@@ -8,4 +8,6 @@ data/
 .mypy_cache/
 .ruff_cache/
 .DS_Store
+temp.note
+temp.notes
 *.egg-info/

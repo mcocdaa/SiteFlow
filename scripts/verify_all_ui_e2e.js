@@ -179,29 +179,6 @@ async function main() {
     assert(sparklineSvg, '7-day Sparkline SVG must be rendered');
     logStep('7. Admin KPI Analytics & Sparkline', true, 'PV/UV metrics and pure SVG trend chart rendered in admin');
 
-    // -------------------------------------------------------------
-    // Test 7: Space Custom Theme Editor
-    // -------------------------------------------------------------
-    await page.goto(`${BASE_URL}/admin/projects/1`, { waitUntil: 'networkidle' });
-    const themeSection = await page.$('#space-theme-section');
-    assert(themeSection, 'Space theme customization section must exist in space admin');
-
-    // Click Emerald swatch (#10b981)
-    const emeraldSwatch = await page.$('.swatch[data-color="#10b981"]');
-    if (emeraldSwatch) {
-      await emeraldSwatch.click();
-      await page.waitForTimeout(200);
-      const accentVal = await page.$eval('#theme-accent', el => el.value);
-      assert.strictEqual(accentVal, '#10b981', 'Accent input should update to #10b981');
-
-      // Click Save Theme
-      await page.click('#save-theme-btn');
-      await page.waitForTimeout(600);
-      const saveTip = await page.$eval('#theme-save-tip', el => el.textContent);
-      assert(saveTip.includes('已保存') || saveTip.includes('保存生效'), `Save tip unexpected: ${saveTip}`);
-      logStep('8. Space Theme Customizer', true, 'Theme swatch picker and AJAX save verified');
-    }
-
     // Capture final summary screenshot
     await page.screenshot({ path: path.join(ARTIFACT_DIR, 'e2e_verification_dashboard.png') });
 

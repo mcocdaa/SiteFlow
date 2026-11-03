@@ -41,6 +41,14 @@ def _migrate(engine: Engine) -> None:
             ON daily_stats (date, COALESCE(project_id, -1))
         """)
         conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_daily_stats_date ON daily_stats (date)")
+        conn.exec_driver_sql("""
+            CREATE TABLE IF NOT EXISTS daily_visitors (
+                date TEXT NOT NULL,
+                scope INTEGER NOT NULL,
+                visitor TEXT NOT NULL,
+                PRIMARY KEY (date, scope, visitor)
+            )
+        """)
         conn.commit()
 
 
@@ -159,6 +167,7 @@ def delete_stats(db: Session, project_ids: list[int]) -> None:
     placeholders = ", ".join(f":id_{i}" for i in range(len(project_ids)))
     params = {f"id_{i}": pid for i, pid in enumerate(project_ids)}
     db.execute(text(f"DELETE FROM daily_stats WHERE project_id IN ({placeholders})"), params)
+    db.execute(text(f"DELETE FROM daily_visitors WHERE scope IN ({placeholders})"), params)
 
 
 def delete_files(config: Config, project: Project) -> None:

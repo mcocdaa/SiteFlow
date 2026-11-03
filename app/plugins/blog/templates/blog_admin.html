@@ -18,286 +18,47 @@
       </div>
       <div class="row-actions header-actions">
         <a class="btn ghost" href="{{ project.slug and '/projects/' + project.slug + '/' }}" target="_blank">{{ icons.icon("external-link") }}<span data-i18n="resume.preview">预览</span></a>
-        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">🌐 EN</button>
+        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
         <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
       </div>
     </div>
   </header>
-  <main class="wrap">
+  <main class="wrap" data-blog-mode="list">
+    <section class="plugin-block">
+      <div class="block-head">
+        <h2 data-i18n="blog.posts_heading">文章</h2>
+        <a class="btn primary" href="/admin/projects/{{ project.id }}/posts/new">{{ icons.icon("plus") }}<span data-i18n="blog.add_post">添加文章</span></a>
+      </div>
+      <p class="muted"><span id="post-count">{{ content.posts | length }}</span> <span data-i18n="blog.post_unit">篇文章</span></p>
+      <div class="blog-post-list">
+        {% for post in content.posts %}
+        <article class="blog-post-row">
+          <a class="post-edit-link" href="/admin/projects/{{ project.id }}/posts/{{ post.slug | urlencode }}/edit"><strong>{{ post.title }}</strong><span class="muted">{{ post.date }}{% if post.summary %} · {{ post.summary }}{% endif %}</span></a>
+          <div class="entry-actions">
+            <a class="btn ghost icon-btn" href="/projects/{{ project.slug }}/posts/{{ post.slug | urlencode }}" target="_blank" aria-label="查看" data-i18n-aria-label="row.view">{{ icons.icon("external-link") }}</a>
+            <button type="button" class="btn ghost icon-btn" data-delete-post="{{ post.slug }}" aria-label="删除" data-i18n-aria-label="row.delete">{{ icons.icon("trash") }}</button>
+          </div>
+        </article>
+        {% else %}
+        <p class="empty small" data-i18n="blog.start_writing">还没有文章，点击“添加文章”开始写作。</p>
+        {% endfor %}
+      </div>
+    </section>
     <section class="plugin-block">
       <h2 data-i18n="blog.info_title">博客信息</h2>
-      <div class="editor-grid">
-        <label class="full"><span data-i18n="row.label_title">标题</span> <input id="f-title" autocomplete="off" data-i18n-auto-val></label>
-        <label class="full"><span data-i18n="row.label_desc">描述</span> <input id="f-description" autocomplete="off" data-i18n-auto-val></label>
-      </div>
+      <form id="blog-settings">
+        <div class="editor-grid">
+          <label class="full"><span data-i18n="row.label_title">标题</span><input id="f-title" value="{{ content.title or project.title }}" required maxlength="200"></label>
+          <label class="full"><span data-i18n="row.label_desc">描述</span><input id="f-description" value="{{ content.description }}" maxlength="500"></label>
+        </div>
+        <button type="submit" class="btn" data-i18n="blog.save_settings">保存博客信息</button>
+      </form>
     </section>
-    <section class="plugin-block" data-section="posts">
-      <div class="block-head">
-        <h2><span data-i18n="blog.posts_heading">文章</span> (<span id="post-count">0</span>)</h2>
-        <button type="button" class="btn ghost" data-add-post>{{ icons.icon("plus") }}<span data-i18n="blog.add_post">添加文章</span></button>
-      </div>
-      <div class="entry-list"></div>
-    </section>
-    <div class="form-actions">
-      <button type="button" class="btn primary" data-action="save-content">{{ icons.icon("check") }}<span data-i18n="row.save">保存</span></button>
-      <button type="button" class="btn" data-action="save-preview" data-i18n="resume.save_preview">保存并查看</button>
-      <span class="muted" id="save-state"></span>
-    </div>
+    <p id="save-state" role="status" aria-live="polite" tabindex="-1"></p>
   </main>
   <script id="plugin-data" type="application/json">{{ content | tojson }}</script>
   <script src="/static/js/i18n.js" defer></script>
-  <script>
-(function () {
-  "use strict";
-  var CSRF = document.querySelector('meta[name="csrf"]').getAttribute("content");
-  var body = document.body;
-  var projectId = body.getAttribute("data-plugin-id");
-  var previewUrl = body.getAttribute("data-preview-url");
-  var state = JSON.parse(document.getElementById("plugin-data").textContent);
-  var ICONS = {
-    up: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>',
-    down: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>',
-    trash: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>',
-    collapse: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m18 15-6-6-6 6"/></svg>',
-    expand: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>',
-    open: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>'
-  };
-  var POST_FIELDS = [
-    ["slug", "blog.col_slug", "Slug（URL，可中文）", "text", "span-4"],
-    ["date", "blog.col_date", "日期（YYYY-MM-DD）", "text", "span-3"],
-    ["tags", "blog.col_tags", "标签（逗号分隔）", "tags", "span-5"],
-    ["title", "blog.col_title", "标题", "text", "full"],
-    ["summary", "blog.col_summary", "摘要", "text", "full"],
-    ["body", "blog.col_body", "正文（Markdown）", "body", "full"]
-  ];
-
-  function tr(key, vars, fallback) {
-    if (window.SiteFlowI18n && window.SiteFlowI18n.t) {
-      return window.SiteFlowI18n.t(key, vars);
-    }
-    return fallback || key;
-  }
-
-  function el(tag, className, text) {
-    var node = document.createElement(tag);
-    if (className) node.className = className;
-    if (text !== undefined) node.textContent = text;
-    return node;
-  }
-  function valueOf(post, field, kind) {
-    var value = post[field];
-    if (kind === "tags") return Array.isArray(value) ? value.join(", ") : "";
-    return typeof value === "string" ? value : "";
-  }
-  function canonicalInputText(input) {
-    if (!input) return "";
-    var text = input.value.trim();
-    if (input.dataset && input.dataset.enVal && input.dataset.zhVal && text === input.dataset.enVal.trim() && !input.dataset.userEdited) {
-      return input.dataset.zhVal.trim();
-    }
-    return text;
-  }
-  function readValue(input, kind) {
-    var text = canonicalInputText(input);
-    if (kind === "tags") return text ? text.split(",").map(function (part) { return part.trim(); }).filter(Boolean) : [];
-    return text;
-  }
-  function postUrl(slug) {
-    return slug ? previewUrl + "posts/" + encodeURIComponent(slug) : null;
-  }
-  function renderPost(post, index, expanded) {
-    var card = el("div", "entry-card" + (expanded ? "" : " collapsed"));
-    card.setAttribute("data-index", String(index));
-    var head = el("div", "entry-head");
-    var untitledText = tr("blog.untitled", null, "（未命名）");
-    var title = el("span", "entry-title", post.title || untitledText);
-    title.setAttribute("data-i18n-auto", "");
-    var toggle = el("button", "btn ghost icon-btn entry-toggle");
-    toggle.type = "button";
-    var toggleKey = expanded ? "blog.collapse" : "blog.expand";
-    var toggleText = tr(toggleKey, null, expanded ? "折叠" : "展开");
-    toggle.setAttribute("aria-label", toggleText);
-    toggle.setAttribute("data-tip", toggleText);
-    toggle.innerHTML = expanded ? ICONS.collapse : ICONS.expand;
-    var left = el("span", "entry-head-left");
-    left.append(toggle, el("span", "entry-order", tr("blog.post_num", { n: index + 1 }, "第 " + (index + 1) + " 篇")), title);
-    head.append(left);
-    var actions = el("div", "entry-actions");
-    var url = postUrl(post.slug);
-    if (url) {
-      var link = el("a", "btn ghost icon-btn");
-      link.href = url;
-      link.target = "_blank";
-      var prevPostTip = tr("blog.preview_post", null, "预览这篇");
-      link.setAttribute("aria-label", prevPostTip);
-      link.setAttribute("data-tip", prevPostTip);
-      link.setAttribute("data-i18n-tip", "blog.preview_post");
-      link.setAttribute("data-i18n-aria-label", "blog.preview_post");
-      link.innerHTML = ICONS.open;
-      actions.append(link);
-    }
-    [["entry-up", ICONS.up, "row.move_up", "上移"], ["entry-down", ICONS.down, "row.move_down", "下移"], ["entry-remove", ICONS.trash, "row.delete", "删除"]].forEach(function (item) {
-      var button = el("button", "btn ghost icon-btn");
-      button.type = "button";
-      var tipText = tr(item[2], null, item[3]);
-      button.setAttribute("data-entry-action", item[0]);
-      button.setAttribute("aria-label", tipText);
-      button.setAttribute("data-tip", tipText);
-      button.setAttribute("data-i18n-tip", item[2]);
-      button.setAttribute("data-i18n-aria-label", item[2]);
-      button.innerHTML = item[1];
-      actions.append(button);
-    });
-    head.append(actions);
-    card.append(head);
-    var grid = el("div", "entry-grid");
-    POST_FIELDS.forEach(function (field) {
-      var label = el("label", field[4] || undefined);
-      var spanEl = el("span", undefined, tr(field[1], null, field[2]));
-      spanEl.setAttribute("data-i18n", field[1]);
-      label.append(spanEl);
-      var singleLine = field[3] === "text" || field[3] === "tags";
-      var input = el(singleLine ? "input" : "textarea");
-      if (singleLine) { input.type = "text"; input.autocomplete = "off"; }
-      else { input.rows = field[3] === "body" ? 10 : 3; if (field[3] === "body") input.className = "mono"; }
-      input.value = valueOf(post, field[0], field[3]);
-      input.setAttribute("data-field", field[0]);
-      input.setAttribute("data-kind", field[3]);
-      if (field[0] !== "slug" && field[0] !== "date") {
-        input.setAttribute("data-i18n-auto-val", "");
-      }
-      label.append(input);
-      grid.append(label);
-    });
-    grid.querySelector('[data-field="title"]').addEventListener("input", function (event) {
-      title.textContent = event.target.value.trim() || tr("blog.untitled", null, "（未命名）");
-      title.removeAttribute("data-zh-orig");
-    });
-    card.append(grid);
-    return card;
-  }
-  function renderPosts() {
-    var container = document.querySelector('[data-section="posts"] .entry-list');
-    container.textContent = "";
-    (state.posts || []).forEach(function (post, index) {
-      container.append(renderPost(post, index, index === expandedIndex));
-    });
-    document.getElementById("post-count").textContent = String((state.posts || []).length);
-    if (window.SiteFlowI18n && window.SiteFlowI18n.applyI18n) {
-      window.SiteFlowI18n.applyI18n();
-    }
-  }
-  function collectPosts() {
-    var rows = [];
-    document.querySelectorAll('[data-section="posts"] .entry-card').forEach(function (card) {
-      var post = {};
-      card.querySelectorAll("[data-field]").forEach(function (input) {
-        post[input.getAttribute("data-field")] = readValue(input, input.getAttribute("data-kind"));
-      });
-      rows.push(post);
-    });
-    return rows;
-  }
-  var expandedIndex = 0;
-  function collect() {
-    return {
-      title: canonicalInputText(document.getElementById("f-title")),
-      description: canonicalInputText(document.getElementById("f-description")),
-      posts: collectPosts()
-    };
-  }
-  function save(thenView) {
-    var status = document.getElementById("save-state");
-    status.textContent = tr("resume.saving", null, "保存中…");
-    var payloadObj = collect();
-    fetch("/api/admin/projects/" + projectId, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json", "X-CSRF-Token": CSRF },
-      body: JSON.stringify({ content: JSON.stringify(payloadObj) })
-    }).then(function (response) {
-      return response.json().then(function (data) {
-        if (!response.ok || data.ok === false) {
-          var errMsg = data.error ? (window.SiteFlowI18n ? window.SiteFlowI18n.translateText(data.error) : data.error) : tr("resume.save_failed", null, "保存失败");
-          throw new Error(errMsg);
-        }
-        state = payloadObj;
-        renderPosts();
-        var stamp = new Date().toLocaleTimeString();
-        status.innerHTML = tr("resume.saved_at", { time: stamp }, "已保存 " + stamp) + ' · <a href="' + previewUrl + '" target="_blank">' + tr("blog.view_blog", null, "查看博客") + '</a>';
-        if (thenView) window.location.href = previewUrl;
-      });
-    }).catch(function (error) {
-      status.textContent = "";
-      var msg = error.message || String(error);
-      if (window.SiteFlowI18n && window.SiteFlowI18n.translateText) msg = window.SiteFlowI18n.translateText(msg);
-      alert(msg);
-    });
-  }
-  document.getElementById("f-title").value = state.title || "";
-  document.getElementById("f-description").value = state.description || "";
-  renderPosts();
-  document.addEventListener("DOMContentLoaded", function () {
-    renderPosts();
-  });
-  window.addEventListener("siteflow:langchange", function () {
-    state.posts = collectPosts();
-    renderPosts();
-  });
-  document.addEventListener("click", function (event) {
-    if (event.target.closest('[data-action="logout"]')) {
-      fetch("/admin/logout", {
-        method: "POST",
-        headers: { "X-CSRF-Token": CSRF }
-      }).then(function () {
-        location.href = "/admin/login";
-      });
-      return;
-    }
-    if (event.target.closest("[data-add-post]")) {
-      state.posts = collectPosts();
-      state.posts.push({});
-      expandedIndex = state.posts.length - 1;
-      renderPosts();
-      return;
-    }
-    var toggle = event.target.closest(".entry-toggle");
-    if (toggle) {
-      var card = toggle.closest(".entry-card");
-      card.classList.toggle("collapsed");
-      var collapsed = card.classList.contains("collapsed");
-      var cardIdx = parseInt(card.getAttribute("data-index"), 10);
-      if (!collapsed) {
-        expandedIndex = cardIdx;
-      } else if (expandedIndex === cardIdx) {
-        expandedIndex = -1;
-      }
-      toggle.innerHTML = collapsed ? ICONS.expand : ICONS.collapse;
-      var tText = tr(collapsed ? "blog.expand" : "blog.collapse", null, collapsed ? "展开" : "折叠");
-      toggle.setAttribute("aria-label", tText);
-      toggle.setAttribute("data-tip", tText);
-      return;
-    }
-    var entryButton = event.target.closest("[data-entry-action]");
-    if (entryButton) {
-      var entryCard = entryButton.closest(".entry-card");
-      var action = entryButton.getAttribute("data-entry-action");
-      if (action === "entry-remove") {
-        entryCard.remove();
-      } else {
-        var sibling = action === "entry-up" ? entryCard.previousElementSibling : entryCard.nextElementSibling;
-        if (sibling) {
-          if (action === "entry-up") entryCard.parentNode.insertBefore(entryCard, sibling);
-          else entryCard.parentNode.insertBefore(sibling, entryCard);
-        }
-      }
-      state.posts = collectPosts();
-      renderPosts();
-      return;
-    }
-    if (event.target.closest('[data-action="save-content"]')) save(false);
-    if (event.target.closest('[data-action="save-preview"]')) save(true);
-  });
-})();
-  </script>
+  <script src="/static/js/blog.js" defer></script>
+  <script src="/static/js/admin.js" defer></script>
 </body>
 </html>

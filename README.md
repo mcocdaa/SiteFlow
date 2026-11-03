@@ -21,7 +21,7 @@ Self-hosted sandboxed gallery & headless deployment portal for HTML reports, sta
 
 - **Human via UI, AI via API**: One-command headless `PUT /api/admin/projects/{slug}/deploy` endpoint for AI agents and CI/CD pipelines alongside a full drag-and-drop Admin Console for humans.
 - **Zero-Trust Sandbox & ZipBomb Defense**: Hosted projects render inside a strict opaque-origin CSP sandbox (`allow-scripts` isolated from admin session cookies), backed by a hardened ZIP extractor with 100:1 compression-ratio circuit breakers, inode caps, and CP437/GBK filename transcoding.
-- **Multi-Tier Spaces & Custom Themes**: Organize HTML reports, static ZIP sites, external links, resumes, and CommonMark blogs into up to 3 levels of nested Spaces, each with customizable accent colors, typography (`Sans` / `Serif` / `Mono`), and card radii.
+- **Multi-Tier Spaces**: Organize HTML reports, static ZIP sites, external links, resumes, and CommonMark blogs into up to 3 levels of nested Spaces.
 - **Responsive Viewport Modal & `Cmd+K` Palette**: Preview artifacts across desktop (`100%`), tablet (`768px`), and mobile (`375px`) viewports with orientation toggle, LAN QR code debugging, and instant `Cmd+K` / `Ctrl+K` global search.
 - **Procedural Covers, Password Locks & Sparklines**: Deterministic geometric SVG/WebP cover generation per slug, Argon2id per-project password protection (`Path=/projects/{slug}/` scoped cookies), and privacy-first 7-day PV/UV SVG sparklines.
 - **Single-Container Footprint**: FastAPI + SQLite WAL in a <60 MB memory footprint with ETag/304 static caching and wildcard `BASE_DOMAIN` subdomain routing.
@@ -42,6 +42,21 @@ Open `http://127.0.0.1:8000` (Admin console: `/admin`).
 ```bash
 ADMIN_PASSWORD=dev COOKIE_SECURE=false uv run uvicorn app.main:app --port 8000
 ```
+
+## Managing content and writing
+
+The admin console and Spaces share one Add Content panel for HTML / ZIP uploads, links, Spaces, resumes,
+and blogs. Select or drop multiple files, see each result, and retry failed files separately.
+Project editors support replacing covers and restoring generated covers; replacements use fresh image URLs.
+
+Blogs use a post list and a dedicated Markdown editor per post. Empty URL identifiers are generated from
+the title; duplicates are rejected. After saving, view the post, continue editing, or return to the list.
+Save errors remain visible without clearing your input, and leaving with unsaved changes prompts a warning.
+
+Statistics use UTC dates. PV counts page views; UV deduplicates IP and browser per day across the site.
+Seven-day UV is the sum of daily UV. Admin visits, embedded previews, and entry redirects are excluded;
+blog post pages are counted. Daily visitor hashes persist across restarts and are retained only for the
+current day. Existing historical counts are not recalculated.
 
 ## 🤖 AI / Headless API Deployment
 

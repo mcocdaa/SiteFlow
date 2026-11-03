@@ -9,3 +9,5 @@ tests
 .ruff_cache
 .opencode
 AGENTS.md
+temp.note
+temp.notes

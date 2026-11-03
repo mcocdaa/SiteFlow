@@ -4,7 +4,14 @@ updates:
   - package-ecosystem: pip
     directory: /
     schedule:
-      interval: monthly
+      interval: "cron"
+      cronjob: "0 4 1 * *"
+      timezone: "Asia/Shanghai"
+    cooldown:
+      default-days: 7
+      semver-major-days: 14
+      semver-minor-days: 7
+      semver-patch-days: 3
     open-pull-requests-limit: 5
     groups:
       pip-minor-patch:
@@ -16,7 +23,11 @@ updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: monthly
+      interval: "cron"
+      cronjob: "0 4 1 * *"
+      timezone: "Asia/Shanghai"
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 5
     groups:
       actions:
@@ -26,11 +37,19 @@ updates:
   - package-ecosystem: docker
     directory: /
     schedule:
-      interval: monthly
+      interval: "cron"
+      cronjob: "0 4 1 * *"
+      timezone: "Asia/Shanghai"
+    cooldown:
+      default-days: 7
     ignore:
       - dependency-name: python
         update-types: ['version-update:semver-major', 'version-update:semver-minor']
   - package-ecosystem: docker-compose
     directory: /
     schedule:
-      interval: monthly
+      interval: "cron"
+      cronjob: "0 4 1 * *"
+      timezone: "Asia/Shanghai"
+    cooldown:
+      default-days: 7

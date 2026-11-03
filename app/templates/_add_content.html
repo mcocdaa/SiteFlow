@@ -1,0 +1,25 @@
+{% import "icons.html" as icons %}
+<section class="content-create" aria-labelledby="add-content-title">
+  <h2 class="section-title" id="add-content-title" data-i18n="admin.section_add_content">添加内容</h2>
+  <div class="content-choices">
+    <button type="button" class="btn" data-action="show-create" data-panel="upload-panel" aria-controls="upload-panel" aria-expanded="false">{{ icons.icon("upload") }}<span data-i18n="admin.upload_files">上传 HTML / ZIP</span></button>
+    <button type="button" class="btn" data-action="show-create" data-panel="link-panel" aria-controls="link-panel" aria-expanded="false">{{ icons.icon("external-link") }}<span data-i18n="admin.add_link">添加链接</span></button>
+    {% for app in app_choices %}
+    <button type="button" class="btn" data-action="create-app" data-type="{{ app.type }}">{{ icons.icon(app.icon) }}<span data-i18n="admin.new_{{ app.type }}">新建{{ app.label }}</span></button>
+    {% endfor %}
+  </div>
+  <div id="upload-panel" class="create-panel" hidden>
+    <button type="button" class="dropzone" id="dropzone">
+      {{ icons.icon("upload", 28) }}
+      <strong data-i18n="admin.drop_title">拖拽 HTML 或 ZIP 到这里</strong>
+      <span class="muted" data-i18n="admin.drop_multiple">点击选择文件，可多选</span>
+    </button>
+    <input type="file" id="file-input" accept=".html,.htm,.zip" multiple hidden>
+    <div id="upload-results" role="status" aria-live="polite"></div>
+    <button type="button" class="btn ghost" id="retry-uploads" hidden data-i18n="admin.retry_uploads">重试失败文件</button>
+  </div>
+  <form id="link-panel" class="link-row create-panel" hidden>
+    <input type="url" id="link-url" required aria-label="链接" data-i18n-aria-label="row.label_url" placeholder="https://example.com 作品链接" data-i18n-placeholder="admin.link_placeholder">
+    <button type="submit" class="btn primary" data-action="add-link">{{ icons.icon("plus") }}<span data-i18n="admin.add_link">添加链接</span></button>
+  </form>
+</section>

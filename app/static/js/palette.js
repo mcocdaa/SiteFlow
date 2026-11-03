@@ -64,7 +64,7 @@
       {
         id: "cmd-admin",
         title: t("palette.cmd_admin_title", "进入管理控制台"),
-        description: t("palette.cmd_admin_desc", "上传作品、配置空间主题与查看访问统计"),
+        description: t("palette.cmd_admin_desc", "管理作品与查看访问统计"),
         type: "nav",
         url: "/admin"
       }
