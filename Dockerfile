@@ -13,8 +13,9 @@ WORKDIR /srv/siteflow
 
 RUN useradd --create-home --uid 1000 app
 
+ARG PIP_INDEX_URL=https://pypi.org/simple
 COPY requirements.txt ./
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --timeout 100 --retries 5 -i "${PIP_INDEX_URL}" -r requirements.txt
 
 COPY app ./app
 COPY DESIGN.md README.md pyproject.toml ./

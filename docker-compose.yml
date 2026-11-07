@@ -1,6 +1,9 @@
 services:
   siteflow:
-    build: .
+    build:
+      context: .
+      args:
+        PIP_INDEX_URL: "${PIP_INDEX_URL:-https://mirrors.aliyun.com/pypi/simple/}"
     image: ghcr.io/mcocdaa/siteflow:latest
     container_name: siteflow
     restart: unless-stopped
