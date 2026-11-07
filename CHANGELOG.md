@@ -2,6 +2,16 @@
 
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 与 [语义化版本](https://semver.org/lang/zh-CN/)。
 
+## [2.3.1] - 2026-11-07
+
+### 修复与优化
+
+- 统一根管理台与空间管理页「添加内容」入口，支持多文件选择、批量拖拽上传与单文件失败重试
+- 支持已设置封面的多次更换（带缓存穿透文件名）与一键恢复默认矢量封面
+- 重构独立每篇博客文章沉浸式 Markdown 编辑页，新增保存失败行内错误提示与未保存输入保护
+- 新增基于 SQLite `daily_visitors` 的持久化日去重 PV/UV 统计，排除管理员会话、预览弹窗与入口重定向干扰
+- Docker 构建优化：`Dockerfile` 与 `docker-compose.yml` 支持可配置 `PIP_INDEX_URL` 加速源与超时重试，`deploy/init.sh` 默认镜像标签同步升级至 `v2.3.1`
+
 ## [2.2.1] - 2026-09-30
 
 ### 修复
