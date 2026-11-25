@@ -10,6 +10,7 @@ from app import store
 from app.auth import read_session
 from app.extensions.registry import build_render_bundle, normalize_extensions
 from app.models import Project
+from app.surface import StaticSurface, SurfaceItem, project_meta
 from app.templating import placeholder_hue, templates
 
 VALID_FONTS = {"sans", "serif", "mono"}
@@ -88,6 +89,43 @@ class SpaceApp:
 
     def route(self, request: Request, project: Project, path: str, db: Session):
         return None
+
+    def surface(self, request: Request, project: Project, db: Session, *, sub: str = "") -> StaticSurface:
+        config = request.app.state.config
+        content = validate_space_content(project.content, project_slug=project.slug, config=config)
+        children = store.visible_projects(db, project.id)
+        items = tuple(
+            SurfaceItem(
+                key=child.slug,
+                title=child.title,
+                url=f"/projects/{child.slug}/",
+                summary=child.description,
+                cover=child.cover,
+                kind=child.type,
+            )
+            for child in children
+        )
+        visitor = {
+            "title": project.title,
+            "description": project.description,
+            "children": [child.title for child in children],
+        }
+        tokens = {
+            name: content[key]
+            for name, key in (
+                ("--accent", "accent"),
+                ("--font-family", "font_family"),
+                ("--radius-card", "radius_card"),
+            )
+            if content[key]
+        }
+        return StaticSurface(
+            meta=project_meta(db, project),
+            capabilities=frozenset({"has_children", "has_items", "supports_layout"}),
+            contexts={"visitor": visitor, "ai": visitor, "admin": {**visitor, "theme": content}},
+            item_list=items,
+            token_map=tokens,
+        )
 
     def render(self, request: Request, project: Project, db: Session) -> HTMLResponse:
         config = request.app.state.config

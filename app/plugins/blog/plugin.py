@@ -15,10 +15,12 @@ from app.extensions.registry import (
 from app.models import Project
 from app.plugins.base import InvalidContent
 from app.plugins.blog.markdown import BLOG_CSP, render_inline_math, render_markdown
+from app.surface import StaticSurface, SurfaceItem, project_meta
 from app.templating import templates
 
 MAX_POSTS = 200
 MAX_BODY = 200_000
+MAX_AI_BODY = 1500
 
 
 def _text(value: object, limit: int) -> str:
@@ -140,6 +142,53 @@ class BlogApp:
         config: Any = None,
     ) -> dict:
         return validate_content(raw, strict=True, project_slug=project_slug, config=config)
+
+    def surface(self, request: Request, project: Project, db: Session, *, sub: str = "") -> StaticSurface:
+        config = request.app.state.config
+        content = validate_content(project.content, project_slug=project.slug, config=config)
+        posts = content["posts"]
+        base = f"/projects/{project.slug}/"
+        items = tuple(
+            SurfaceItem(
+                key=post["slug"],
+                title=post["title"],
+                url=f"{base}posts/{post['slug']}",
+                summary=post["summary"],
+                kind="post",
+                tags=tuple(post["tags"]),
+            )
+            for post in posts
+        )
+        blog = {
+            "title": content["title"] or project.title,
+            "description": content["description"] or project.description,
+        }
+        current = next((post for post in posts if post["slug"] == sub), None) if sub else None
+        visitor: dict[str, Any] = dict(blog)
+        ai: dict[str, Any] = dict(blog)
+        admin: dict[str, Any] = {**blog, "posts": posts}
+        if current is not None:
+            visitor["post"] = current
+            admin["post"] = current
+            ai["post"] = {
+                "title": current["title"],
+                "date": current["date"],
+                "tags": current["tags"],
+                "summary": current["summary"],
+                "body": current["body"][:MAX_AI_BODY],
+            }
+        return StaticSurface(
+            meta=project_meta(
+                db,
+                project,
+                title=blog["title"],
+                description=blog["description"],
+                url=f"{base}posts/{current['slug']}" if current else base,
+            ),
+            capabilities=frozenset({"has_content", "has_posts", "has_items", "supports_layout"}),
+            contexts={"visitor": visitor, "ai": ai, "admin": admin},
+            item_list=items,
+        )
 
     def route(self, request: Request, project: Project, path: str, db: Session):
         clean = path.strip("/")
