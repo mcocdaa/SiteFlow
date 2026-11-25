@@ -23,6 +23,8 @@ dependencies = [
     "httpx>=0.28.1,<1",
     "beautifulsoup4>=4.13,<5",
     "markdown-it-py>=3,<5",
+    "linkify-it-py>=2,<3",
+    "mdit-py-plugins>=0.5,<1",
     "qrcode>=8.0,<9",
 ]
 
