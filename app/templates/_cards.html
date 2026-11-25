@@ -1,12 +1,13 @@
 {% import "icons.html" as icons %}
 {% set app_icons = {"space": "layers", "link": "external-link", "resume": "file-text", "blog": "book-open"} %}
-{% macro cards(projects, hue) -%}
-<div class="grid">
+{% macro cards(projects, hue, icon_overrides=None, layout="") -%}
+{% set link_icon_name = "external-link" if (not icon_overrides or "external-link" in icon_overrides or "link" not in icon_overrides) else "link" %}
+<div class="grid"{% if layout %} data-space-layout="{{ layout }}"{% endif %}>
   {% for project in projects %}
   <a class="card" href="{{ project.url if project.type == 'link' else '/projects/' + project.slug + '/' }}"
      {% if project.type == 'link' %}target="_blank" rel="noopener noreferrer"{% endif %}
      data-slug="{{ project.slug }}" data-title="{{ project.title }}" data-type="{{ project.type }}">
-    {% if project.type == 'link' %}<span class="card-external">{{ icons.icon("external-link", 14) }}</span>{% endif %}
+    {% if project.type == 'link' %}<span class="card-external">{{ icons.icon(link_icon_name, 14, icon_overrides) }}</span>{% endif %}
     <div class="cover">
       {% if project.cover %}
       <img src="/media/covers/{{ project.cover }}" alt="">
@@ -14,16 +15,16 @@
       {{ svg_cover(project.slug, project.title, project.type) | safe }}
       {% endif %}
       <span class="badge badge-{{ project.type }}">
-        {% if project.type in app_icons %}{{ icons.icon(app_icons[project.type], 12) }}{% endif %}
+        {% if project.type in app_icons %}{{ icons.icon(link_icon_name if project.type == 'link' else app_icons[project.type], 12, icon_overrides) }}{% elif icon_overrides and project.type == 'html' and 'globe' in icon_overrides %}{{ icons.icon('globe', 12, icon_overrides) }}{% elif icon_overrides and project.type == 'zip' and 'folder' in icon_overrides %}{{ icons.icon('folder', 12, icon_overrides) }}{% endif %}
         {{ project.type | upper }}
       </span>
-      {% if project.password_hash %}<span class="card-lock" title="受密码保护" data-i18n-title="card.locked">{{ icons.icon("lock", 13) }}</span>{% endif %}
+      {% if project.password_hash %}<span class="card-lock" title="受密码保护" data-i18n-title="card.locked">{{ icons.icon("lock", 13, icon_overrides) }}</span>{% endif %}
       {% if project.type not in ('link', 'space') %}
       <button type="button" class="card-preview-btn" data-action="quick-preview" data-slug="{{ project.slug }}" data-title="{{ project.title }}" data-type="{{ project.type }}" data-tip="视口预览" data-i18n-tip="card.preview" aria-label="视口预览" data-i18n-aria-label="card.preview">
-        {{ icons.icon("maximize", 14) }}
+        {{ icons.icon("maximize", 14, icon_overrides) }}
       </button>
       {% endif %}
-      {% if project.pinned %}<span class="pin" title="置顶" data-i18n-title="card.pinned">{{ icons.icon("pin", 14) }}</span>{% endif %}
+      {% if project.pinned %}<span class="pin" title="置顶" data-i18n-title="card.pinned">{{ icons.icon("pin", 14, icon_overrides) }}</span>{% endif %}
     </div>
     <div class="card-body">
       <h3 data-i18n-auto>{{ project.title }}</h3>

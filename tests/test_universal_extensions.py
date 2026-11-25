@@ -52,7 +52,12 @@ def test_target_isolation_across_blog_space_resume_and_non_extensible(
         ).json()["extensions"]
 
         assert [item["id"] for item in blog_cat] == ["post_cover", "post_background", "mascot"]
-        assert [item["id"] for item in space_cat] == ["mascot", "space_banner", "space_background"]
+        assert [item["id"] for item in space_cat] == [
+            "mascot",
+            "space_banner",
+            "space_background",
+            "space_layout",
+        ]
         assert [item["id"] for item in resume_cat] == ["resume_style"]
 
         cross_pairs = [

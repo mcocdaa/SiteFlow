@@ -1,0 +1,20 @@
+{% import "icons.html" as icons %}
+<div class="sf-desk-bar{% if not ext_ctx.show_desk_controls %} is-controls-hidden{% endif %}" data-space-desk-bar data-project-slug="{{ ext_ctx.project_slug }}" data-card-tilt="{{ ext_ctx.card_tilt }}">
+  {% if ext_ctx.show_desk_controls %}
+  <span class="sf-desk-hint">
+    {{ icons.icon("move", 14) }}
+    <span data-i18n="ext.space_layout.desk_hint">拖动卡片自由摆放，方向键可微调位置</span>
+  </span>
+  <div class="sf-desk-actions">
+    <button type="button" class="btn ghost btn-sm sf-desk-btn" data-desk-shuffle>
+      {{ icons.icon("sparkles", 14) }}
+      <span data-i18n="ext.space_layout.shuffle">随机打乱</span>
+    </button>
+    <button type="button" class="btn ghost btn-sm sf-desk-btn" data-desk-reset>
+      {{ icons.icon("rotate-ccw", 14) }}
+      <span data-i18n="ext.space_layout.reset">整齐归位</span>
+    </button>
+  </div>
+  {% endif %}
+  <div class="sf-sr-only" aria-live="polite" data-desk-live></div>
+</div>

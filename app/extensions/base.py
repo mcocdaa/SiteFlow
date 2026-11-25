@@ -14,14 +14,24 @@ from app.templating import templates
 TargetType = Literal["blog", "space", "resume"]
 PageKind = Literal["list", "post", "space", "resume"]
 SlotKind = Literal["start", "main_start", "end"]
+StructuredSlotKind = Literal["header", "aside", "overlay", "footer", "title_deco", "icons"]
 
 EXTENSIBLE_TARGETS: tuple[TargetType, ...] = ("blog", "space", "resume")
+STRUCTURED_SLOTS: tuple[StructuredSlotKind, ...] = (
+    "header",
+    "aside",
+    "overlay",
+    "footer",
+    "title_deco",
+    "icons",
+)
 OFFICIAL_PACK_ID = "official"
 OFFICIAL_PACK_NAME = "SiteFlow 官方插件包"
 
 PACK_ID_RE = re.compile(r"^[a-z][a-z0-9-]{1,31}$")
 EXT_ID_RE = re.compile(r"^[a-z][a-z0-9_]{1,31}$")
 QUALIFIED_EXT_ID_RE = re.compile(r"^[a-z][a-z0-9-]{1,31}\.[a-z][a-z0-9_]{1,31}$")
+LAYOUT_MODE_RE = re.compile(r"^[a-z][a-z0-9_-]{0,31}$")
 BLOG_MEDIA_RE = re.compile(r"^/media/blog/([a-z0-9][a-z0-9_-]{0,63})/([a-z0-9][a-z0-9_-]{0,63}\.webp)$")
 PROJECT_MEDIA_RE = re.compile(
     r"^/media/(blog|ext)/([a-z0-9][a-z0-9_-]{0,63})/([a-z0-9][a-z0-9_-]{0,63}\.webp)$"
@@ -32,6 +42,82 @@ PROJECT_MEDIA_SVG_RE = re.compile(
 _UNSAFE_URL_RE = re.compile(r"[\x00-\x20\x7f\"'<>\\`]")
 MAX_IMAGE_URL = 500
 MAX_LINK_URL = 500
+MAX_THEME_TOKEN_LEN = 160
+MAX_ICON_URL_LEN = 300
+
+_COLOR_THEME_TOKENS = frozenset(
+    {
+        "--accent",
+        "--accent-soft",
+        "--bg",
+        "--surface",
+        "--bg-card",
+        "--bg-hover",
+        "--text",
+        "--text-muted",
+        "--muted",
+        "--border",
+        "--border-hover",
+    }
+)
+_LENGTH_THEME_TOKENS = frozenset({"--radius-card", "--radius-btn"})
+_FONT_THEME_TOKENS = frozenset({"--font-family"})
+_SHADOW_THEME_TOKENS = frozenset({"--shadow-hover"})
+ALLOWED_THEME_TOKENS: frozenset[str] = (
+    _COLOR_THEME_TOKENS | _LENGTH_THEME_TOKENS | _FONT_THEME_TOKENS | _SHADOW_THEME_TOKENS
+)
+ALLOWED_OVERRIDE_ICONS: frozenset[str] = frozenset(
+    {
+        "folder",
+        "layers",
+        "file-text",
+        "book-open",
+        "globe",
+        "link",
+        "external-link",
+        "mail",
+        "phone",
+        "map-pin",
+        "briefcase",
+        "graduation-cap",
+        "wrench",
+        "search",
+        "settings",
+        "pin",
+        "lock",
+        "maximize",
+        "printer",
+        "arrow-left",
+        "arrow-right",
+        "notebook-pen",
+    }
+)
+
+_CSS_FORBIDDEN_RE = re.compile(
+    r"[\x00-\x1f\x7f;{}<>\\`@]|/\*|\*/|<!--|-->|"
+    r"(?:url|expression|image-set|var)\s*\(|"
+    r"(?:javascript|vbscript|data|behavior|-moz-binding)\s*:|@import",
+    re.IGNORECASE,
+)
+_CSS_HEX_COLOR_RE = re.compile(r"^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$")
+_CSS_FUNC_COLOR_RE = re.compile(
+    r"^(?:rgb|rgba|hsl|hsla)\(\s*[0-9.]+%?(?:\s*[,/\s]\s*[0-9.]+%?){2,3}\s*\)$",
+    re.IGNORECASE,
+)
+_CSS_NAMED_COLORS = frozenset({"transparent", "currentcolor", "white", "black"})
+_CSS_LENGTH_RE = re.compile(r"^(?:0|[0-9]{1,3}(?:\.[0-9]{1,2})?(?:px|rem|em|%))$")
+_CSS_FONT_PART_RE = re.compile(r"^[A-Za-z0-9_-]+(?:\s+[A-Za-z0-9_-]+)*$")
+_CSS_SHADOW_RE = re.compile(
+    r"^(?:inset\s+)?(?:-?[0-9]{1,3}(?:\.[0-9]{1,2})?(?:px)?\s+){2,4}"
+    r"(?:#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})|"
+    r"(?:rgb|rgba|hsl|hsla)\(\s*[0-9.]+%?(?:\s*[,/\s]\s*[0-9.]+%?){2,3}\s*\))$",
+    re.IGNORECASE,
+)
+_SAFE_ICON_PLUGIN_RE = re.compile(
+    r"^/media/plugins/[a-z][a-z0-9-]{1,31}/[a-z][a-z0-9_]{1,31}/[A-Za-z0-9_/-]+\.svg$"
+)
+_SAFE_ICON_STATIC_RE = re.compile(r"^/static/[A-Za-z0-9_/-]+\.svg$")
+_SAFE_ICON_QUERY_RE = re.compile(r"^v=[0-9a-fA-F]{6,16}$")
 
 
 @dataclass(frozen=True)
@@ -340,6 +426,134 @@ def sanitize_lines(
     return cleaned
 
 
+def sanitize_theme_token_value(name: str, value: object, *, strict: bool = False) -> str:
+    if name not in ALLOWED_THEME_TOKENS:
+        if strict:
+            raise InvalidContent(f"不支持的主题样式变量：{name}")
+        return ""
+    if not isinstance(value, str):
+        if strict:
+            raise InvalidContent(f"主题样式变量 {name} 的值必须是文本")
+        return ""
+    cleaned = value.strip()
+    if not cleaned or len(cleaned) > MAX_THEME_TOKEN_LEN:
+        if strict:
+            raise InvalidContent(f"主题样式变量 {name} 的值不能为空或超长")
+        return ""
+    if _CSS_FORBIDDEN_RE.search(cleaned):
+        if strict:
+            raise InvalidContent(f"主题样式变量 {name} 包含不安全的 CSS 语法")
+        return ""
+    if name in _COLOR_THEME_TOKENS:
+        if (
+            _CSS_HEX_COLOR_RE.match(cleaned)
+            or _CSS_FUNC_COLOR_RE.match(cleaned)
+            or cleaned.lower() in _CSS_NAMED_COLORS
+        ):
+            return cleaned
+    elif name in _LENGTH_THEME_TOKENS:
+        if _CSS_LENGTH_RE.match(cleaned):
+            return cleaned
+    elif name in _FONT_THEME_TOKENS:
+        parts = [part.strip() for part in cleaned.split(",")]
+        if 1 <= len(parts) <= 8:
+            normalized_parts: list[str] = []
+            valid = True
+            for part in parts:
+                if len(part) >= 2 and part[0] == part[-1] and part[0] in ("'", '"'):
+                    inner = part[1:-1].strip()
+                else:
+                    inner = part
+                if not inner or len(inner) > 40 or not _CSS_FONT_PART_RE.match(inner):
+                    valid = False
+                    break
+                normalized_parts.append(inner)
+            if valid:
+                return ", ".join(normalized_parts)
+    elif name in _SHADOW_THEME_TOKENS:
+        layers = [layer.strip() for layer in re.split(r",(?![^(]*\))", cleaned)]
+        if 1 <= len(layers) <= 3 and all(_CSS_SHADOW_RE.match(layer) for layer in layers):
+            return ", ".join(layers)
+    if strict:
+        raise InvalidContent(f"主题样式变量 {name} 的值格式不受支持")
+    return ""
+
+
+def sanitize_theme_tokens(raw: object, *, strict: bool = False) -> dict[str, str]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        if strict:
+            raise InvalidContent("主题样式变量必须是对象")
+        return {}
+    out: dict[str, str] = {}
+    for key, val in raw.items():
+        if not isinstance(key, str):
+            if strict:
+                raise InvalidContent("主题样式变量名必须是文本")
+            continue
+        cleaned_key = key.strip()
+        cleaned_val = sanitize_theme_token_value(cleaned_key, val, strict=strict)
+        if cleaned_val:
+            out[cleaned_key] = cleaned_val
+    return out
+
+
+def sanitize_icon_override_url(value: object, *, strict: bool = False) -> str:
+    if not isinstance(value, str):
+        if strict:
+            raise InvalidContent("图标覆盖地址必须是文本")
+        return ""
+    cleaned = value.strip()
+    if not cleaned or len(cleaned) > MAX_ICON_URL_LEN or _UNSAFE_URL_RE.search(cleaned):
+        if strict:
+            raise InvalidContent("图标覆盖地址格式不合法")
+        return ""
+    path_part, sep, query_part = cleaned.partition("?")
+    if sep and not _SAFE_ICON_QUERY_RE.match(query_part):
+        if strict:
+            raise InvalidContent("图标覆盖地址包含非法查询参数")
+        return ""
+    if "//" in path_part or "\\" in path_part:
+        if strict:
+            raise InvalidContent("图标覆盖地址路径不合法")
+        return ""
+    segments = [seg for seg in path_part.split("/") if seg]
+    if any(seg in (".", "..") or seg.startswith(".") for seg in segments):
+        if strict:
+            raise InvalidContent("图标覆盖地址包含非法路径片段")
+        return ""
+    if not (_SAFE_ICON_PLUGIN_RE.match(path_part) or _SAFE_ICON_STATIC_RE.match(path_part)):
+        if strict:
+            raise InvalidContent("图标覆盖仅允许站内插件或静态 SVG 路径")
+        return ""
+    return cleaned
+
+
+def sanitize_icon_overrides(raw: object, *, strict: bool = False) -> dict[str, str]:
+    if raw is None:
+        return {}
+    if not isinstance(raw, dict):
+        if strict:
+            raise InvalidContent("图标覆盖配置必须是对象")
+        return {}
+    out: dict[str, str] = {}
+    for key, val in raw.items():
+        if not isinstance(key, str):
+            if strict:
+                raise InvalidContent("图标名称必须是文本")
+            continue
+        cleaned_key = key.strip()
+        if cleaned_key not in ALLOWED_OVERRIDE_ICONS:
+            if strict:
+                raise InvalidContent(f"不支持覆盖的图标名称：{cleaned_key}")
+            continue
+        cleaned_url = sanitize_icon_override_url(val, strict=strict)
+        if cleaned_url:
+            out[cleaned_key] = cleaned_url
+    return out
+
+
 class Extension(Protocol):
     @property
     def id(self) -> str: ...
@@ -494,6 +708,34 @@ class Extension(Protocol):
         context: dict[str, Any],
     ) -> Markup: ...
 
+    def theme_tokens(
+        self,
+        page: PageKind,
+        config: dict[str, Any],
+    ) -> dict[str, str]: ...
+
+    def icon_overrides(
+        self,
+        page: PageKind,
+        config: dict[str, Any],
+    ) -> dict[str, str]: ...
+
+    def layout_mode(
+        self,
+        page: PageKind,
+        config: dict[str, Any],
+    ) -> str | None: ...
+
+    def inject_slot(
+        self,
+        slot: StructuredSlotKind | SlotKind,
+        page: PageKind,
+        project: Project,
+        content: dict[str, Any],
+        config: dict[str, Any],
+        context: dict[str, Any],
+    ) -> Markup: ...
+
 
 class BaseExtension:
     id: str = ""
@@ -517,6 +759,7 @@ class BaseExtension:
     main_start_template: str | None = None
     body_end_template: str | None = None
     editor_fields_template: str | None = None
+    slot_templates: ClassVar[dict[str, str]] = {}
 
     def secret_fields(self) -> set[str]:
         return {field.key for field in self.config_schema if field.kind == "secret"}
@@ -719,6 +962,60 @@ class BaseExtension:
         return self.render_fragment(
             self.main_start_template,
             {
+                "page": page,
+                "project": project,
+                "content": content,
+                "config": config,
+                "ext_ctx": context,
+            },
+        )
+
+    def theme_tokens(
+        self,
+        page: PageKind,
+        config: dict[str, Any],
+    ) -> dict[str, str]:
+        return {}
+
+    def icon_overrides(
+        self,
+        page: PageKind,
+        config: dict[str, Any],
+    ) -> dict[str, str]:
+        return {}
+
+    def layout_mode(
+        self,
+        page: PageKind,
+        config: dict[str, Any],
+    ) -> str | None:
+        return None
+
+    def inject_slot(
+        self,
+        slot: StructuredSlotKind | SlotKind,
+        page: PageKind,
+        project: Project,
+        content: dict[str, Any],
+        config: dict[str, Any],
+        context: dict[str, Any],
+    ) -> Markup:
+        if slot in ("start", "main_start", "end"):
+            return self.inject_html(
+                slot=slot,
+                page=page,
+                project=project,
+                content=content,
+                config=config,
+                context=context,
+            )
+        template_name = self.slot_templates.get(slot)
+        if not template_name:
+            return Markup("")
+        return self.render_fragment(
+            template_name,
+            {
+                "slot": slot,
                 "page": page,
                 "project": project,
                 "content": content,

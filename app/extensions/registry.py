@@ -5,10 +5,14 @@ from markupsafe import Markup
 from app.config import Config
 from app.extensions.base import (
     EXT_ID_RE,
+    LAYOUT_MODE_RE,
+    STRUCTURED_SLOTS,
     Extension,
     PageKind,
     TargetType,
     sanitize_bool,
+    sanitize_icon_overrides,
+    sanitize_theme_tokens,
 )
 from app.extensions.mascot import MascotExtension
 from app.extensions.packs import PackExtension, load_pack_extensions
@@ -17,6 +21,7 @@ from app.extensions.post_cover import PostCoverExtension
 from app.extensions.resume_style import ResumeStyleExtension
 from app.extensions.space_background import SpaceBackgroundExtension
 from app.extensions.space_banner import SpaceBannerExtension
+from app.extensions.space_layout import SpaceLayoutExtension
 from app.models import Project
 from app.plugins.base import InvalidContent
 from app.templating import static_url
@@ -221,6 +226,10 @@ def build_render_bundle(
     body_start_fragments: list[Markup] = []
     main_start_fragments: list[Markup] = []
     body_end_fragments: list[Markup] = []
+    slots: dict[str, list[Markup]] = {slot_name: [] for slot_name in STRUCTURED_SLOTS}
+    tokens: dict[str, str] = {}
+    icon_overrides: dict[str, str] = {}
+    layout = ""
     list_card_templates: list[tuple[str, str]] = []
     post_header_templates: list[tuple[str, str]] = []
     contexts: dict[str, dict[str, Any]] = {}
@@ -254,6 +263,18 @@ def build_render_bundle(
             post_header_templates.append((ext.id, ext.post_header_template))
         contexts[ext.id] = ctx
 
+        ext_tokens = sanitize_theme_tokens(ext.theme_tokens(page, cfg), strict=False)
+        if ext_tokens:
+            tokens.update(ext_tokens)
+
+        ext_icons = sanitize_icon_overrides(ext.icon_overrides(page, cfg), strict=False)
+        if ext_icons:
+            icon_overrides.update(ext_icons)
+
+        ext_layout = ext.layout_mode(page, cfg)
+        if isinstance(ext_layout, str) and LAYOUT_MODE_RE.match(ext_layout):
+            layout = ext_layout
+
         start_html = ext.inject_html(
             slot="start",
             page=page,
@@ -285,6 +306,18 @@ def build_render_bundle(
         if end_html:
             body_end_fragments.append(end_html)
 
+        for slot_name in STRUCTURED_SLOTS:
+            slot_html = ext.inject_slot(
+                slot_name,
+                page,
+                project,
+                content,
+                cfg,
+                ctx,
+            )
+            if slot_html:
+                slots[slot_name].append(slot_html)
+
     return {
         "css_files": css_files,
         "js_files": js_files,
@@ -292,6 +325,10 @@ def build_render_bundle(
         "body_start_fragments": body_start_fragments,
         "main_start_fragments": main_start_fragments,
         "body_end_fragments": body_end_fragments,
+        "slots": slots,
+        "tokens": tokens,
+        "icon_overrides": icon_overrides,
+        "layout": layout,
         "list_card_templates": list_card_templates,
         "post_header_templates": post_header_templates,
         "contexts": contexts,
@@ -422,4 +459,5 @@ register(PostBackgroundExtension())
 register(MascotExtension())
 register(SpaceBannerExtension())
 register(SpaceBackgroundExtension())
+register(SpaceLayoutExtension())
 register(ResumeStyleExtension())
