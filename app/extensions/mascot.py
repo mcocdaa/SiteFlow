@@ -40,6 +40,9 @@ MASCOT_CHARACTER_SPECS: tuple[MascotCharacterSpec, ...] = (
     MascotCharacterSpec("cat", "blog.ext.mascot.char_cat", "星光小猫"),
     MascotCharacterSpec("dog", "blog.ext.mascot.char_dog", "元气柴犬"),
     MascotCharacterSpec("whale", "blog.ext.mascot.char_whale", "深蓝小鲸鱼"),
+    MascotCharacterSpec("gemini_cat", "blog.ext.mascot.char_gemini_cat", "星尘双子猫"),
+    MascotCharacterSpec("slime", "blog.ext.mascot.char_slime", "水滴史莱姆"),
+    MascotCharacterSpec("vocaloid", "blog.ext.mascot.char_vocaloid", "银发歌姬 Q版"),
     MascotCharacterSpec(
         "dafeiyu",
         "blog.ext.mascot.char_dafeiyu",
@@ -52,9 +55,6 @@ MASCOT_CHARACTER_SPECS: tuple[MascotCharacterSpec, ...] = (
             ("tap", "img/mascot/dafeiyu/tap.svg"),
         ),
     ),
-    MascotCharacterSpec("gemini_cat", "blog.ext.mascot.char_gemini_cat", "星尘双子猫"),
-    MascotCharacterSpec("slime", "blog.ext.mascot.char_slime", "水滴史莱姆"),
-    MascotCharacterSpec("vocaloid", "blog.ext.mascot.char_vocaloid", "银发歌姬 Q版"),
 )
 MASCOT_CHARACTERS: tuple[str, ...] = tuple(spec.id for spec in MASCOT_CHARACTER_SPECS)
 MASCOT_CHARACTER_MAP: dict[str, MascotCharacterSpec] = {spec.id: spec for spec in MASCOT_CHARACTER_SPECS}

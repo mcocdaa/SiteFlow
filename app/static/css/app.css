@@ -2591,6 +2591,100 @@ textarea.mono {
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
   font-size: 12.5px;
 }
+.ext-code-editor {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--surface);
+  overflow: hidden;
+  transition: border-color .15s, box-shadow .15s;
+}
+.ext-code-editor:hover {
+  border-color: var(--border-hover);
+}
+.ext-code-editor:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+.ext-line-gutter {
+  position: relative;
+  flex: 0 0 38px;
+  min-width: 38px;
+  overflow: hidden;
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text-muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  line-height: 1.55;
+  user-select: none;
+  box-sizing: border-box;
+}
+.ext-line-gutter-inner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 9px 0 32px;
+  box-sizing: border-box;
+}
+.ext-line-num {
+  padding: 0 8px 0 4px;
+  box-sizing: border-box;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.ext-line-num.is-comment {
+  opacity: .5;
+}
+.ext-line-num.is-active {
+  color: var(--accent);
+  font-weight: 600;
+  opacity: 1;
+}
+.plugin-block .ext-code-editor textarea.ext-code-input,
+.ext-drawer .ext-code-editor textarea.ext-code-input {
+  flex: 1 1 auto;
+  width: auto;
+  min-width: 0;
+  border: 0;
+  border-radius: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  padding: 9px 11px;
+  margin: 0;
+  min-height: 196px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12.5px;
+  line-height: 1.55;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  resize: vertical;
+}
+.plugin-block .ext-code-editor textarea.ext-code-input:focus,
+.ext-drawer .ext-code-editor textarea.ext-code-input:focus {
+  border: 0;
+  outline: none;
+  box-shadow: none;
+}
+.ext-line-mirror {
+  position: absolute;
+  top: 0;
+  left: 0;
+  visibility: hidden;
+  pointer-events: none;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  word-break: break-word;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  height: auto;
+  overflow: hidden;
+}
 .ext-media-row,
 .ext-image-input-row {
   display: flex;

@@ -42,6 +42,7 @@
   var activeGroup = "";
   var lastTrigger = null;
   var drawerSaving = false;
+  var lineEditorObservers = [];
 
   try {
     var catalogScript = panel.querySelector("[data-ext-catalog-json]");
@@ -945,7 +946,12 @@
       var ta = document.createElement("textarea");
       ta.name = field.key;
       ta.rows = (field.rows && field.rows > 0) ? field.rows : (isList ? 8 : 4);
-      if (ta.rows >= 6) ta.className = "ext-textarea-tall";
+      if (isList) {
+        ta.className = "ext-textarea-tall ext-code-input";
+        ta.setAttribute("wrap", "soft");
+      } else if (ta.rows >= 6) {
+        ta.className = "ext-textarea-tall";
+      }
       ta.dataset.fieldKind = "textarea";
       ta.dataset.fieldList = isList ? "1" : "0";
       if (field.max_length) ta.maxLength = field.max_length;
@@ -954,7 +960,118 @@
       }
       if (field.placeholder_key) ta.setAttribute("data-i18n-placeholder", field.placeholder_key);
       ta.value = Array.isArray(val) ? val.join("\n") : String(val);
-      taLabel.appendChild(ta);
+
+      if (isList) {
+        var editorWrap = document.createElement("div");
+        editorWrap.className = "ext-code-editor";
+        editorWrap.setAttribute("data-line-editor", "");
+
+        var gutterEl = document.createElement("div");
+        gutterEl.className = "ext-line-gutter";
+        gutterEl.setAttribute("data-line-gutter", "");
+        gutterEl.setAttribute("aria-hidden", "true");
+
+        var gutterInnerEl = document.createElement("div");
+        gutterInnerEl.className = "ext-line-gutter-inner";
+        gutterInnerEl.setAttribute("data-line-gutter-inner", "");
+        gutterEl.appendChild(gutterInnerEl);
+
+        var mirrorEl = document.createElement("div");
+        mirrorEl.className = "ext-line-mirror";
+        mirrorEl.setAttribute("aria-hidden", "true");
+
+        editorWrap.appendChild(gutterEl);
+        editorWrap.appendChild(ta);
+        editorWrap.appendChild(mirrorEl);
+
+        var syncLineNumbers = function () {
+          var raw = ta.value || "";
+          var lines = raw.split("\n");
+          var computed = window.getComputedStyle(ta);
+          var singleLineH = parseFloat(computed.lineHeight) || 20;
+          var clientW = ta.clientWidth;
+          var canMeasure = clientW > 0;
+
+          if (canMeasure) {
+            mirrorEl.style.width = clientW + "px";
+            mirrorEl.style.fontFamily = computed.fontFamily;
+            mirrorEl.style.fontSize = computed.fontSize;
+            mirrorEl.style.fontWeight = computed.fontWeight;
+            mirrorEl.style.fontStyle = computed.fontStyle;
+            mirrorEl.style.lineHeight = computed.lineHeight;
+            mirrorEl.style.letterSpacing = computed.letterSpacing;
+            mirrorEl.style.wordSpacing = computed.wordSpacing;
+            mirrorEl.style.paddingLeft = computed.paddingLeft;
+            mirrorEl.style.paddingRight = computed.paddingRight;
+            mirrorEl.style.paddingTop = "0";
+            mirrorEl.style.paddingBottom = "0";
+            mirrorEl.style.tabSize = computed.tabSize || "8";
+            mirrorEl.style.border = "0";
+            mirrorEl.style.boxSizing = "border-box";
+          }
+
+          gutterInnerEl.style.lineHeight = singleLineH + "px";
+          gutterInnerEl.style.paddingTop = computed.paddingTop || "9px";
+
+          var activeLine = -1;
+          if (document.activeElement === ta) {
+            var caret = typeof ta.selectionStart === "number" ? ta.selectionStart : 0;
+            activeLine = raw.slice(0, caret).split("\n").length - 1;
+          }
+
+          var existing = gutterInnerEl.children;
+          while (existing.length > lines.length) {
+            gutterInnerEl.removeChild(gutterInnerEl.lastChild);
+          }
+
+          for (var i = 0; i < lines.length; i += 1) {
+            var line = lines[i];
+            var rowEl = existing[i];
+            if (!rowEl) {
+              rowEl = document.createElement("div");
+              rowEl.className = "ext-line-num";
+              gutterInnerEl.appendChild(rowEl);
+            }
+            var h = singleLineH;
+            if (canMeasure) {
+              mirrorEl.textContent = line.length ? line : "\u200b";
+              var measured = mirrorEl.getBoundingClientRect().height;
+              if (measured > 0) h = Math.max(singleLineH, measured);
+            }
+            rowEl.style.height = h + "px";
+            var numText = String(i + 1);
+            if (rowEl.textContent !== numText) rowEl.textContent = numText;
+            rowEl.classList.toggle("is-comment", line.trim().charAt(0) === "#");
+            rowEl.classList.toggle("is-active", i === activeLine);
+          }
+
+          gutterEl.scrollTop = ta.scrollTop;
+        };
+
+        editorWrap._syncLines = syncLineNumbers;
+
+        ta.addEventListener("input", syncLineNumbers);
+        ta.addEventListener("keyup", syncLineNumbers);
+        ta.addEventListener("click", syncLineNumbers);
+        ta.addEventListener("focus", syncLineNumbers);
+        ta.addEventListener("blur", syncLineNumbers);
+        ta.addEventListener("scroll", function () {
+          gutterEl.scrollTop = ta.scrollTop;
+        });
+
+        if (typeof ResizeObserver === "function") {
+          var ro = new ResizeObserver(function () {
+            syncLineNumbers();
+          });
+          ro.observe(ta);
+          lineEditorObservers.push(ro);
+        }
+
+        syncLineNumbers();
+        taLabel.appendChild(editorWrap);
+      } else {
+        taLabel.appendChild(ta);
+      }
       wrap.appendChild(taLabel);
     } else if (kind === "range") {
       var rangeLabel = document.createElement("label");
@@ -1053,6 +1170,25 @@
     return wrap;
   }
 
+  function cleanupLineEditors() {
+    while (lineEditorObservers.length) {
+      var obs = lineEditorObservers.pop();
+      try {
+        obs.disconnect();
+      } catch (e) {
+      }
+    }
+  }
+
+  function syncAllLineEditors() {
+    if (!drawerBodyEl) return;
+    drawerBodyEl.querySelectorAll("[data-line-editor]").forEach(function (editor) {
+      if (typeof editor._syncLines === "function") {
+        editor._syncLines();
+      }
+    });
+  }
+
   function selectDrawerGroup(groupId) {
     activeGroup = groupId;
     if (drawerTabsEl) {
@@ -1066,6 +1202,7 @@
       drawerBodyEl.querySelectorAll("[data-drawer-group]").forEach(function (groupEl) {
         groupEl.hidden = groupEl.dataset.drawerGroup !== groupId;
       });
+      requestAnimationFrame(syncAllLineEditors);
     }
   }
 
@@ -1111,6 +1248,7 @@
       groupMap[gid].fields.push(field);
     });
 
+    cleanupLineEditors();
     if (drawerTabsEl) drawerTabsEl.textContent = "";
     if (drawerBodyEl) drawerBodyEl.textContent = "";
 
@@ -1154,12 +1292,14 @@
     requestAnimationFrame(function () {
       drawerBackdropEl.classList.add("is-open");
       drawerEl.classList.add("is-open");
+      syncAllLineEditors();
       drawerEl.focus();
     });
   }
 
   function closeDrawer() {
     if (!drawerEl || !drawerBackdropEl || drawerEl.hidden) return;
+    cleanupLineEditors();
     drawerEl.classList.remove("is-open");
     drawerBackdropEl.classList.remove("is-open");
     document.body.classList.remove("ext-drawer-open");

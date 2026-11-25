@@ -114,7 +114,7 @@
   var GREET_KEY = "sf_mascot_greeted_" + config.slug;
   var POS_KEY = "sf_mascot_pos_" + config.slug;
   var ZOOM_KEY = "sf_mascot_zoom_" + config.slug;
-  var VIEWPORT_MARGIN = 12;
+  var VIEWPORT_MARGIN = 20;
   var DRAG_THRESHOLD = 5;
   var DOCK_COMPACT_WIDTH = 148;
   var DOCK_EXPANDED_WIDTH = 268;
@@ -256,16 +256,24 @@
     pendingDockWidth = null;
   }
 
+  function viewportWidth() {
+    return document.documentElement.clientWidth || window.innerWidth;
+  }
+
+  function viewportHeight() {
+    return document.documentElement.clientHeight || window.innerHeight;
+  }
+
   function dockExpectedWidth(forceExpanded) {
     var expanded = typeof forceExpanded === "boolean"
       ? forceExpanded
       : (isDockFocused() || root.classList.contains("is-dock-dirty") || chatStreaming);
     var base = expanded ? DOCK_EXPANDED_WIDTH : DOCK_COMPACT_WIDTH;
-    return Math.max(0, Math.min(base, window.innerWidth - 2 * VIEWPORT_MARGIN));
+    return Math.max(0, Math.min(base, viewportWidth() - 2 * VIEWPORT_MARGIN));
   }
 
   function computeCenteredShift(centerX, width) {
-    var vw = window.innerWidth;
+    var vw = viewportWidth();
     var safeWidth = Math.max(0, width || 0);
     var idealLeft = centerX - safeWidth / 2;
     var clampedLeft;
@@ -286,7 +294,7 @@
     if (!chatForm || root.classList.contains("is-collapsed")) return;
     var rect = root.getBoundingClientRect();
     if (!rect.width && !rect.height) return;
-    var maxDockWidth = Math.max(0, window.innerWidth - 2 * VIEWPORT_MARGIN);
+    var maxDockWidth = Math.max(0, viewportWidth() - 2 * VIEWPORT_MARGIN);
     var dockWidth = 0;
     if (typeof targetWidthOverride === "number" && isFinite(targetWidthOverride) && targetWidthOverride > 0) {
       dockWidth = Math.min(targetWidthOverride, maxDockWidth);
@@ -349,8 +357,8 @@
     var width = root.offsetWidth || 84;
     var height = root.offsetHeight || 108;
     var extraBottom = (chatForm && !root.classList.contains("is-collapsed")) ? 54 : 0;
-    var maxX = Math.max(VIEWPORT_MARGIN, window.innerWidth - width - VIEWPORT_MARGIN);
-    var maxY = Math.max(VIEWPORT_MARGIN, window.innerHeight - height - extraBottom - VIEWPORT_MARGIN);
+    var maxX = Math.max(VIEWPORT_MARGIN, viewportWidth() - width - VIEWPORT_MARGIN);
+    var maxY = Math.max(VIEWPORT_MARGIN, viewportHeight() - height - extraBottom - VIEWPORT_MARGIN);
     return {
       x: Math.min(maxX, Math.max(VIEWPORT_MARGIN, Math.round(x))),
       y: Math.min(maxY, Math.max(VIEWPORT_MARGIN, Math.round(y)))
@@ -370,7 +378,7 @@
   function positionBubble() {
     if (!bubble) return;
     var rect = root.getBoundingClientRect();
-    var vh = window.innerHeight;
+    var vh = viewportHeight();
     var spaceAbove = rect.top - VIEWPORT_MARGIN;
     var spaceBelow = vh - rect.bottom - VIEWPORT_MARGIN;
     var showBelow = false;
@@ -629,7 +637,7 @@
 
   function readingPercent() {
     var doc = document.documentElement;
-    var scrollable = doc.scrollHeight - window.innerHeight;
+    var scrollable = doc.scrollHeight - viewportHeight();
     if (scrollable <= 120) return null;
     var pct = Math.round((window.scrollY / scrollable) * 100);
     return Math.max(0, Math.min(100, pct));
@@ -645,7 +653,7 @@
     if (!postBody) return null;
     var headings = postBody.querySelectorAll("h1, h2, h3");
     if (!headings.length) return null;
-    var mid = window.innerHeight * 0.5;
+    var mid = viewportHeight() * 0.5;
     var candidate = "";
     for (var i = 0; i < headings.length; i += 1) {
       var rect = headings[i].getBoundingClientRect();
@@ -1618,7 +1626,7 @@
     });
     chatForm.addEventListener("focusin", function () {
       openDock();
-      positionDock(Math.min(DOCK_EXPANDED_WIDTH, window.innerWidth - 2 * VIEWPORT_MARGIN));
+      positionDock(Math.min(DOCK_EXPANDED_WIDTH, viewportWidth() - 2 * VIEWPORT_MARGIN));
       if (bubble && bubbleMode === "ai" && !bubble.hidden) {
         revealAiBubble();
       }
@@ -1627,7 +1635,7 @@
       if (e.relatedTarget && chatForm.contains(e.relatedTarget)) return;
       scheduleDockClose(stageHovered || dockHovered ? 280 : 0);
       if (!chatStreaming && !root.classList.contains("is-dock-dirty")) {
-        positionDock(Math.min(DOCK_COMPACT_WIDTH, window.innerWidth - 2 * VIEWPORT_MARGIN));
+        positionDock(Math.min(DOCK_COMPACT_WIDTH, viewportWidth() - 2 * VIEWPORT_MARGIN));
       }
       if (bubble && bubbleMode === "ai" && !bubble.hidden && !isUserEngagedWithMascot(true)) {
         scheduleAiFade(AI_LEAVE_FADE_DELAY, true);

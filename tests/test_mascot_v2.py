@@ -50,10 +50,10 @@ def test_all_seven_chibi_skins_valid_svg_and_unique_admin_ids() -> None:
         "cat",
         "dog",
         "whale",
-        "dafeiyu",
         "gemini_cat",
         "slime",
         "vocaloid",
+        "dafeiyu",
     )
     assert tuple(spec.id for spec in MASCOT_CHARACTER_SPECS) == MASCOT_CHARACTERS
     dafeiyu_spec = get_character_spec("dafeiyu")
@@ -721,7 +721,10 @@ def test_mascot_ux_tools_centered_dock_clamping_and_ai_fade() -> None:
     assert "--sf-bubble-arrow-x" in css_text
     assert "--sf-dock-shift" in css_text
     assert "width: 148px;" in css_text
-    assert "width: min(268px, calc(100vw - 24px));" in css_text
+    assert "max-width: min(260px, calc(100vw - 40px));" in css_text
+    assert "max-width: min(332px, calc(100vw - 40px));" in css_text
+    assert "max-width: calc(100vw - 40px);" in css_text
+    assert "width: min(268px, calc(100vw - 40px));" in css_text
     assert "@starting-style" in css_text
     assert "transition-behavior: allow-discrete;" in css_text
     assert ".sf-mascot-bubble.is-faded" in css_text
@@ -732,6 +735,9 @@ def test_mascot_ux_tools_centered_dock_clamping_and_ai_fade() -> None:
     assert "clearCustomPosition" not in js_text
     assert "bubble-align-" not in js_text
     assert "dock-align-" not in js_text
+    assert "VIEWPORT_MARGIN = 20" in js_text
+    assert "document.documentElement.clientWidth" in js_text
+    assert "document.documentElement.clientHeight" in js_text
     assert "computeCenteredShift" in js_text
     assert "positionDock" in js_text
     assert "AI_READ_FADE_DELAY = 8000" in js_text
@@ -741,3 +747,20 @@ def test_mascot_ux_tools_centered_dock_clamping_and_ai_fade() -> None:
 
     i18n_text = (APP_DIR / "static" / "js" / "i18n.js").read_text(encoding="utf-8")
     assert "blog.ext.mascot.reset_pos" not in i18n_text
+
+    admin_ext_js = (APP_DIR / "static" / "js" / "extensions_admin.js").read_text(encoding="utf-8")
+    assert "ext-code-editor" in admin_ext_js
+    assert "ext-line-gutter" in admin_ext_js
+    assert "ext-line-gutter-inner" in admin_ext_js
+    assert "ext-line-mirror" in admin_ext_js
+    assert "data-line-editor" in admin_ext_js
+    assert "syncLineNumbers" in admin_ext_js
+    assert "cleanupLineEditors" in admin_ext_js
+
+    app_css = (APP_DIR / "static" / "css" / "app.css").read_text(encoding="utf-8")
+    assert ".ext-code-editor" in app_css
+    assert ".ext-line-gutter" in app_css
+    assert ".ext-line-gutter-inner" in app_css
+    assert ".ext-line-num.is-comment" in app_css
+    assert ".ext-line-num.is-active" in app_css
+    assert ".ext-line-mirror" in app_css

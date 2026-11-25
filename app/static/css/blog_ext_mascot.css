@@ -106,7 +106,7 @@
   box-sizing: border-box;
   pointer-events: auto;
   width: max-content;
-  max-width: min(260px, calc(100vw - 28px));
+  max-width: min(260px, calc(100vw - 40px));
   padding: 9px 13px;
   border-radius: 13px;
   background: var(--surface, #ffffff);
@@ -127,7 +127,7 @@
 
 .sf-mascot-bubble.is-rich {
   min-width: 156px;
-  max-width: min(332px, calc(100vw - 28px));
+  max-width: min(332px, calc(100vw - 40px));
   padding: 10px 13px;
 }
 
@@ -712,7 +712,7 @@
   margin-top: 0;
   box-sizing: border-box;
   width: 148px;
-  max-width: calc(100vw - 24px);
+  max-width: calc(100vw - 40px);
   display: flex;
   align-items: flex-end;
   gap: 3px;
@@ -758,7 +758,7 @@
 .sf-mascot-dock:focus-within,
 .sf-mascot.is-dock-dirty .sf-mascot-dock,
 .sf-mascot.is-streaming .sf-mascot-dock {
-  width: min(268px, calc(100vw - 24px));
+  width: min(268px, calc(100vw - 40px));
 }
 
 .sf-mascot-dock:focus-within {
