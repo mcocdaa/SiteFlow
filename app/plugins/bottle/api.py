@@ -41,7 +41,7 @@ def _has_project_access(request: Request, config: Config, project: Project, is_a
     if not project.password_hash or is_admin:
         return True
     token = request.cookies.get(project_cookie_name(project.slug))
-    return bool(token and verify_project_token(config, project.slug, token))
+    return bool(token and verify_project_token(config, project.slug, token, project.password_hash))
 
 
 def _resolve_bottle_project(

@@ -870,7 +870,7 @@ async def deploy_project(
     db: DbSession,
     title: Annotated[str, Form()] = "",
     description: Annotated[str, Form()] = "",
-    visible: Annotated[bool, Form()] = True,
+    visible: Annotated[bool | None, Form()] = None,
     parent_id: Annotated[int | None, Form()] = None,
 ):
     if not _SLUG_RE.match(slug):
@@ -935,7 +935,8 @@ async def deploy_project(
                 existing.title = title.strip()[:200]
             if description.strip():
                 existing.description = description.strip()[:500]
-            existing.visible = visible
+            if visible is not None:
+                existing.visible = visible
             if parent_id is not None:
                 existing.parent_id = parent.id if parent else None
             touch(existing)
@@ -950,7 +951,7 @@ async def deploy_project(
                 title=project_title,
                 description=description.strip()[:500],
                 entry=entry,
-                visible=visible,
+                visible=True if visible is None else visible,
                 sort_order=store.next_sort_order(db, parent.id if parent else None),
             )
             db.add(project)
@@ -1135,6 +1136,13 @@ def patch_project(
                         capabilities=ext_caps,
                         config=config,
                     )
+                if project.type == "resume":
+                    existing_basics = existing_parsed.get("basics")
+                    existing_image = existing_basics.get("image") if isinstance(existing_basics, dict) else ""
+                    if isinstance(existing_image, str) and existing_image:
+                        incoming_basics = incoming_parsed.get("basics")
+                        if isinstance(incoming_basics, dict) and "image" not in incoming_basics:
+                            incoming_basics["image"] = existing_image
                 merged_raw = json.dumps(incoming_parsed, ensure_ascii=False)
                 if project.type == "blog":
                     validated = blog_content(

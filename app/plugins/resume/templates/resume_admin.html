@@ -28,16 +28,16 @@
     <section class="plugin-block">
       <h2 data-i18n="resume.basic_info">基本信息</h2>
       <div class="editor-grid">
-        <label><span data-i18n="resume.field_name">姓名</span> <input id="f-name" autocomplete="off" data-i18n-auto-val></label>
-        <label><span data-i18n="resume.field_label">职位 / 头衔</span> <input id="f-label" autocomplete="off" data-i18n-auto-val></label>
-        <label><span data-i18n="resume.field_email">邮箱</span> <input id="f-email" type="email" autocomplete="off"></label>
-        <label><span data-i18n="resume.field_phone">电话</span> <input id="f-phone" autocomplete="off"></label>
-        <label><span data-i18n="resume.field_url">网站</span> <input id="f-url" placeholder="https://..." autocomplete="off"></label>
-        <label><span data-i18n="resume.field_city">城市</span> <input id="f-city" autocomplete="off" data-i18n-auto-val></label>
-        <label><span data-i18n="resume.field_region">地区</span> <input id="f-region" autocomplete="off" data-i18n-auto-val></label>
-        <label><span data-i18n="resume.field_country">国家代码</span> <input id="f-countryCode" placeholder="CN" autocomplete="off"></label>
+        <label><span data-i18n="resume.field_name">姓名</span> <input id="f-name" maxlength="200" autocomplete="off" data-i18n-auto-val></label>
+        <label><span data-i18n="resume.field_label">职位 / 头衔</span> <input id="f-label" maxlength="200" autocomplete="off" data-i18n-auto-val></label>
+        <label><span data-i18n="resume.field_email">邮箱</span> <input id="f-email" type="email" maxlength="200" autocomplete="off"></label>
+        <label><span data-i18n="resume.field_phone">电话</span> <input id="f-phone" maxlength="200" autocomplete="off"></label>
+        <label><span data-i18n="resume.field_url">网站</span> <input id="f-url" maxlength="500" placeholder="https://..." autocomplete="off"></label>
+        <label><span data-i18n="resume.field_city">城市</span> <input id="f-city" maxlength="200" autocomplete="off" data-i18n-auto-val></label>
+        <label><span data-i18n="resume.field_region">地区</span> <input id="f-region" maxlength="200" autocomplete="off" data-i18n-auto-val></label>
+        <label><span data-i18n="resume.field_country">国家代码</span> <input id="f-countryCode" maxlength="200" placeholder="CN" autocomplete="off"></label>
       </div>
-      <label class="stack"><span data-i18n="resume.field_summary">简介</span> <textarea id="f-summary" rows="3" data-i18n-auto-val></textarea></label>
+      <label class="stack"><span data-i18n="resume.field_summary">简介</span> <textarea id="f-summary" rows="3" maxlength="2000" data-i18n-auto-val></textarea></label>
       <label class="stack"><span data-i18n="resume.field_links">链接（每行一条：名称|https://...）</span><textarea id="f-links" rows="3" placeholder="GitHub|https://github.com/me"></textarea></label>
       <fieldset class="ai-vis-group">
         <legend data-i18n="resume.ai_privacy_title">AI 隐私控制</legend>
@@ -185,6 +185,8 @@
       var input = el(singleLine ? "input" : "textarea");
       if (singleLine) { input.type = "text"; input.autocomplete = "off"; }
       else { input.rows = 3; }
+      var maxLen = field[3] === "textarea" ? 2000 : field[0] === "url" ? 500 : field[3] === "text" ? 200 : 0;
+      if (maxLen > 0) input.setAttribute("maxlength", String(maxLen));
       input.value = fieldValue(entry, field[0], field[3]);
       input.setAttribute("data-field", field[0]);
       input.setAttribute("data-kind", field[3]);
@@ -232,6 +234,7 @@
     return {
       name: canonicalInputText(document.getElementById("f-name")),
       label: canonicalInputText(document.getElementById("f-label")),
+      image: (state.basics && typeof state.basics.image === "string") ? state.basics.image : "",
       email: document.getElementById("f-email").value.trim(),
       phone: document.getElementById("f-phone").value.trim(),
       url: document.getElementById("f-url").value.trim(),

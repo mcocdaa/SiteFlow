@@ -126,10 +126,14 @@ def check_project_access(request: Request, config, project) -> bool:
     if session and session.get("admin") is True:
         return True
     token = request.cookies.get(project_cookie_name(project.slug))
-    return bool(token and verify_project_token(config, project.slug, token))
+    return bool(token and verify_project_token(config, project.slug, token, project.password_hash))
 
 
 def project_home(request: Request, config, project, db):
+    if project.type == "link":
+        if project.url and project.url.lower().startswith(("http://", "https://")):
+            return RedirectResponse(project.url, status_code=302, headers={"Cache-Control": "no-store"})
+        raise HTTPException(404)
     plugin = registry.get(project.type)
     if plugin is not None:
         return plugin.render(request, project, db)
@@ -141,7 +145,11 @@ def project_home(request: Request, config, project, db):
 
 def find_public_project(db, slug: str):
     project = store.by_slug(db, slug)
-    if project is None or project.type == "link" or not store.is_visible(db, project):
+    if (
+        project is None
+        or (project.type == "link" and not project.password_hash)
+        or not store.is_visible(db, project)
+    ):
         raise HTTPException(404)
     return project
 
@@ -184,7 +192,7 @@ def unlock_project(request: Request, slug: str, db: DbSession, password: str = F
             status_code=401,
         )
     clear_failures(request, slug)
-    token = make_project_token(config, slug)
+    token = make_project_token(config, slug, project.password_hash)
     response = RedirectResponse(f"/projects/{slug}/", status_code=303)
     set_project_cookie(config, response, slug, token)
     extra_paths: list[str] = []
@@ -225,6 +233,9 @@ def project_file(request: Request, slug: str, path: str, db: DbSession):
         if registry.get(project.type) is not None:
             stats.record_visit(db, request, project_id=project.id)
         return project_home(request, config, project, db)
+
+    if project.type == "link":
+        raise HTTPException(404)
 
     if path.strip("/") == "admin":
         return RedirectResponse(f"/admin/projects/{project.id}", status_code=302)
@@ -616,7 +627,11 @@ def search_projects(request: Request, db: DbSession, q: str = ""):
                     "slug": p.slug,
                     "description": p.description or "",
                     "type": p.type,
-                    "url": p.url if p.type == "link" else f"/projects/{p.slug}/",
+                    "url": (
+                        p.url
+                        if (p.type == "link" and (is_admin or not p.password_hash))
+                        else f"/projects/{p.slug}/"
+                    ),
                     "space": space_map.get(p.parent_id, "") if p.parent_id else "",
                     "pinned": p.pinned,
                     "is_locked": bool(p.password_hash),

@@ -72,17 +72,28 @@ def verify_project_password(hashed: str, password: str) -> bool:
         return False
 
 
-def make_project_token(config: Config, slug: str) -> str:
+def project_password_version(config: Config, password_hash: str) -> str:
+    return hmac.new(config.secret.encode(), password_hash.encode(), hashlib.sha256).hexdigest()
+
+
+def make_project_token(config: Config, slug: str, password_hash: str) -> str:
     serializer = URLSafeTimedSerializer(config.secret, salt="siteflow-project-gate")
-    return serializer.dumps({"slug": slug, "ts": time.time()})
+    return serializer.dumps(
+        {"slug": slug, "pv": project_password_version(config, password_hash), "ts": time.time()}
+    )
 
 
-def verify_project_token(config: Config, slug: str, token: str) -> bool:
-    if not token:
+def verify_project_token(config: Config, slug: str, token: str, password_hash: str) -> bool:
+    if not token or not password_hash:
         return False
     serializer = URLSafeTimedSerializer(config.secret, salt="siteflow-project-gate")
     data = _loads_timed(serializer, token, SESSION_MAX_AGE)
-    return isinstance(data, dict) and data.get("slug") == slug
+    if not isinstance(data, dict) or data.get("slug") != slug:
+        return False
+    pv = data.get("pv")
+    if not isinstance(pv, str) or not pv:
+        return False
+    return hmac.compare_digest(pv, project_password_version(config, password_hash))
 
 
 def project_cookie_name(slug: str) -> str:
