@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>登录 - {{ site_title }}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
   <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 </head>
 <body class="login-body">
@@ -20,6 +20,6 @@
     {% if error %}<p class="login-error" data-i18n-auto>{{ error }}</p>{% endif %}
     <button type="submit" data-i18n="login.submit">登录</button>
   </form>
-  <script src="/static/js/i18n.js" defer></script>
+  <script src="{{ static_url('js/i18n.js') }}" defer></script>
 </body>
 </html>

@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ project.title }} - 博客编辑 - {{ site_title }}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
-  <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
+  <script src="{{ static_url('js/theme-init.js') }}"></script>
   <meta name="csrf" content="{{ csrf }}">
 </head>
 <body data-plugin-id="{{ project.id }}" data-preview-url="/projects/{{ project.slug }}/">
@@ -16,7 +16,7 @@
         <p class="crumbs"><a href="/admin" data-i18n="admin.crumb_admin">管理</a>{% if parent %} <span class="muted">/</span> <a href="/admin/projects/{{ parent.id }}" data-i18n-auto>{{ parent.title }}</a>{% endif %} <span class="muted">/</span> <span data-i18n-auto>{{ project.title }}</span></p>
         <p class="brand" data-i18n-auto>{{ project.title }}</p>
       </div>
-      <div class="row-actions header-actions">
+      <div class="header-actions">
         <a class="btn ghost" href="{{ project.slug and '/projects/' + project.slug + '/' }}" target="_blank">{{ icons.icon("external-link") }}<span data-i18n="resume.preview">预览</span></a>
         <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
         <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
@@ -29,14 +29,14 @@
         <h2 data-i18n="blog.posts_heading">文章</h2>
         <a class="btn primary" href="/admin/projects/{{ project.id }}/posts/new">{{ icons.icon("plus") }}<span data-i18n="blog.add_post">添加文章</span></a>
       </div>
-      <p class="muted"><span id="post-count">{{ content.posts | length }}</span> <span data-i18n="blog.post_unit">篇文章</span></p>
+      <p class="blog-post-count"><span id="post-count">{{ content.posts | length }}</span> <span data-i18n="blog.post_unit">篇文章</span></p>
       <div class="blog-post-list">
         {% for post in content.posts %}
         <article class="blog-post-row">
-          <a class="post-edit-link" href="/admin/projects/{{ project.id }}/posts/{{ post.slug | urlencode }}/edit"><strong>{{ post.title }}</strong><span class="muted">{{ post.date }}{% if post.summary %} · {{ post.summary }}{% endif %}</span></a>
+          <a class="post-edit-link" href="/admin/projects/{{ project.id }}/posts/{{ post.slug | urlencode }}/edit"><strong>{{ post.title }}</strong><span class="muted">{{ post.date }}{% if post.date and post.summary %} · {% endif %}{{ post.summary }}</span></a>
           <div class="entry-actions">
-            <a class="btn ghost icon-btn" href="/projects/{{ project.slug }}/posts/{{ post.slug | urlencode }}" target="_blank" aria-label="查看" data-i18n-aria-label="row.view">{{ icons.icon("external-link") }}</a>
-            <button type="button" class="btn ghost icon-btn" data-delete-post="{{ post.slug }}" aria-label="删除" data-i18n-aria-label="row.delete">{{ icons.icon("trash") }}</button>
+            <a class="btn ghost icon-btn" href="/projects/{{ project.slug }}/posts/{{ post.slug | urlencode }}" target="_blank" data-tip="查看" data-i18n-tip="row.view" aria-label="查看" data-i18n-aria-label="row.view">{{ icons.icon("external-link") }}</a>
+            <button type="button" class="btn danger icon-btn" data-delete-post="{{ post.slug }}" data-tip="删除" data-i18n-tip="row.delete" aria-label="删除" data-i18n-aria-label="row.delete">{{ icons.icon("trash") }}</button>
           </div>
         </article>
         {% else %}
@@ -51,14 +51,23 @@
           <label class="full"><span data-i18n="row.label_title">标题</span><input id="f-title" value="{{ content.title or project.title }}" required maxlength="200"></label>
           <label class="full"><span data-i18n="row.label_desc">描述</span><input id="f-description" value="{{ content.description }}" maxlength="500"></label>
         </div>
-        <button type="submit" class="btn" data-i18n="blog.save_settings">保存博客信息</button>
+        <div class="blog-settings-actions">
+          <button type="submit" class="btn" data-i18n="blog.save_settings">保存博客信息</button>
+          <span id="save-state" class="muted" role="status" aria-live="polite" tabindex="-1"></span>
+        </div>
       </form>
     </section>
-    <p id="save-state" role="status" aria-live="polite" tabindex="-1"></p>
+    {% if ext_catalog is defined %}
+    {% set ext_section_id = "blog-extensions" %}
+    {% set ext_section_title_key = "blog.ext_section_title" %}
+    {% set ext_section_title_default = "博客插件" %}
+    {% include "_extensions_panel.html" %}
+    {% endif %}
   </main>
   <script id="plugin-data" type="application/json">{{ content | tojson }}</script>
-  <script src="/static/js/i18n.js" defer></script>
-  <script src="/static/js/blog.js" defer></script>
-  <script src="/static/js/admin.js" defer></script>
+  <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  <script src="{{ static_url('js/blog.js') }}" defer></script>
+  <script src="{{ static_url('js/extensions_admin.js') }}" defer></script>
+  <script src="{{ static_url('js/admin.js') }}" defer></script>
 </body>
 </html>

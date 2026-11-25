@@ -177,6 +177,12 @@ def delete_files(config: Config, project: Project) -> None:
     cover = Path(config.data) / "media" / "covers" / project.cover
     if project.cover and cover.exists():
         cover.unlink()
+    blog_media = Path(config.data) / "media" / "blog" / project.slug
+    if blog_media.exists():
+        shutil.rmtree(blog_media)
+    ext_media = Path(config.data) / "media" / "ext" / project.slug
+    if ext_media.exists():
+        shutil.rmtree(ext_media)
 
 
 def unique_slug_name() -> str:

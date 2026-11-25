@@ -1,0 +1,161 @@
+{% macro render_skin(character, size=76) -%}
+{%- set spec = mascot_spec(character) -%}
+{%- set skin = spec.id -%}
+{%- if spec.kind == "pose_svg" -%}
+{%- set pose_map = spec.pose_map() -%}
+<img class="sf-mascot-svg sf-mascot-skin-{{ skin }} sf-mascot-sprite-svg" data-mascot-pose-img data-mascot-pose="idle" src="{{ static_url(pose_map['idle']) }}" width="{{ size }}" height="{{ size }}" alt="" draggable="false">
+{%- else -%}
+<svg class="sf-mascot-svg sf-mascot-skin-{{ skin }}" viewBox="0 0 100 100" width="{{ size }}" height="{{ size }}" aria-hidden="true">
+{%- if skin == "cat" -%}
+  <ellipse class="sf-mascot-shadow" cx="50" cy="91" rx="22" ry="4" fill="#0f172a" opacity="0.16"/>
+  <g class="sf-mascot-body-group">
+    <path class="sf-mascot-tail sf-mascot-cat-tail" d="M72 75 C86 73 91 61 85 52" fill="none" stroke="#4338ca" stroke-width="5.5" stroke-linecap="round"/>
+    <circle class="sf-mascot-gem" cx="85" cy="51" r="2.6" fill="#fde047"/>
+    <path class="sf-mascot-ear sf-mascot-ear-l" d="M24 38 L18 13 L41 25 Z" fill="#4338ca"/>
+    <path class="sf-mascot-ear sf-mascot-ear-r" d="M76 38 L82 13 L59 25 Z" fill="#4338ca"/>
+    <path class="sf-mascot-ear-inner sf-mascot-ear-l" d="M25 33 L22 19 L36 26 Z" fill="#c7d2fe"/>
+    <path class="sf-mascot-ear-inner sf-mascot-ear-r" d="M75 33 L78 19 L64 26 Z" fill="#c7d2fe"/>
+    <rect class="sf-mascot-head" x="18" y="23" width="64" height="52" rx="26" fill="#4f46e5"/>
+    <path class="sf-mascot-highlight" d="M32 30 Q50 25 68 30" fill="none" stroke="#ffffff" stroke-width="2.6" stroke-linecap="round" opacity="0.28"/>
+    <rect class="sf-mascot-visor" x="26" y="36" width="48" height="27" rx="13.5" fill="#1e1b4b"/>
+    <ellipse class="sf-mascot-eye" cx="39.5" cy="48.5" rx="3.8" ry="4.9" fill="#38bdf8"/>
+    <ellipse class="sf-mascot-eye" cx="60.5" cy="48.5" rx="3.8" ry="4.9" fill="#38bdf8"/>
+    <circle class="sf-mascot-glint" cx="41" cy="46.4" r="1.4" fill="#ffffff"/>
+    <circle class="sf-mascot-glint" cx="62" cy="46.4" r="1.4" fill="#ffffff"/>
+    <circle class="sf-mascot-glint" cx="38.2" cy="50.7" r="0.7" fill="#ffffff" opacity="0.8"/>
+    <circle class="sf-mascot-glint" cx="59.2" cy="50.7" r="0.7" fill="#ffffff" opacity="0.8"/>
+    <ellipse class="sf-mascot-blush" cx="30.5" cy="54" rx="3.6" ry="2.2" fill="#f472b6" opacity="0.58"/>
+    <ellipse class="sf-mascot-blush" cx="69.5" cy="54" rx="3.6" ry="2.2" fill="#f472b6" opacity="0.58"/>
+    <path class="sf-mascot-smile" d="M44.5 55 Q47.2 58.2 50 55.6 Q52.8 58.2 55.5 55" fill="none" stroke="#38bdf8" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+    <path class="sf-mascot-collar" d="M32 73 Q50 79 68 73 L65 82 Q50 87 35 82 Z" fill="#4338ca"/>
+    <path class="sf-mascot-gem" d="M50 74.5 L51.4 77.6 L54.6 78.2 L52.1 80.3 L52.8 83.4 L50 81.8 L47.2 83.4 L47.9 80.3 L45.4 78.2 L48.6 77.6 Z" fill="#fde047"/>
+    <path class="sf-mascot-sparkle" d="M87 22 L88.4 25.6 L92 27 L88.4 28.4 L87 32 L85.6 28.4 L82 27 L85.6 25.6 Z" fill="#fde047"/>
+  </g>
+{%- elif skin == "dog" -%}
+  <ellipse class="sf-mascot-shadow" cx="50" cy="91" rx="23" ry="4" fill="#0f172a" opacity="0.16"/>
+  <g class="sf-mascot-body-group">
+    <path class="sf-mascot-tail sf-mascot-dog-tail" d="M74 72 C89 69 92 52 80 48 C75 46 73 52 77 56" fill="none" stroke="#e49b46" stroke-width="6.5" stroke-linecap="round"/>
+    <path class="sf-mascot-dog-ear sf-mascot-ear-l" d="M23 41 L19 16 Q21 12 26 15 L42 26 Z" fill="#d98934"/>
+    <path class="sf-mascot-dog-ear sf-mascot-ear-r" d="M77 41 L81 16 Q79 12 74 15 L58 26 Z" fill="#d98934"/>
+    <path class="sf-mascot-dog-ear-in sf-mascot-ear-l" d="M26 35 L23 21 L36 28 Z" fill="#fce4c8"/>
+    <path class="sf-mascot-dog-ear-in sf-mascot-ear-r" d="M74 35 L77 21 L64 28 Z" fill="#fce4c8"/>
+    <ellipse class="sf-mascot-dog-fur" cx="50" cy="50" rx="31" ry="26" fill="#eba44f"/>
+    <path class="sf-mascot-dog-mask" d="M22 55 C23 45 34 45 43 49 Q50 52 57 49 C66 45 77 45 78 55 C77 69 65 76 50 76 C35 76 23 69 22 55 Z" fill="#fff7e8"/>
+    <ellipse class="sf-mascot-dog-brow" cx="39" cy="40.5" rx="3.4" ry="2.1" fill="#fff7e8"/>
+    <ellipse class="sf-mascot-dog-brow" cx="61" cy="40.5" rx="3.4" ry="2.1" fill="#fff7e8"/>
+    <ellipse class="sf-mascot-eye sf-mascot-dark-eye" cx="38" cy="49.5" rx="3.6" ry="4.4" fill="#2d1e17"/>
+    <ellipse class="sf-mascot-eye sf-mascot-dark-eye" cx="62" cy="49.5" rx="3.6" ry="4.4" fill="#2d1e17"/>
+    <circle class="sf-mascot-glint" cx="39.3" cy="47.8" r="1.35" fill="#ffffff"/>
+    <circle class="sf-mascot-glint" cx="63.3" cy="47.8" r="1.35" fill="#ffffff"/>
+    <ellipse class="sf-mascot-blush" cx="29" cy="55.5" rx="4" ry="2.4" fill="#fb7185" opacity="0.48"/>
+    <ellipse class="sf-mascot-blush" cx="71" cy="55.5" rx="4" ry="2.4" fill="#fb7185" opacity="0.48"/>
+    <ellipse class="sf-mascot-dog-nose" cx="50" cy="54.2" rx="3.6" ry="2.5" fill="#2d1e17"/>
+    <path class="sf-mascot-dog-mouth" d="M44 59 Q47 62.5 50 59.4 Q53 62.5 56 59" fill="none" stroke="#2d1e17" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path class="sf-mascot-dog-tongue" d="M47.8 60.8 Q50 66.2 52.2 60.8 Z" fill="#fb7185"/>
+    <path class="sf-mascot-head" d="M31 72 Q50 78 69 72 L50 86 Z" fill="#4f46e5"/>
+    <circle class="sf-mascot-gem" cx="50" cy="79.5" r="3.2" fill="#fde047"/>
+  </g>
+{%- elif skin == "whale" -%}
+  <ellipse class="sf-mascot-shadow" cx="50" cy="91" rx="24" ry="4" fill="#0f172a" opacity="0.16"/>
+  <g class="sf-mascot-body-group">
+    <path class="sf-mascot-drop sf-mascot-drop-1" d="M44 19 C40 12 33 11 33 15 C33 18 39 20 44 19 Z" fill="#38bdf8"/>
+    <path class="sf-mascot-drop sf-mascot-drop-2" d="M56 19 C60 12 67 11 67 15 C67 18 61 20 56 19 Z" fill="#38bdf8"/>
+    <circle class="sf-mascot-drop sf-mascot-drop-3" cx="50" cy="12" r="2.7" fill="#7dd3fc"/>
+    <path class="sf-mascot-tail sf-mascot-whale-tail" d="M77 65 C88 61 93 52 89 47 C84 44 80 51 78 55 C82 54 91 58 92 64 C92 69 83 72 75 71 Z" fill="#1d4ed8"/>
+    <path class="sf-mascot-whale-body" d="M18 59 C18 33 32 24 50 24 C68 24 82 33 82 59 C82 76 68 83 50 83 C32 83 18 76 18 59 Z" fill="#2563eb"/>
+    <path class="sf-mascot-highlight" d="M31 32 Q48 26 65 32" fill="none" stroke="#bfdbfe" stroke-width="3" stroke-linecap="round" opacity="0.45"/>
+    <path class="sf-mascot-whale-belly" d="M24 65 Q50 58 76 65 C74 77 64 83 50 83 C36 83 26 77 24 65 Z" fill="#e0f2fe"/>
+    <path class="sf-mascot-whale-rib" d="M37 64 Q39 73 41 81" fill="none" stroke="#93c5fd" stroke-width="1.6" stroke-linecap="round"/>
+    <path class="sf-mascot-whale-rib" d="M50 62.5 L50 82" fill="none" stroke="#93c5fd" stroke-width="1.6" stroke-linecap="round"/>
+    <path class="sf-mascot-whale-rib" d="M63 64 Q61 73 59 81" fill="none" stroke="#93c5fd" stroke-width="1.6" stroke-linecap="round"/>
+    <ellipse class="sf-mascot-fin sf-mascot-fin-l" cx="20" cy="64" rx="8.5" ry="4.5" transform="rotate(-24 20 64)" fill="#1d4ed8"/>
+    <ellipse class="sf-mascot-fin sf-mascot-fin-r" cx="80" cy="64" rx="8.5" ry="4.5" transform="rotate(24 80 64)" fill="#1d4ed8"/>
+    <ellipse class="sf-mascot-eye sf-mascot-dark-eye" cx="37.5" cy="51.5" rx="3.9" ry="4.8" fill="#0f172a"/>
+    <ellipse class="sf-mascot-eye sf-mascot-dark-eye" cx="62.5" cy="51.5" rx="3.9" ry="4.8" fill="#0f172a"/>
+    <circle class="sf-mascot-glint" cx="38.9" cy="49.7" r="1.45" fill="#ffffff"/>
+    <circle class="sf-mascot-glint" cx="63.9" cy="49.7" r="1.45" fill="#ffffff"/>
+    <circle class="sf-mascot-glint" cx="36.2" cy="53.6" r="0.7" fill="#ffffff" opacity="0.8"/>
+    <circle class="sf-mascot-glint" cx="61.2" cy="53.6" r="0.7" fill="#ffffff" opacity="0.8"/>
+    <ellipse class="sf-mascot-blush" cx="29" cy="57" rx="3.8" ry="2.2" fill="#f472b6" opacity="0.52"/>
+    <ellipse class="sf-mascot-blush" cx="71" cy="57" rx="3.8" ry="2.2" fill="#f472b6" opacity="0.52"/>
+    <path class="sf-mascot-whale-smile" d="M44.5 56.5 Q50 61.5 55.5 56.5" fill="none" stroke="#0f172a" stroke-width="2.1" stroke-linecap="round"/>
+    <path class="sf-mascot-gem" d="M68 35 L69.2 38 L72.2 39.2 L69.2 40.4 L68 43.4 L66.8 40.4 L63.8 39.2 L66.8 38 Z" fill="#fde047"/>
+  </g>
+{%- elif skin == "gemini_cat" -%}
+  <ellipse class="sf-mascot-shadow" cx="50" cy="91" rx="22" ry="4" fill="#0f172a" opacity="0.18"/>
+  <g class="sf-mascot-body-group">
+    <ellipse class="sf-mascot-halo" cx="50" cy="21" rx="18" ry="4.5" fill="none" stroke="#38bdf8" stroke-width="1.8" opacity="0.72"/>
+    <path class="sf-mascot-tail sf-mascot-gemini-tail" d="M73 74 C87 72 92 59 86 49" fill="none" stroke="#312e81" stroke-width="5.2" stroke-linecap="round"/>
+    <path class="sf-mascot-sparkle sf-mascot-sparkle-1" d="M13 21 L14.8 25.8 L19.5 27.5 L14.8 29.2 L13 34 L11.2 29.2 L6.5 27.5 L11.2 25.8 Z" fill="#38bdf8"/>
+    <path class="sf-mascot-sparkle sf-mascot-sparkle-2" d="M87 19 L88.6 23 L92.6 24.6 L88.6 26.2 L87 30.2 L85.4 26.2 L81.4 24.6 L85.4 23 Z" fill="#c084fc"/>
+    <path class="sf-mascot-gemini-ear sf-mascot-ear-l" d="M24 39 L19 12 L42 25 Z" fill="#1e1b4b"/>
+    <path class="sf-mascot-gemini-ear sf-mascot-ear-r" d="M76 39 L81 12 L58 25 Z" fill="#1e1b4b"/>
+    <path class="sf-mascot-gemini-ear-in-l sf-mascot-ear-l" d="M26 34 L23 19 L37 26 Z" fill="#38bdf8"/>
+    <path class="sf-mascot-gemini-ear-in-r sf-mascot-ear-r" d="M74 34 L77 19 L63 26 Z" fill="#c084fc"/>
+    <rect class="sf-mascot-gemini-head" x="19" y="24" width="62" height="51" rx="25.5" fill="#1e1b4b"/>
+    <path class="sf-mascot-gemini-glow-l" d="M23 50 A26 24 0 0 0 43 72 L36 62 Z" fill="#38bdf8" opacity="0.16"/>
+    <path class="sf-mascot-gemini-glow-r" d="M77 50 A26 24 0 0 1 57 72 L64 62 Z" fill="#c084fc" opacity="0.18"/>
+    <path class="sf-mascot-gemini-crest" d="M50 29 L51.4 32.6 L55 34 L51.4 35.4 L50 39 L48.6 35.4 L45 34 L48.6 32.6 Z" fill="#e0f2fe"/>
+    <ellipse class="sf-mascot-eye sf-mascot-gemini-eye-l" cx="38.5" cy="49.5" rx="4.1" ry="5.1" fill="#38bdf8"/>
+    <ellipse class="sf-mascot-eye sf-mascot-gemini-eye-r" cx="61.5" cy="49.5" rx="4.1" ry="5.1" fill="#c084fc"/>
+    <path class="sf-mascot-glint" d="M39.5 46 L40.2 47.8 L42 48.5 L40.2 49.2 L39.5 51 L38.8 49.2 L37 48.5 L38.8 47.8 Z" fill="#ffffff"/>
+    <path class="sf-mascot-glint" d="M62.5 46 L63.2 47.8 L65 48.5 L63.2 49.2 L62.5 51 L61.8 49.2 L60 48.5 L61.8 47.8 Z" fill="#ffffff"/>
+    <ellipse class="sf-mascot-blush" cx="29.5" cy="56" rx="3.4" ry="2" fill="#f472b6" opacity="0.55"/>
+    <ellipse class="sf-mascot-blush" cx="70.5" cy="56" rx="3.4" ry="2" fill="#f472b6" opacity="0.55"/>
+    <path class="sf-mascot-gemini-smile" d="M44.5 57 Q47.2 60.2 50 57.6 Q52.8 60.2 55.5 57" fill="none" stroke="#e0f2fe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path class="sf-mascot-head" d="M32 73 Q50 79 68 73 L65 82 Q50 87 35 82 Z" fill="#4f46e5"/>
+    <path class="sf-mascot-gem" d="M50 75 L51.6 78.4 L55 80 L51.6 81.6 L50 85 L48.4 81.6 L45 80 L48.4 78.4 Z" fill="#fde047"/>
+  </g>
+{%- elif skin == "slime" -%}
+  <ellipse class="sf-mascot-shadow" cx="50" cy="91" rx="26" ry="4.2" fill="#0f172a" opacity="0.15"/>
+  <g class="sf-mascot-body-group sf-mascot-slime-group">
+    <circle class="sf-mascot-drop sf-mascot-drop-1" cx="20" cy="34" r="3.4" fill="#67e8f9" opacity="0.82"/>
+    <circle class="sf-mascot-drop sf-mascot-drop-2" cx="81" cy="30" r="2.8" fill="#a5f3fc" opacity="0.85"/>
+    <circle class="sf-mascot-drop sf-mascot-drop-3" cx="84" cy="43" r="1.8" fill="#67e8f9" opacity="0.72"/>
+    <path class="sf-mascot-slime-body" d="M50 15 C57 27 83 44 83 64 C83 79 70 86 50 86 C30 86 17 79 17 64 C17 44 43 27 50 15 Z" fill="#38bdf8"/>
+    <path class="sf-mascot-slime-core" d="M25 65 C25 53 38 45 50 45 C62 45 75 53 75 65 C75 76 65 82 50 82 C35 82 25 76 25 65 Z" fill="#bae6fd" opacity="0.48"/>
+    <path class="sf-mascot-slime-rim" d="M50 18 C55 27 79 44 79 63 C79 75 68 82 50 82 C32 82 21 75 21 63 C21 44 45 27 50 18 Z" fill="none" stroke="#e0f2fe" stroke-width="2" opacity="0.62"/>
+    <path class="sf-mascot-slime-shine" d="M35 37 C30 43 27 50 26.5 56" fill="none" stroke="#ffffff" stroke-width="4.5" stroke-linecap="round" opacity="0.78"/>
+    <circle class="sf-mascot-glint" cx="39.5" cy="31.5" r="2.2" fill="#ffffff" opacity="0.88"/>
+    <ellipse class="sf-mascot-eye sf-mascot-dark-eye" cx="38.5" cy="59.5" rx="3.7" ry="4.7" fill="#0f172a"/>
+    <ellipse class="sf-mascot-eye sf-mascot-dark-eye" cx="61.5" cy="59.5" rx="3.7" ry="4.7" fill="#0f172a"/>
+    <circle class="sf-mascot-glint" cx="39.8" cy="57.7" r="1.4" fill="#ffffff"/>
+    <circle class="sf-mascot-glint" cx="62.8" cy="57.7" r="1.4" fill="#ffffff"/>
+    <ellipse class="sf-mascot-blush" cx="29.5" cy="65.5" rx="4.2" ry="2.4" fill="#f472b6" opacity="0.5"/>
+    <ellipse class="sf-mascot-blush" cx="70.5" cy="65.5" rx="4.2" ry="2.4" fill="#f472b6" opacity="0.5"/>
+    <path class="sf-mascot-slime-smile" d="M44.5 65.5 Q50 70.5 55.5 65.5" fill="none" stroke="#0f172a" stroke-width="2.1" stroke-linecap="round"/>
+    <circle class="sf-mascot-gem" cx="66" cy="40" r="3" fill="#fde047" opacity="0.9"/>
+  </g>
+{%- else -%}
+  <ellipse class="sf-mascot-shadow" cx="50" cy="91" rx="22" ry="4" fill="#0f172a" opacity="0.16"/>
+  <g class="sf-mascot-body-group">
+    <path class="sf-mascot-ponytail" d="M26 39 C13 43 9 59 14 75 C17 82 24 81 27 72 C24 62 24 51 29 45 Z" fill="#c7cde6"/>
+    <path class="sf-mascot-vocaloid-hair-back" d="M24 44 C24 23 36 16 50 16 C64 16 76 23 76 44 L78 68 C73 72 67 73 62 71 L38 71 C33 73 27 72 22 68 Z" fill="#d8ddf2"/>
+    <path class="sf-mascot-headset-band" d="M22 45 C22 23 34 15 50 15 C66 15 78 23 78 45" fill="none" stroke="#334155" stroke-width="3.6" stroke-linecap="round"/>
+    <path class="sf-mascot-vocaloid-face" d="M28 45 C28 31 37 25 50 25 C63 25 72 31 72 45 C72 62 62 71 50 71 C38 71 28 62 28 45 Z" fill="#fff2ea"/>
+    <path class="sf-mascot-vocaloid-bangs" d="M25 45 C26 24 38 18 50 18 C62 18 74 24 75 45 C71 39 67 35 63 34 L60 44 L54 33 L49 45 L44 33 L38 44 L35 35 C31 37 28 40 25 45 Z" fill="#e5e8f7"/>
+    <rect class="sf-mascot-headset-cup" x="18" y="42" width="8.5" height="16" rx="4.2" fill="#334155"/>
+    <rect class="sf-mascot-headset-cup" x="73.5" y="42" width="8.5" height="16" rx="4.2" fill="#334155"/>
+    <rect class="sf-mascot-head" x="20" y="45" width="4.5" height="10" rx="2.2" fill="#4f46e5"/>
+    <rect class="sf-mascot-head" x="75.5" y="45" width="4.5" height="10" rx="2.2" fill="#4f46e5"/>
+    <path class="sf-mascot-headset-mic" d="M76 56 Q72 64 60 63" fill="none" stroke="#334155" stroke-width="1.8" stroke-linecap="round"/>
+    <circle class="sf-mascot-head" cx="25.5" cy="39" r="4.2" fill="#4f46e5"/>
+    <ellipse class="sf-mascot-eye sf-mascot-vocaloid-eye" cx="39.5" cy="52.5" rx="3.9" ry="5" fill="#e11d48"/>
+    <ellipse class="sf-mascot-eye sf-mascot-vocaloid-eye" cx="60.5" cy="52.5" rx="3.9" ry="5" fill="#e11d48"/>
+    <circle class="sf-mascot-glint" cx="40.9" cy="50.5" r="1.45" fill="#ffffff"/>
+    <circle class="sf-mascot-glint" cx="61.9" cy="50.5" r="1.45" fill="#ffffff"/>
+    <circle class="sf-mascot-glint" cx="38.2" cy="54.6" r="0.8" fill="#ffffff" opacity="0.85"/>
+    <circle class="sf-mascot-glint" cx="59.2" cy="54.6" r="0.8" fill="#ffffff" opacity="0.85"/>
+    <ellipse class="sf-mascot-blush" cx="32" cy="58.5" rx="3.5" ry="2" fill="#f472b6" opacity="0.52"/>
+    <ellipse class="sf-mascot-blush" cx="68" cy="58.5" rx="3.5" ry="2" fill="#f472b6" opacity="0.52"/>
+    <path class="sf-mascot-vocaloid-smile" d="M46 60 Q50 63.5 54 60" fill="none" stroke="#9f1239" stroke-width="1.9" stroke-linecap="round"/>
+    <path class="sf-mascot-vocaloid-collar" d="M35 72 L50 78 L65 72 L68 85 L32 85 Z" fill="#f8fafc"/>
+    <path class="sf-mascot-vocaloid-collar-trim" d="M35 72 L50 78 L65 72" fill="none" stroke="#334155" stroke-width="1.8" stroke-linejoin="round"/>
+    <path class="sf-mascot-head" d="M47.5 76 L52.5 76 L53.5 85 L50 88 L46.5 85 Z" fill="#4f46e5"/>
+    <circle class="sf-mascot-gem" cx="50" cy="79" r="1.7" fill="#fde047"/>
+    <path class="sf-mascot-sparkle" d="M85 20 L86.3 23.2 L89.5 24.5 L86.3 25.8 L85 29 L83.7 25.8 L80.5 24.5 L83.7 23.2 Z" fill="#fde047"/>
+  </g>
+{%- endif -%}
+</svg>
+{%- endif -%}
+{%- endmacro %}

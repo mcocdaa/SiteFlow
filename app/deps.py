@@ -34,7 +34,10 @@ def admin_api(request: Request) -> Config:
     if verify_api_token(request, config):
         return config
     require_admin(request, config)
-    require_same_origin(request)
+    if request.method not in ("GET", "HEAD", "OPTIONS") or request.headers.get("origin"):
+        require_same_origin(request)
+    elif request.headers.get("sec-fetch-site") == "cross-site":
+        raise HTTPException(403, "跨站请求被拒绝")
     submitted = request.headers.get("x-csrf-token") or ""
     if not check_csrf(request, submitted):
         raise HTTPException(403, "CSRF 校验失败")

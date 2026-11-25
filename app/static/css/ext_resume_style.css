@@ -1,0 +1,215 @@
+body.has-resume-style.resume-accent-slate { --accent: #334155; }
+body.has-resume-style.resume-accent-indigo { --accent: #4f46e5; }
+body.has-resume-style.resume-accent-emerald { --accent: #059669; }
+body.has-resume-style.resume-accent-amber { --accent: #b45309; }
+body.has-resume-style.resume-accent-rose { --accent: #be123c; }
+
+@media (prefers-color-scheme: dark) {
+  body.has-resume-style.resume-accent-slate { --accent: #94a3b8; }
+  body.has-resume-style.resume-accent-indigo { --accent: #818cf8; }
+  body.has-resume-style.resume-accent-emerald { --accent: #34d399; }
+  body.has-resume-style.resume-accent-amber { --accent: #fbbf24; }
+  body.has-resume-style.resume-accent-rose { --accent: #fb7185; }
+}
+
+:root[data-theme="light"] body.has-resume-style.resume-accent-slate { --accent: #334155; }
+:root[data-theme="light"] body.has-resume-style.resume-accent-indigo { --accent: #4f46e5; }
+:root[data-theme="light"] body.has-resume-style.resume-accent-emerald { --accent: #059669; }
+:root[data-theme="light"] body.has-resume-style.resume-accent-amber { --accent: #b45309; }
+:root[data-theme="light"] body.has-resume-style.resume-accent-rose { --accent: #be123c; }
+
+:root[data-theme="dark"] body.has-resume-style.resume-accent-slate { --accent: #94a3b8; }
+:root[data-theme="dark"] body.has-resume-style.resume-accent-indigo { --accent: #818cf8; }
+:root[data-theme="dark"] body.has-resume-style.resume-accent-emerald { --accent: #34d399; }
+:root[data-theme="dark"] body.has-resume-style.resume-accent-amber { --accent: #fbbf24; }
+:root[data-theme="dark"] body.has-resume-style.resume-accent-rose { --accent: #fb7185; }
+
+body.has-resume-style .resume-section h2 svg {
+  color: var(--accent);
+}
+
+body.has-resume-style .chip {
+  border-color: color-mix(in srgb, var(--accent) 26%, var(--border));
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+body.has-resume-style.resume-paper-warm {
+  background: #f7f3eb;
+}
+
+body.has-resume-style.resume-paper-warm .resume {
+  background: #fcfaf5;
+  border: 1px solid #e7dfd1;
+  border-radius: var(--radius-card);
+  margin-bottom: 48px;
+  padding: 36px 40px 56px;
+}
+
+body.has-resume-style.resume-paper-tint {
+  background: #f1f5f9;
+}
+
+body.has-resume-style.resume-paper-tint .resume {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-card);
+  margin-bottom: 48px;
+  padding: 36px 40px 56px;
+}
+
+@media (prefers-color-scheme: dark) {
+  body.has-resume-style.resume-paper-warm {
+    background: #141311;
+  }
+
+  body.has-resume-style.resume-paper-warm .resume {
+    background: #1b1916;
+    border-color: #2d2923;
+  }
+
+  body.has-resume-style.resume-paper-tint {
+    background: #0d1016;
+  }
+
+  body.has-resume-style.resume-paper-tint .resume {
+    background: #151923;
+    border-color: #252c3b;
+  }
+}
+
+:root[data-theme="light"] body.has-resume-style.resume-paper-warm {
+  background: #f7f3eb;
+}
+
+:root[data-theme="light"] body.has-resume-style.resume-paper-warm .resume {
+  background: #fcfaf5;
+  border-color: #e7dfd1;
+}
+
+:root[data-theme="light"] body.has-resume-style.resume-paper-tint {
+  background: #f1f5f9;
+}
+
+:root[data-theme="light"] body.has-resume-style.resume-paper-tint .resume {
+  background: var(--surface);
+  border-color: var(--border);
+}
+
+:root[data-theme="dark"] body.has-resume-style.resume-paper-warm {
+  background: #141311;
+}
+
+:root[data-theme="dark"] body.has-resume-style.resume-paper-warm .resume {
+  background: #1b1916;
+  border-color: #2d2923;
+}
+
+:root[data-theme="dark"] body.has-resume-style.resume-paper-tint {
+  background: #0d1016;
+}
+
+:root[data-theme="dark"] body.has-resume-style.resume-paper-tint .resume {
+  background: #151923;
+  border-color: #252c3b;
+}
+
+body.has-resume-style.resume-font-serif {
+  font-family: Georgia, "Songti SC", "Noto Serif SC", "STSong", serif;
+}
+
+body.has-resume-style.resume-density-compact .resume {
+  padding-top: 16px;
+  padding-bottom: 48px;
+}
+
+body.has-resume-style.resume-density-compact .resume-head {
+  gap: 18px;
+  padding-bottom: 16px;
+}
+
+body.has-resume-style.resume-density-compact .resume-avatar {
+  width: 78px;
+  height: 78px;
+}
+
+body.has-resume-style.resume-density-compact .resume-head h1 {
+  font-size: 26px;
+}
+
+body.has-resume-style.resume-density-compact .resume-section {
+  margin-top: 20px;
+}
+
+body.has-resume-style.resume-density-compact .resume-section h2 {
+  font-size: 16.5px;
+  margin-bottom: 10px;
+}
+
+body.has-resume-style.resume-density-compact .resume-entry {
+  padding: 8px 0;
+}
+
+body.has-resume-style.resume-density-compact .resume-entry p,
+body.has-resume-style.resume-density-compact .resume-entry ul {
+  margin-top: 4px;
+  font-size: 14px;
+}
+
+body.has-resume-style.resume-section-dividers .resume-section h2 {
+  padding-bottom: 8px;
+  border-bottom: 1.5px solid color-mix(in srgb, var(--accent) 28%, var(--border));
+}
+
+body.has-resume-style.resume-no-dividers .resume-section h2 {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+@media (max-width: 640px) {
+  body.has-resume-style.resume-paper-warm .resume,
+  body.has-resume-style.resume-paper-tint .resume {
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+    padding: 24px 18px 48px;
+  }
+}
+
+@media print {
+  body.has-resume-style,
+  body.has-resume-style.resume-paper-warm,
+  body.has-resume-style.resume-paper-tint {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  body.has-resume-style .resume,
+  body.has-resume-style.resume-paper-warm .resume,
+  body.has-resume-style.resume-paper-tint .resume {
+    background: #fff !important;
+    border: none !important;
+    border-radius: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-shadow: none !important;
+  }
+
+  body.has-resume-style .chip {
+    background: transparent !important;
+    border-color: #999 !important;
+    color: #333 !important;
+  }
+
+  body.has-resume-style.resume-section-dividers .resume-section h2 {
+    border-bottom: 1px solid #999 !important;
+    padding-bottom: 4px;
+  }
+
+  body.has-resume-style.resume-density-compact .resume-section {
+    margin-top: 10px;
+  }
+
+  body.has-resume-style.resume-density-compact .resume-entry {
+    padding: 5px 0;
+  }
+}

@@ -15,6 +15,7 @@ from app.config import Config
 
 SESSION_COOKIE = "siteflow_session"
 SESSION_MAX_AGE = 7 * 24 * 3600
+SESSION_CLOCK_SKEW_SECONDS = 5
 _password_hasher = PasswordHasher()
 _password_hash_cache: dict[str, str] = {}
 _serializer: URLSafeTimedSerializer | None = None
@@ -29,6 +30,17 @@ def _get_serializer(config: Config) -> URLSafeTimedSerializer:
         _serializer = URLSafeTimedSerializer(config.secret, salt="siteflow-session")
         _serializer_secret = config.secret
     return _serializer
+
+
+def _loads_timed(serializer: URLSafeTimedSerializer, raw: str, max_age: int) -> Any | None:
+    try:
+        data, issued_at = serializer.loads(raw, return_timestamp=True)
+    except BadSignature:
+        return None
+    age = time.time() - issued_at.timestamp()
+    if age > max_age or age < -SESSION_CLOCK_SKEW_SECONDS:
+        return None
+    return data
 
 
 def password_version(config: Config) -> str:
@@ -69,11 +81,8 @@ def verify_project_token(config: Config, slug: str, token: str) -> bool:
     if not token:
         return False
     serializer = URLSafeTimedSerializer(config.secret, salt="siteflow-project-gate")
-    try:
-        data = serializer.loads(token, max_age=SESSION_MAX_AGE)
-        return isinstance(data, dict) and data.get("slug") == slug
-    except BadSignature:
-        return False
+    data = _loads_timed(serializer, token, SESSION_MAX_AGE)
+    return isinstance(data, dict) and data.get("slug") == slug
 
 
 def project_cookie_name(slug: str) -> str:
@@ -123,10 +132,7 @@ def read_session(config: Config, request: Request) -> dict[str, Any] | None:
     raw = request.cookies.get(SESSION_COOKIE)
     if not raw:
         return None
-    try:
-        data = _get_serializer(config).loads(raw, max_age=SESSION_MAX_AGE)
-    except BadSignature:
-        return None
+    data = _loads_timed(_get_serializer(config), raw, SESSION_MAX_AGE)
     if not isinstance(data, dict) or data.get("version") != password_version(config):
         return None
     if not isinstance(data.get("csrf"), str):

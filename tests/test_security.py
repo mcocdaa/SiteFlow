@@ -1,9 +1,12 @@
 import io
 import re
+import time
 import zipfile
 
 from fastapi.testclient import TestClient
+from starlette.requests import Request
 
+from app import auth
 from app.main import app
 from app.og import parse_og
 from tests.test_flow import ORIGIN, login, make_zip, upload
@@ -297,3 +300,99 @@ def test_space_not_sandboxed_and_static_cors_headers() -> None:
     )
     assert rel_og is not None
     assert rel_og.image_url == "https://example.com/img/cover.png"
+
+
+def test_blog_csp_isolated_from_sandbox_and_space() -> None:
+    from app.plugins.blog.markdown import BLOG_CSP
+    from app.views import SANDBOX_CSP
+    from tests.test_flow import auth_headers
+
+    with TestClient(app) as client:
+        csrf = login(client)
+        blog = client.post(
+            "/api/admin/projects/app",
+            json={"type": "blog", "title": "安全博客"},
+            headers=auth_headers(csrf),
+        ).json()["project"]
+        space = client.post(
+            "/api/admin/projects/app",
+            json={"type": "space", "title": "安全空间"},
+            headers=auth_headers(csrf),
+        ).json()["project"]
+        static_proj = upload(client, csrf, "sandboxed.html", b"<h1>Sandboxed</h1>").json()["project"]
+
+        post = client.post(
+            f"/api/admin/projects/{blog['id']}/posts",
+            json={
+                "title": "安全测试文章",
+                "slug": "sec-post",
+                "summary": "摘要 <script>alert(1)</script> $x_0$",
+                "body": (
+                    "<script>alert(1)</script>\n\n"
+                    "[bad](javascript:alert(1))\n\n"
+                    "![badsvg](data:image/svg+xml;base64,PHN2Zz4=)\n\n"
+                    "$$E = mc^2$$\n"
+                ),
+            },
+            headers=auth_headers(csrf),
+        )
+        assert post.status_code == 200
+
+        blog_list = client.get(f"/projects/{blog['slug']}/")
+        assert blog_list.status_code == 200
+        assert blog_list.headers.get("Content-Security-Policy") == BLOG_CSP
+        assert "script-src 'self'" in blog_list.headers["Content-Security-Policy"]
+        assert "object-src 'none'" in blog_list.headers["Content-Security-Policy"]
+        assert "frame-ancestors 'self'" in blog_list.headers["Content-Security-Policy"]
+        assert "<script>alert(1)</script>" not in blog_list.text
+        assert "<script>" not in blog_list.text
+
+        blog_post = client.get(f"/projects/{blog['slug']}/posts/sec-post")
+        assert blog_post.status_code == 200
+        assert blog_post.headers.get("Content-Security-Policy") == BLOG_CSP
+        assert "<script>alert(1)</script>" not in blog_post.text
+        assert "<script>" not in blog_post.text
+        assert 'href="javascript:' not in blog_post.text
+        assert 'src="data:image/svg+xml' not in blog_post.text
+        assert "cdn.jsdelivr" not in blog_post.text and "unpkg.com" not in blog_post.text
+
+        space_resp = client.get(f"/projects/{space['slug']}/")
+        assert space_resp.status_code == 200
+        assert "Content-Security-Policy" not in space_resp.headers
+
+        static_resp = client.get(f"/projects/{static_proj['slug']}/index.html")
+        assert static_resp.status_code == 200
+        assert static_resp.headers.get("Content-Security-Policy") == SANDBOX_CSP
+
+
+def test_session_and_project_token_tolerate_minor_clock_skew(monkeypatch) -> None:
+    cfg = app.state.config
+    t0 = 1_700_000_000.0
+    now = {"ts": t0}
+    monkeypatch.setattr(time, "time", lambda: now["ts"])
+
+    signed = auth._get_serializer(cfg).dumps(
+        {"csrf": "csrf-tok", "admin": True, "version": auth.password_version(cfg)}
+    )
+    proj_tok = auth.make_project_token(cfg, "demo")
+    req = Request({"type": "http", "headers": [(b"cookie", f"{auth.SESSION_COOKIE}={signed}".encode())]})
+
+    now["ts"] = t0 - 2.0
+    session_ok = auth.read_session(cfg, req)
+    assert session_ok is not None and session_ok["csrf"] == "csrf-tok"
+    assert auth.verify_project_token(cfg, "demo", proj_tok) is True
+
+    now["ts"] = t0 - 30.0
+    assert auth.read_session(cfg, req) is None
+    assert auth.verify_project_token(cfg, "demo", proj_tok) is False
+
+    now["ts"] = t0 + auth.SESSION_MAX_AGE + 10.0
+    assert auth.read_session(cfg, req) is None
+    assert auth.verify_project_token(cfg, "demo", proj_tok) is False
+
+    now["ts"] = t0
+    tampered = Request(
+        {"type": "http", "headers": [(b"cookie", f"{auth.SESSION_COOKIE}={signed}x".encode())]}
+    )
+    assert auth.read_session(cfg, tampered) is None
+    assert auth.verify_project_token(cfg, "demo", proj_tok + "x") is False

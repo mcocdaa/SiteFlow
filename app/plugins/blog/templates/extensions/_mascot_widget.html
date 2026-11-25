@@ -1,0 +1,57 @@
+{% import "_mascot_skins.html" as mascot_skins %}
+{% import "icons.html" as icons %}
+<aside class="sf-mascot sf-mascot-{{ ext_ctx.position }} sf-mascot-theme-{{ ext_ctx.theme }}{% if not ext_ctx.show_on_mobile %} sf-mascot-hide-mobile{% endif %}{% if ext_ctx.draggable %} sf-mascot-draggable{% endif %}{% if ext_ctx.chat_enabled %} has-chat-dock{% endif %}" data-sf-mascot data-mascot-root data-mascot-character="{{ ext_ctx.character }}" data-mascot-kind="{{ ext_ctx.character_kind }}" role="complementary" aria-label="看板娘" data-i18n-aria-label="blog.ext.mascot.name">
+  <div class="sf-mascot-bubble bubble-align-{{ ext_ctx.position }}" data-mascot-bubble role="status" aria-live="polite" hidden>
+    <div class="sf-mascot-bubble-body" data-mascot-bubble-body>
+      <span data-mascot-text>{{ ext_ctx.greeting }}</span>
+    </div>
+  </div>
+  <div class="sf-mascot-stage" data-mascot-stage>
+    <div class="sf-mascot-tools">
+      {% if ext_ctx.draggable %}
+      <button type="button" class="sf-mascot-act" data-mascot-reset title="重置位置" data-i18n-title="blog.ext.mascot.reset_pos" aria-label="重置位置" data-i18n-aria-label="blog.ext.mascot.reset_pos" hidden>
+        {{ icons.icon("rotate-ccw", 14) }}
+      </button>
+      {% endif %}
+      <button type="button" class="sf-mascot-act" data-mascot-zoom title="放大看板娘" data-i18n-title="blog.ext.mascot.zoom_in" aria-label="放大看板娘" data-i18n-aria-label="blog.ext.mascot.zoom_in" aria-pressed="false">
+        <span class="sf-mascot-ico-zoom-in">{{ icons.icon("maximize", 13) }}</span>
+        <span class="sf-mascot-ico-zoom-out" hidden>{{ icons.icon("minimize", 13) }}</span>
+      </button>
+      <button type="button" class="sf-mascot-act" data-mascot-top title="回到顶部" data-i18n-title="blog.ext.mascot.scroll_top" aria-label="回到顶部" data-i18n-aria-label="blog.ext.mascot.scroll_top">
+        {{ icons.icon("arrow-up", 14) }}
+      </button>
+      <button type="button" class="sf-mascot-act" data-mascot-toggle title="收起/展开看板娘" data-i18n-title="blog.ext.mascot.toggle_collapse" aria-label="收起/展开看板娘" data-i18n-aria-label="blog.ext.mascot.toggle_collapse" aria-expanded="true">
+        {{ icons.icon("chevron-down", 14) }}
+      </button>
+    </div>
+    <button type="button" class="sf-mascot-avatar{% if ext_ctx.custom_avatar %} sf-mascot-avatar-custom{% endif %}" data-mascot-trigger{% if ext_ctx.draggable %} data-mascot-drag-handle{% endif %} title="点击与看板娘互动" data-i18n-title="blog.ext.mascot.click_hint" aria-label="点击与看板娘互动" data-i18n-aria-label="blog.ext.mascot.click_hint">
+      {% if ext_ctx.custom_avatar %}
+      <img class="sf-mascot-custom-img" src="{{ ext_ctx.custom_avatar }}" alt="看板娘" referrerpolicy="no-referrer" draggable="false">
+      {% else %}
+      {{ mascot_skins.render_skin(ext_ctx.character, 92) }}
+      {% endif %}
+    </button>
+    <span class="sf-mascot-fx sf-mascot-fx-think" aria-hidden="true"><span></span><span></span><span></span></span>
+    <span class="sf-mascot-fx sf-mascot-fx-speak" aria-hidden="true"><span></span><span></span><span></span></span>
+    <button type="button" class="sf-mascot-pill" data-mascot-expand{% if ext_ctx.draggable %} data-mascot-drag-handle{% endif %} title="收起/展开看板娘" data-i18n-title="blog.ext.mascot.toggle_collapse" aria-label="收起/展开看板娘" data-i18n-aria-label="blog.ext.mascot.toggle_collapse" hidden>
+      {{ icons.icon("sparkles", 16) }}
+    </button>
+  </div>
+  {% if ext_ctx.chat_enabled %}
+  <form class="sf-mascot-dock" data-mascot-chat-form>
+    <textarea class="sf-mascot-dock-input" data-mascot-chat-input rows="1" maxlength="2000" placeholder="问问我…" data-i18n-placeholder="blog.ext.mascot.dock_placeholder" aria-label="输入对话内容" data-i18n-aria-label="blog.ext.mascot.chat_input_label"></textarea>
+    <button type="button" class="sf-mascot-dock-reset" data-mascot-chat-reset title="重置对话上下文" data-i18n-title="blog.ext.mascot.chat_reset_ctx" aria-label="重置对话上下文" data-i18n-aria-label="blog.ext.mascot.chat_reset_ctx">
+      {{ icons.icon("rotate-ccw", 13) }}
+    </button>
+    <button type="submit" class="sf-mascot-dock-send" data-mascot-chat-send title="发送" data-i18n-title="blog.ext.mascot.chat_send" aria-label="发送" data-i18n-aria-label="blog.ext.mascot.chat_send">
+      {{ icons.icon("send", 14) }}
+    </button>
+    <button type="button" class="sf-mascot-dock-stop" data-mascot-chat-stop title="停止生成" data-i18n-title="blog.ext.mascot.chat_stop" aria-label="停止生成" data-i18n-aria-label="blog.ext.mascot.chat_stop" hidden>
+      {{ icons.icon("square", 12) }}
+    </button>
+  </form>
+  <template data-mascot-icon="brain">{{ icons.icon("brain", 12) }}</template>
+  <template data-mascot-icon="chevron-right">{{ icons.icon("chevron-right", 12) }}</template>
+  {% endif %}
+  <script type="application/json" data-mascot-config>{{ ext_ctx.payload | tojson }}</script>
+</aside>

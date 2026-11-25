@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ project.title }} - 简历编辑 - {{ site_title }}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
   <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
   <meta name="csrf" content="{{ csrf }}">
 </head>
@@ -53,9 +53,18 @@
       <button type="button" class="btn" data-action="save-preview" data-i18n="resume.save_preview">保存并查看</button>
       <span class="muted" id="save-state"></span>
     </div>
+    {% if ext_catalog is defined %}
+    {% set ext_section_id = "resume-extensions" %}
+    {% set ext_section_title_key = "ext.resume_section_title" %}
+    {% set ext_section_title_default = "简历插件" %}
+    {% include "_extensions_panel.html" %}
+    {% endif %}
   </main>
   <script id="plugin-data" type="application/json">{{ content | tojson }}</script>
-  <script src="/static/js/i18n.js" defer></script>
+  <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  {% if ext_catalog is defined %}
+  <script src="{{ static_url('js/extensions_admin.js') }}" defer></script>
+  {% endif %}
   <script>
 (function () {
   "use strict";

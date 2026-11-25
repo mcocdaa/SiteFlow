@@ -13,9 +13,13 @@ os.environ.setdefault("COOKIE_SECURE", "false")
 @pytest.fixture(autouse=True)
 def clean_data():
     from app import auth, store
+    from app.extensions.mascot_chat import reset_chat_rate_limits
+    from app.extensions.packs import invalidate_pack_cache
     from app.main import app
 
     auth._failed.clear()
+    reset_chat_rate_limits()
+    invalidate_pack_cache()
 
     data = Path(os.environ["DATA_DIR"])
     store._engine = None
@@ -25,3 +29,5 @@ def clean_data():
     data.mkdir(parents=True, exist_ok=True)
     store.init(app.state.config)
     yield
+    reset_chat_rate_limits()
+    invalidate_pack_cache()

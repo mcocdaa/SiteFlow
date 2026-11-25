@@ -1,0 +1,18 @@
+{% set cover_ctx = ext_ctx if ext_ctx is defined else (field.context if field is defined else {}) %}
+{% set cover_val = cover_ctx.cover if cover_ctx and cover_ctx.cover else "" %}
+{% set alt_val = cover_ctx.cover_alt if cover_ctx and cover_ctx.cover_alt else "" %}
+<div class="full ext-editor-field" data-ext-meta-group="post_cover">
+  <div class="ext-field">
+    <span data-i18n="blog.ext.post_cover.editor_cover">文章封面图</span>
+    <div class="ext-image-input-row">
+      <input type="text" name="meta.cover" value="{{ cover_val }}" maxlength="500" placeholder="https://... 或点击上传封面图片" data-i18n-placeholder="blog.ext.post_cover.editor_cover_placeholder">
+      <button type="button" class="btn btn-sm" data-ext-upload="post_cover" data-upload-kind="cover" data-upload-target="meta.cover" data-i18n="blog.ext_upload">上传图片</button>
+      <button type="button" class="btn ghost btn-sm" data-ext-clear="meta.cover" data-i18n="blog.ext_clear">清除</button>
+    </div>
+  </div>
+  <label class="ext-field">
+    <span data-i18n="blog.ext.post_cover.editor_cover_alt">封面替代文本（Alt）</span>
+    <input type="text" name="meta.cover_alt" value="{{ alt_val }}" maxlength="200" placeholder="留空默认使用文章标题" data-i18n-placeholder="blog.ext.post_cover.editor_cover_alt_placeholder">
+  </label>
+  <img class="ext-cover-preview" data-ext-preview="meta.cover" src="{{ cover_val }}" alt="{{ alt_val }}" referrerpolicy="no-referrer"{% if not cover_val %} hidden{% endif %}>
+</div>

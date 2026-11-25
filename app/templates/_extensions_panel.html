@@ -1,0 +1,195 @@
+{% import "icons.html" as icons %}
+{% import "_mascot_skins.html" as mascot_skins %}
+{% set panel_id = ext_section_id | default('project-extensions') %}
+{% set packs_list = ext_packs | default([]) %}
+<section class="plugin-block ext-panel" id="{{ panel_id }}" data-ext-panel data-project-id="{{ project.id }}" data-ext-target="{{ project.type }}">
+  <div class="ext-panel-head">
+    <div class="ext-panel-title-wrap">
+      <h2 data-i18n="{{ ext_section_title_key | default('ext.section_title') }}">{{ ext_section_title_default | default('插件扩展') }}</h2>
+      <span class="ext-count-pill" data-ext-count>{{ ext_catalog | length }}</span>
+    </div>
+    <div class="ext-toolbar">
+      <label class="ext-search-box">
+        <span class="ext-search-icon">{{ icons.icon("search", 15) }}</span>
+        <input type="search" class="ext-search-input" data-ext-search placeholder="搜索插件…" data-i18n-placeholder="ext.search_placeholder" aria-label="搜索插件" data-i18n-aria-label="ext.search_placeholder">
+      </label>
+      <button type="button" class="btn ghost btn-sm ext-packs-toggle" data-ext-packs-toggle aria-expanded="false" aria-controls="{{ panel_id }}-packs">
+        {{ icons.icon("package", 15) }}
+        <span data-i18n="ext.packs_title">插件订阅源</span>
+      </button>
+    </div>
+  </div>
+  <p class="ext-section-desc" data-i18n="blog.ext_section_desc">按需安装与启停可选扩展，未启用时不会加载任何额外资源。</p>
+
+  <div class="ext-pack-filters" data-ext-pack-filters{% if packs_list | length <= 1 %} hidden{% endif %}>
+    <button type="button" class="ext-filter-chip is-active" data-ext-filter-pack="" data-i18n="ext.filter_all">全部</button>
+    {% for pack in packs_list %}
+    <button type="button" class="ext-filter-chip" data-ext-filter-pack="{{ pack.id }}"{% if pack.id == 'official' %} data-i18n="ext.official_pack"{% endif %}>{{ pack.name or pack.id }}</button>
+    {% endfor %}
+  </div>
+
+  <div class="ext-packs-panel" id="{{ panel_id }}-packs" data-ext-packs-panel hidden>
+    <div class="ext-packs-head">
+      <span class="ext-packs-label" data-i18n="ext.packs_subtitle">订阅 GitHub 插件包仓库或导入离线 ZIP 包，纯声明式静态扩展，无远程代码执行。</span>
+    </div>
+    <form class="ext-pack-url-form" data-ext-pack-url-form>
+      <input type="url" name="url" required placeholder="https://github.com/owner/repo 或 .zip 地址" data-i18n-placeholder="ext.pack_url_placeholder" aria-label="插件包地址" data-i18n-aria-label="ext.pack_url_placeholder">
+      <button type="submit" class="btn primary btn-sm" data-ext-pack-subscribe>
+        {{ icons.icon("download", 14) }}
+        <span data-i18n="ext.pack_subscribe">订阅</span>
+      </button>
+      <button type="button" class="btn btn-sm" data-ext-pack-upload data-tip="导入离线 ZIP 插件包" data-i18n-tip="ext.pack_upload_zip" aria-label="导入离线 ZIP 插件包" data-i18n-aria-label="ext.pack_upload_zip">
+        {{ icons.icon("upload", 14) }}
+        <span data-i18n="ext.pack_upload_short">导入 ZIP</span>
+      </button>
+    </form>
+    <p class="ext-status" data-ext-pack-status role="status" aria-live="polite"></p>
+    <div class="ext-packs-list" data-ext-packs-list>
+      {% for pack in packs_list %}
+      {% set is_official = (pack.id == 'official') %}
+      {% set p_count = (pack.plugins | length) if (pack.plugins is defined and pack.plugins is iterable and pack.plugins is not string) else (pack.plugin_count | default(0)) %}
+      {% set can_sync = (not is_official) and (pack.source_url or pack.url or pack.source_type == 'url') %}
+      <div class="ext-pack-row" data-pack-row="{{ pack.id }}">
+        <div class="ext-pack-info">
+          <span class="ext-pack-icon">{{ icons.icon("package", 15) }}</span>
+          <div class="ext-pack-text">
+            <div class="ext-pack-name-row">
+              <strong{% if is_official %} data-i18n="ext.official_pack"{% endif %}>{{ pack.name or pack.id }}</strong>
+              {% if pack.version %}<span class="ext-version">v{{ pack.version }}</span>{% endif %}
+              <span class="ext-pack-source" data-i18n="{{ 'ext.pack_source_official' if is_official else ('ext.pack_source_url' if can_sync else 'ext.pack_source_zip') }}">{{ '官方内置' if is_official else ('URL 订阅' if can_sync else '离线 ZIP') }}</span>
+            </div>
+            <div class="ext-pack-meta">
+              <span>{{ pack.id }}</span>
+              <span>·</span>
+              <span>{{ p_count }} <span data-i18n="ext.plugins_unit">个插件</span></span>
+            </div>
+          </div>
+        </div>
+        {% if not is_official %}
+        <div class="ext-pack-actions">
+          {% if can_sync %}
+          <button type="button" class="btn ghost icon-btn btn-sm" data-ext-pack-sync="{{ pack.id }}" data-tip="同步更新" data-i18n-tip="ext.pack_sync" aria-label="同步更新" data-i18n-aria-label="ext.pack_sync">{{ icons.icon("refresh-cw", 14) }}</button>
+          {% endif %}
+          <button type="button" class="btn danger icon-btn btn-sm" data-ext-pack-delete="{{ pack.id }}" data-tip="退订并移除插件包" data-i18n-tip="ext.pack_delete" aria-label="退订并移除插件包" data-i18n-aria-label="ext.pack_delete">{{ icons.icon("trash", 14) }}</button>
+        </div>
+        {% endif %}
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <div class="ext-grid" data-ext-grid>
+    {% for item in ext_catalog %}
+    <article class="ext-card{{ ' is-enabled' if item.installed and item.enabled else '' }}" data-ext-card="{{ item.id }}" data-ext-pack="{{ item.pack_id | default('official') }}">
+      <div class="ext-card-head">
+        <div class="ext-card-ident">
+          <span class="ext-card-icon">{{ icons.icon(item.icon or "puzzle", 16) }}</span>
+          <div class="ext-card-title-wrap">
+            <div class="ext-card-title">
+              <span{% if item.name_key %} data-i18n="{{ item.name_key }}"{% endif %}>{{ item.name }}</span>
+              {% if item.version %}<span class="ext-version">v{{ item.version }}</span>{% endif %}
+            </div>
+            {% if item.pack_id and item.pack_id != 'official' %}
+            <span class="ext-pack-pill">{{ item.pack_name or item.pack_id }}</span>
+            {% endif %}
+          </div>
+        </div>
+        {% if item.installed and item.enabled %}
+        <span class="ext-badge is-enabled" data-i18n="blog.ext_enabled">已启用</span>
+        {% elif item.installed %}
+        <span class="ext-badge is-disabled" data-i18n="blog.ext_disabled">已停用</span>
+        {% else %}
+        <span class="ext-badge is-uninstalled" data-i18n="blog.ext_not_installed">未安装</span>
+        {% endif %}
+      </div>
+      <p class="ext-card-desc"{% if item.description_key %} data-i18n="{{ item.description_key }}"{% endif %}>{{ item.description }}</p>
+      <div class="ext-card-footer">
+        {% if item.installed %}
+        <label class="ext-toggle">
+          <input type="checkbox" data-ext-toggle="{{ item.id }}"{{ ' checked' if item.enabled else '' }}>
+          <span data-i18n="{{ 'blog.ext_enabled' if item.enabled else 'blog.ext_disabled' }}">{{ '已启用' if item.enabled else '已停用' }}</span>
+        </label>
+        <div class="ext-card-actions">
+          {% if item.config_schema %}
+          <button type="button" class="btn ghost icon-btn btn-sm" data-ext-open-drawer="{{ item.id }}" data-tip="插件设置" data-i18n-tip="ext.settings_tip" aria-label="插件设置" data-i18n-aria-label="ext.settings_tip">{{ icons.icon("sliders", 15) }}</button>
+          {% endif %}
+          <button type="button" class="btn danger icon-btn btn-sm" data-ext-uninstall="{{ item.id }}" data-tip="卸载" data-i18n-tip="blog.ext_uninstall" aria-label="卸载" data-i18n-aria-label="blog.ext_uninstall">{{ icons.icon("trash", 15) }}</button>
+        </div>
+        {% else %}
+        <button type="button" class="btn primary btn-sm ext-install-btn" data-ext-install="{{ item.id }}">{{ icons.icon("download", 14) }}<span data-i18n="blog.ext_install">安装</span></button>
+        {% endif %}
+      </div>
+    </article>
+    {% endfor %}
+  </div>
+
+  <p class="empty small ext-filter-empty" data-ext-filter-empty hidden data-i18n="ext.no_matches">没有匹配的插件。</p>
+  <p class="ext-status ext-panel-status" data-ext-panel-status role="status" aria-live="polite"></p>
+
+  <script type="application/json" data-ext-catalog-json>{{ ext_catalog | tojson }}</script>
+  <script type="application/json" data-ext-packs-json>{{ packs_list | tojson }}</script>
+
+  {% for icon_name, icon_size in [
+    ("sliders", 15),
+    ("trash", 15),
+    ("download", 14),
+    ("upload", 14),
+    ("refresh-cw", 14),
+    ("check", 14),
+    ("x", 15),
+    ("eye", 15),
+    ("eye-off", 15),
+    ("key", 13),
+    ("package", 15),
+    ("puzzle", 16),
+    ("sparkles", 16),
+    ("image", 16),
+    ("palette", 16),
+    ("megaphone", 16),
+    ("paintbrush", 16),
+    ("code", 16),
+    ("layout-grid", 16),
+    ("file-text", 16),
+    ("wrench", 16),
+    ("layers", 16),
+    ("globe", 16),
+    ("settings", 16),
+    ("bot", 16)
+  ] %}
+  <template data-ext-icon-tpl="{{ icon_name }}">{{ icons.icon(icon_name, icon_size) }}</template>
+  {% endfor %}
+
+  {% if project.type in ("blog", "space") %}
+  {% for char_id in mascot_characters | default([]) %}
+  <template data-mascot-skin-tpl="{{ char_id }}">{{ mascot_skins.render_skin(char_id, 52) }}</template>
+  {% endfor %}
+  {% endif %}
+
+  <div class="ext-drawer-backdrop" data-ext-drawer-backdrop hidden></div>
+  <aside class="ext-drawer" data-ext-drawer role="dialog" aria-modal="true" aria-labelledby="ext-drawer-title" hidden tabindex="-1">
+    <div class="ext-drawer-header">
+      <div class="ext-drawer-ident">
+        <span class="ext-card-icon" data-ext-drawer-icon></span>
+        <div class="ext-drawer-title-wrap">
+          <div class="ext-drawer-title-row">
+            <h3 id="ext-drawer-title" data-ext-drawer-title></h3>
+            <span class="ext-version" data-ext-drawer-version></span>
+          </div>
+          <p class="ext-drawer-desc" data-ext-drawer-desc></p>
+        </div>
+      </div>
+      <button type="button" class="btn ghost icon-btn" data-ext-drawer-close aria-label="关闭" data-i18n-aria-label="palette.close">{{ icons.icon("x", 18) }}</button>
+    </div>
+    <div class="ext-drawer-tabs" role="tablist" data-ext-drawer-tabs hidden></div>
+    <form class="ext-drawer-form" data-ext-drawer-form novalidate>
+      <div class="ext-drawer-body" data-ext-drawer-body></div>
+      <div class="ext-drawer-footer">
+        <span class="ext-status" data-ext-drawer-status role="status" aria-live="polite"></span>
+        <div class="ext-drawer-footer-actions">
+          <button type="button" class="btn ghost btn-sm" data-ext-drawer-close data-i18n="ext.cancel">取消</button>
+          <button type="submit" class="btn primary btn-sm" data-ext-drawer-save>{{ icons.icon("check", 14) }}<span data-i18n="blog.ext_save_config">保存配置</span></button>
+        </div>
+      </div>
+    </form>
+  </aside>
+</section>
