@@ -49,6 +49,12 @@ def _migrate(engine: Engine) -> None:
                 PRIMARY KEY (date, scope, visitor)
             )
         """)
+        conn.exec_driver_sql("""
+            CREATE TABLE IF NOT EXISTS site_settings (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            )
+        """)
         conn.commit()
 
 
@@ -183,6 +189,26 @@ def delete_files(config: Config, project: Project) -> None:
     ext_media = Path(config.data) / "media" / "ext" / project.slug
     if ext_media.exists():
         shutil.rmtree(ext_media)
+
+
+def get_site_setting(db: Session, key: str, default: str | None = None) -> str | None:
+    row = db.execute(
+        text("SELECT value FROM site_settings WHERE key = :key"),
+        {"key": key},
+    ).fetchone()
+    if row is None:
+        return default
+    return str(row[0])
+
+
+def set_site_setting(db: Session, key: str, value: str) -> None:
+    db.execute(
+        text(
+            "INSERT INTO site_settings (key, value) VALUES (:key, :value) "
+            "ON CONFLICT(key) DO UPDATE SET value = excluded.value"
+        ),
+        {"key": key, "value": value},
+    )
 
 
 def unique_slug_name() -> str:

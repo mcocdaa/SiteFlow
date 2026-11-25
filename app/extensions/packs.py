@@ -1420,7 +1420,18 @@ def delete_pack(config: Config, pack_id: str, db: Session) -> dict[str, Any]:
         project.updated_at = now
         cleaned_projects += 1
 
-    if cleaned_projects:
+    site_cleaned = False
+    from app.extensions.inheritance import load_site_extensions, save_site_extensions
+
+    site_map = load_site_extensions(db)
+    site_removed = [key for key in list(site_map.keys()) if key.startswith(prefix)]
+    if site_removed:
+        for key in site_removed:
+            site_map.pop(key, None)
+        save_site_extensions(db, site_map)
+        site_cleaned = True
+
+    if cleaned_projects or site_cleaned:
         db.commit()
     for slug, removed_urls, remaining_urls in stale_media:
         for url in removed_urls - remaining_urls:

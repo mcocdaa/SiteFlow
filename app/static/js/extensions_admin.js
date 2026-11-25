@@ -4,10 +4,18 @@
   var panel = document.querySelector("[data-ext-panel]");
   if (!panel) return;
 
+  var scope = panel.dataset.extScope === "site" ? "site" : "project";
+  var targetType = panel.dataset.extTarget || "";
   var projectId = panel.dataset.projectId || "";
-  var base = "/api/admin/projects/" + encodeURIComponent(projectId);
+  var base = scope === "site"
+    ? "/api/admin/site"
+    : "/api/admin/projects/" + encodeURIComponent(projectId);
   var csrfMeta = document.querySelector('meta[name="csrf"]');
   var csrf = csrfMeta ? csrfMeta.content : "";
+
+  var siteDialogEl = scope === "site" ? document.getElementById("site-ext-dialog") : null;
+  var siteOpenBtn = scope === "site" ? document.getElementById("site-ext-open-btn") : null;
+  var siteActiveCountEl = scope === "site" ? document.querySelector("[data-site-ext-active-count]") : null;
 
   var gridEl = panel.querySelector("[data-ext-grid]");
   var countEl = panel.querySelector("[data-ext-count]");
@@ -28,6 +36,7 @@
   var drawerTitleEl = panel.querySelector("[data-ext-drawer-title]");
   var drawerVersionEl = panel.querySelector("[data-ext-drawer-version]");
   var drawerDescEl = panel.querySelector("[data-ext-drawer-desc]");
+  var drawerContextEl = panel.querySelector("[data-ext-drawer-context]");
   var drawerTabsEl = panel.querySelector("[data-ext-drawer-tabs]");
   var drawerFormEl = panel.querySelector("[data-ext-drawer-form]");
   var drawerBodyEl = panel.querySelector("[data-ext-drawer-body]");
@@ -46,7 +55,67 @@
   var activeGroup = "";
   var lastTrigger = null;
   var drawerSaving = false;
+  var drawerInitialValues = {};
   var lineEditorObservers = [];
+  var TARGET_LABEL_MAP = {
+    blog: { key: "ext.target_blog", fallback: "博客" },
+    space: { key: "ext.target_space", fallback: "空间" },
+    resume: { key: "ext.target_resume", fallback: "简历" }
+  };
+
+  function applySwitchSemantics(input) {
+    if (!input) return;
+    input.setAttribute("switch", "");
+    if (!("switch" in HTMLInputElement.prototype)) {
+      input.setAttribute("role", "switch");
+    }
+  }
+
+  function syncSiteHeaderCount() {
+    if (!siteActiveCountEl) return;
+    var activeCount = 0;
+    catalog.forEach(function (item) {
+      if (item.enabled) activeCount += 1;
+    });
+    siteActiveCountEl.textContent = String(activeCount);
+    siteActiveCountEl.hidden = activeCount === 0;
+  }
+
+  if (siteDialogEl) {
+    if (siteOpenBtn) {
+      siteOpenBtn.addEventListener("click", function () {
+        if (!siteDialogEl.open) siteDialogEl.showModal();
+      });
+    }
+    siteDialogEl.querySelectorAll("[data-site-ext-close]").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        if (drawerEl && !drawerEl.hidden) closeDrawer();
+        siteDialogEl.close();
+      });
+    });
+    siteDialogEl.addEventListener("cancel", function (event) {
+      if (drawerEl && !drawerEl.hidden) {
+        event.preventDefault();
+        closeDrawer();
+      }
+    });
+    if (!("closedBy" in HTMLDialogElement.prototype)) {
+      var isOutsideDialog = function (e) {
+        var r = siteDialogEl.getBoundingClientRect();
+        return e.clientX < r.left || e.clientX > r.right || e.clientY < r.top || e.clientY > r.bottom;
+      };
+      var pressedOutside = false;
+      siteDialogEl.addEventListener("pointerdown", function (e) {
+        pressedOutside = (!drawerEl || drawerEl.hidden) && isOutsideDialog(e);
+      });
+      siteDialogEl.addEventListener("pointerup", function (e) {
+        if (pressedOutside && (!drawerEl || drawerEl.hidden) && isOutsideDialog(e)) {
+          siteDialogEl.close();
+        }
+        pressedOutside = false;
+      });
+    }
+  }
 
   try {
     var catalogScript = panel.querySelector("[data-ext-catalog-json]");
@@ -256,8 +325,14 @@
   }
 
   function buildCardNode(item) {
+    var effOn = item.effective_enabled !== undefined ? Boolean(item.effective_enabled) : Boolean(item.enabled);
+    var localMode = item.local_mode || (item.installed ? (item.enabled ? "override" : "disabled") : "inherit");
+
     var article = document.createElement("article");
-    article.className = "ext-card" + (item.installed && item.enabled ? " is-enabled" : "");
+    article.className = "ext-card"
+      + (effOn ? " is-enabled" : "")
+      + (scope !== "site" && localMode === "inherit" && effOn ? " is-inherited" : "")
+      + (scope !== "site" && localMode === "disabled" ? " is-blocked" : "");
     article.dataset.extCard = item.id;
     article.dataset.extPack = item.pack_id || "official";
 
@@ -290,28 +365,69 @@
     }
     titleWrap.appendChild(titleRow);
 
+    var subPills = document.createElement("div");
+    subPills.className = "ext-card-subpills";
     if (item.pack_id && item.pack_id !== "official") {
       var packPill = document.createElement("span");
       packPill.className = "ext-pack-pill";
       packPill.textContent = item.pack_name || item.pack_id;
-      titleWrap.appendChild(packPill);
+      subPills.appendChild(packPill);
+    }
+    if (scope === "site" && Array.isArray(item.targets)) {
+      item.targets.forEach(function (tgt) {
+        var meta = TARGET_LABEL_MAP[tgt];
+        if (!meta) return;
+        var tgtPill = document.createElement("span");
+        tgtPill.className = "ext-target-pill";
+        tgtPill.setAttribute("data-i18n", meta.key);
+        tgtPill.textContent = t(meta.key, null, meta.fallback);
+        subPills.appendChild(tgtPill);
+      });
+    }
+    if (subPills.childNodes.length > 0) {
+      titleWrap.appendChild(subPills);
     }
     ident.appendChild(titleWrap);
     head.appendChild(ident);
 
     var badge = document.createElement("span");
-    if (item.installed && item.enabled) {
-      badge.className = "ext-badge is-enabled";
-      badge.setAttribute("data-i18n", "blog.ext_enabled");
-      badge.textContent = t("blog.ext_enabled", null, "已启用");
-    } else if (item.installed) {
-      badge.className = "ext-badge is-disabled";
-      badge.setAttribute("data-i18n", "blog.ext_disabled");
-      badge.textContent = t("blog.ext_disabled", null, "已停用");
+    if (scope === "site") {
+      if (item.enabled) {
+        badge.className = "ext-badge is-enabled";
+        badge.setAttribute("data-i18n", "ext.site_enabled");
+        badge.textContent = t("ext.site_enabled", null, "全站已启用");
+      } else if (item.configured) {
+        badge.className = "ext-badge is-disabled";
+        badge.setAttribute("data-i18n", "blog.ext_disabled");
+        badge.textContent = t("blog.ext_disabled", null, "已停用");
+      } else {
+        badge.className = "ext-badge is-uninstalled";
+        badge.setAttribute("data-i18n", "ext.site_unset");
+        badge.textContent = t("ext.site_unset", null, "未设置");
+      }
+    } else if (localMode === "disabled") {
+      badge.className = "ext-badge is-blocked";
+      badge.setAttribute("data-i18n", "ext.badge_disabled");
+      badge.textContent = t("ext.badge_disabled", null, "已关闭");
+    } else if (localMode === "override") {
+      badge.className = "ext-badge is-override";
+      badge.setAttribute("data-i18n", "ext.badge_override");
+      badge.textContent = t("ext.badge_override", null, "本层覆盖");
+    } else if (effOn && item.source === "site") {
+      badge.className = "ext-badge is-inherited";
+      badge.setAttribute("data-i18n", "ext.badge_inherited_site");
+      badge.textContent = t("ext.badge_inherited_site", null, "继承自全站");
+    } else if (effOn && item.source === "ancestor") {
+      var ancTitle = trError(item.source_title || "");
+      badge.className = "ext-badge is-inherited";
+      badge.dataset.extSourceAncestor = item.source_title || "";
+      var ancBadgeText = t("ext.badge_inherited_ancestor", { title: ancTitle }, "继承自 " + ancTitle);
+      badge.textContent = ancBadgeText;
+      badge.setAttribute("title", ancBadgeText);
     } else {
       badge.className = "ext-badge is-uninstalled";
-      badge.setAttribute("data-i18n", "blog.ext_not_installed");
-      badge.textContent = t("blog.ext_not_installed", null, "未安装");
+      badge.setAttribute("data-i18n", "ext.badge_inactive");
+      badge.textContent = t("ext.badge_inactive", null, "未启用");
     }
     head.appendChild(badge);
     article.appendChild(head);
@@ -322,27 +438,131 @@
     desc.textContent = getExtDisplayDesc(item);
     article.appendChild(desc);
 
+    if (scope !== "site") {
+      var modeGroup = document.createElement("div");
+      modeGroup.className = "ext-mode-group";
+      modeGroup.setAttribute("role", "radiogroup");
+      modeGroup.setAttribute("aria-label", t("ext.mode_group_label", null, "插件继承模式"));
+      modeGroup.setAttribute("data-i18n-aria-label", "ext.mode_group_label");
+
+      [
+        { mode: "inherit", key: "ext.mode_inherit", fallback: "继承" },
+        { mode: "override", key: "ext.mode_override", fallback: "本层覆盖" },
+        { mode: "disabled", key: "ext.mode_disabled", fallback: "关闭" }
+      ].forEach(function (opt) {
+        var active = localMode === opt.mode;
+        var modeBtn = document.createElement("button");
+        modeBtn.type = "button";
+        modeBtn.className = "ext-mode-btn" + (active ? " is-active" : "");
+        modeBtn.setAttribute("role", "radio");
+        modeBtn.setAttribute("aria-checked", active ? "true" : "false");
+        modeBtn.dataset.extMode = opt.mode;
+        modeBtn.dataset.extId = item.id;
+        if (opt.mode === "override" && localMode === "inherit") {
+          modeBtn.dataset.extInstall = item.id;
+        }
+        modeBtn.setAttribute("data-i18n", opt.key);
+        modeBtn.textContent = t(opt.key, null, opt.fallback);
+        modeGroup.appendChild(modeBtn);
+      });
+      article.appendChild(modeGroup);
+    }
+
     var footer = document.createElement("div");
     footer.className = "ext-card-footer";
 
-    if (item.installed) {
-      var toggleLabel = document.createElement("label");
-      toggleLabel.className = "ext-toggle";
-      var checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.dataset.extToggle = item.id;
-      checkbox.checked = Boolean(item.enabled);
-      var toggleText = document.createElement("span");
-      var stateKey = item.enabled ? "blog.ext_enabled" : "blog.ext_disabled";
-      toggleText.setAttribute("data-i18n", stateKey);
-      toggleText.textContent = t(stateKey, null, item.enabled ? "已启用" : "已停用");
-      toggleLabel.appendChild(checkbox);
-      toggleLabel.appendChild(toggleText);
-      footer.appendChild(toggleLabel);
+    if (scope === "site") {
+      var siteToggleLabel = document.createElement("label");
+      siteToggleLabel.className = "ext-toggle";
+      var siteCb = document.createElement("input");
+      siteCb.type = "checkbox";
+      applySwitchSemantics(siteCb);
+      siteCb.dataset.extSiteToggle = item.id;
+      siteCb.checked = Boolean(item.enabled);
+      var siteToggleText = document.createElement("span");
+      var siteKey = item.enabled ? "ext.site_enabled" : "ext.site_disabled";
+      siteToggleText.setAttribute("data-i18n", siteKey);
+      siteToggleText.textContent = t(siteKey, null, item.enabled ? "全站已启用" : "未启用");
+      siteToggleLabel.appendChild(siteCb);
+      siteToggleLabel.appendChild(siteToggleText);
+      footer.appendChild(siteToggleLabel);
+
+      var siteActions = document.createElement("div");
+      siteActions.className = "ext-card-actions";
+      if (Array.isArray(item.config_schema) && item.config_schema.length > 0) {
+        var siteSettingsBtn = document.createElement("button");
+        siteSettingsBtn.type = "button";
+        siteSettingsBtn.className = "btn ghost icon-btn btn-sm";
+        siteSettingsBtn.dataset.extOpenDrawer = item.id;
+        var siteSettingsTip = t("ext.settings_tip", null, "插件设置");
+        siteSettingsBtn.setAttribute("data-tip", siteSettingsTip);
+        siteSettingsBtn.setAttribute("data-i18n-tip", "ext.settings_tip");
+        siteSettingsBtn.setAttribute("aria-label", siteSettingsTip);
+        siteSettingsBtn.setAttribute("data-i18n-aria-label", "ext.settings_tip");
+        siteSettingsBtn.appendChild(cloneIcon("sliders"));
+        siteActions.appendChild(siteSettingsBtn);
+      }
+      if (item.configured) {
+        var siteDelBtn = document.createElement("button");
+        siteDelBtn.type = "button";
+        siteDelBtn.className = "btn danger icon-btn btn-sm";
+        siteDelBtn.dataset.extSiteDelete = item.id;
+        var siteDelTip = t("ext.site_clear_default", null, "清除全站默认");
+        siteDelBtn.setAttribute("data-tip", siteDelTip);
+        siteDelBtn.setAttribute("data-i18n-tip", "ext.site_clear_default");
+        siteDelBtn.setAttribute("aria-label", siteDelTip);
+        siteDelBtn.setAttribute("data-i18n-aria-label", "ext.site_clear_default");
+        siteDelBtn.appendChild(cloneIcon("trash"));
+        siteActions.appendChild(siteDelBtn);
+      }
+      footer.appendChild(siteActions);
+    } else {
+      var footMeta = document.createElement("div");
+      footMeta.className = "ext-card-foot-meta";
+      if (targetType === "space" && (localMode === "override" || localMode === "disabled")) {
+        var cascadeLabel = document.createElement("label");
+        cascadeLabel.className = "ext-toggle ext-cascade-toggle";
+        var cascadeCb = document.createElement("input");
+        cascadeCb.type = "checkbox";
+        applySwitchSemantics(cascadeCb);
+        cascadeCb.dataset.extCascade = item.id;
+        cascadeCb.checked = Boolean(item.cascade);
+        var cascadeText = document.createElement("span");
+        cascadeText.setAttribute("data-i18n", "ext.cascade_children");
+        cascadeText.textContent = t("ext.cascade_children", null, "向下级子项继承");
+        cascadeLabel.appendChild(cascadeCb);
+        cascadeLabel.appendChild(cascadeText);
+        footMeta.appendChild(cascadeLabel);
+      } else {
+        var note = document.createElement("span");
+        note.className = "ext-inherit-note";
+        if (localMode === "inherit") {
+          if (item.inherited_enabled && item.inherited_source === "site") {
+            note.setAttribute("data-i18n", "ext.inherit_hint_site");
+            note.textContent = t("ext.inherit_hint_site", null, "生效来源：全站默认");
+          } else if (item.inherited_enabled && item.inherited_source === "ancestor") {
+            var inhAncTitle = trError(item.inherited_source_title || "");
+            var inhText = t("ext.inherit_hint_ancestor", { title: inhAncTitle }, "生效来源：" + inhAncTitle);
+            note.textContent = inhText;
+            note.setAttribute("title", inhText);
+          } else {
+            note.setAttribute("data-i18n", "ext.inherit_hint_none");
+            note.textContent = t("ext.inherit_hint_none", null, "上级未启用");
+          }
+        } else if (localMode === "override") {
+          note.setAttribute("data-i18n", "ext.local_active_note");
+          note.textContent = t("ext.local_active_note", null, "仅本页生效");
+        } else {
+          note.setAttribute("data-i18n", "ext.local_blocked_note");
+          note.textContent = t("ext.local_blocked_note", null, "本页已关闭");
+        }
+        footMeta.appendChild(note);
+      }
+      footer.appendChild(footMeta);
 
       var actions = document.createElement("div");
       actions.className = "ext-card-actions";
-      if (Array.isArray(item.config_schema) && item.config_schema.length > 0) {
+      if (Array.isArray(item.config_schema) && item.config_schema.length > 0 && (localMode === "override" || effOn)) {
         var settingsBtn = document.createElement("button");
         settingsBtn.type = "button";
         settingsBtn.className = "btn ghost icon-btn btn-sm";
@@ -355,30 +575,20 @@
         settingsBtn.appendChild(cloneIcon("sliders"));
         actions.appendChild(settingsBtn);
       }
-
-      var uninstallBtn = document.createElement("button");
-      uninstallBtn.type = "button";
-      uninstallBtn.className = "btn danger icon-btn btn-sm";
-      uninstallBtn.dataset.extUninstall = item.id;
-      var uninstallTip = t("blog.ext_uninstall", null, "卸载");
-      uninstallBtn.setAttribute("data-tip", uninstallTip);
-      uninstallBtn.setAttribute("data-i18n-tip", "blog.ext_uninstall");
-      uninstallBtn.setAttribute("aria-label", uninstallTip);
-      uninstallBtn.setAttribute("data-i18n-aria-label", "blog.ext_uninstall");
-      uninstallBtn.appendChild(cloneIcon("trash"));
-      actions.appendChild(uninstallBtn);
+      if (localMode !== "inherit") {
+        var resetBtn = document.createElement("button");
+        resetBtn.type = "button";
+        resetBtn.className = "btn ghost icon-btn btn-sm";
+        resetBtn.dataset.extUninstall = item.id;
+        var resetTip = t("ext.reset_to_inherit", null, "恢复继承");
+        resetBtn.setAttribute("data-tip", resetTip);
+        resetBtn.setAttribute("data-i18n-tip", "ext.reset_to_inherit");
+        resetBtn.setAttribute("aria-label", resetTip);
+        resetBtn.setAttribute("data-i18n-aria-label", "ext.reset_to_inherit");
+        resetBtn.appendChild(cloneIcon("rotate-ccw"));
+        actions.appendChild(resetBtn);
+      }
       footer.appendChild(actions);
-    } else {
-      var installBtn = document.createElement("button");
-      installBtn.type = "button";
-      installBtn.className = "btn primary btn-sm ext-install-btn";
-      installBtn.dataset.extInstall = item.id;
-      installBtn.appendChild(cloneIcon("download"));
-      var installSpan = document.createElement("span");
-      installSpan.setAttribute("data-i18n", "blog.ext_install");
-      installSpan.textContent = t("blog.ext_install", null, "安装");
-      installBtn.appendChild(installSpan);
-      footer.appendChild(installBtn);
     }
 
     article.appendChild(footer);
@@ -391,6 +601,7 @@
     catalog.forEach(function (item) {
       gridEl.appendChild(buildCardNode(item));
     });
+    syncSiteHeaderCount();
     applyFilters();
   }
 
@@ -403,6 +614,7 @@
     } else {
       gridEl.appendChild(fresh);
     }
+    syncSiteHeaderCount();
     applyFilters();
   }
 
@@ -612,25 +824,58 @@
     renderCards();
   }
 
-  function updateSecretPill(pillEl, isSet, isCleared) {
+  function updateSecretPill(pillEl, isLocalSet, isInherited, isCleared) {
     if (!pillEl) return;
     pillEl.textContent = "";
-    pillEl.classList.remove("is-set", "is-cleared");
+    pillEl.classList.remove("is-set", "is-cleared", "is-inherited");
     pillEl.appendChild(cloneIcon("key"));
     var span = document.createElement("span");
     if (isCleared) {
       pillEl.classList.add("is-cleared");
       span.setAttribute("data-i18n", "ext.secret_will_clear");
       span.textContent = t("ext.secret_will_clear", null, "保存后清除");
-    } else if (isSet) {
+    } else if (isLocalSet) {
       pillEl.classList.add("is-set");
       span.setAttribute("data-i18n", "ext.secret_set");
       span.textContent = t("ext.secret_set", null, "已配置");
+    } else if (isInherited) {
+      pillEl.classList.add("is-inherited");
+      span.setAttribute("data-i18n", "ext.secret_inherited");
+      span.textContent = t("ext.secret_inherited", null, "继承自上级");
     } else {
       span.setAttribute("data-i18n", "ext.secret_unset");
       span.textContent = t("ext.secret_unset", null, "未配置");
     }
     pillEl.appendChild(span);
+  }
+
+  function renderDrawerContext(item) {
+    if (!drawerContextEl) return;
+    if (scope === "site" || !item || !item.inherited_enabled) {
+      drawerContextEl.hidden = true;
+      drawerContextEl.textContent = "";
+      return;
+    }
+    var localMode = item.local_mode || "inherit";
+    var inhSource = item.inherited_source || "none";
+    var ancTitle = trError(item.inherited_source_title || "");
+    var msg = "";
+    if (localMode === "inherit") {
+      msg = inhSource === "site"
+        ? t("ext.drawer_ctx_inherit_site", null, "当前展示继承自「全站默认」的配置，保存后将转为本层覆盖。")
+        : t("ext.drawer_ctx_inherit_ancestor", { title: ancTitle }, "当前展示继承自「" + ancTitle + "」的配置，保存后将转为本层覆盖。");
+    } else if (localMode === "override") {
+      msg = inhSource === "site"
+        ? t("ext.drawer_ctx_override_site", null, "本层覆盖中，未修改项继续继承自「全站默认」。")
+        : t("ext.drawer_ctx_override_ancestor", { title: ancTitle }, "本层覆盖中，未修改项继续继承自「" + ancTitle + "」。");
+    }
+    if (!msg) {
+      drawerContextEl.hidden = true;
+      drawerContextEl.textContent = "";
+      return;
+    }
+    drawerContextEl.textContent = msg;
+    drawerContextEl.hidden = false;
   }
 
   function syncDrawerPreview(fieldWrap, value) {
@@ -887,7 +1132,10 @@
 
       wrap.appendChild(charGrid);
     } else if (kind === "secret") {
-      var isSet = Boolean(item.secrets_set && item.secrets_set[field.key]);
+      var isInheritedSecret = Boolean(item.secret_inherited && item.secret_inherited[field.key]);
+      var isLocalSet = item.local_secrets_set
+        ? Boolean(item.local_secrets_set[field.key])
+        : (Boolean(item.secrets_set && item.secrets_set[field.key]) && !isInheritedSecret);
       var secretHead = document.createElement("div");
       secretHead.className = "ext-secret-head";
       var secretLabel = document.createElement("label");
@@ -901,7 +1149,7 @@
       var pill = document.createElement("span");
       pill.className = "ext-secret-pill";
       pill.dataset.secretPill = field.key;
-      updateSecretPill(pill, isSet, false);
+      updateSecretPill(pill, isLocalSet, isInheritedSecret, false);
       secretHead.appendChild(pill);
       wrap.appendChild(secretHead);
 
@@ -913,13 +1161,17 @@
       secretInput.type = "password";
       secretInput.name = field.key;
       secretInput.dataset.fieldKind = "secret";
-      secretInput.dataset.secretWasSet = isSet ? "1" : "0";
+      secretInput.dataset.secretWasSet = isLocalSet ? "1" : "0";
+      secretInput.dataset.secretInherited = isInheritedSecret ? "1" : "0";
       secretInput.autocomplete = "new-password";
       secretInput.value = "";
       if (field.max_length) secretInput.maxLength = field.max_length;
-      if (isSet) {
+      if (isLocalSet) {
         secretInput.placeholder = t("ext.secret_keep_placeholder", null, "已配置，留空保持不变");
         secretInput.setAttribute("data-i18n-placeholder", "ext.secret_keep_placeholder");
+      } else if (isInheritedSecret) {
+        secretInput.placeholder = t("ext.secret_inherited_placeholder", null, "已继承上级密钥，留空继续继承或输入新密钥覆盖");
+        secretInput.setAttribute("data-i18n-placeholder", "ext.secret_inherited_placeholder");
       } else {
         secretInput.placeholder = getFieldPlaceholder(field) || t("ext.secret_empty_placeholder", null, "请输入密钥");
         if (field.placeholder_key) {
@@ -956,13 +1208,18 @@
       clearSecretBtn.setAttribute("data-i18n-tip", "ext.secret_clear");
       clearSecretBtn.setAttribute("aria-label", clearTip);
       clearSecretBtn.setAttribute("data-i18n-aria-label", "ext.secret_clear");
-      clearSecretBtn.hidden = !isSet;
+      clearSecretBtn.hidden = !isLocalSet;
       clearSecretBtn.appendChild(cloneIcon("trash"));
       clearSecretBtn.addEventListener("click", function () {
         var willClear = secretInput.dataset.secretCleared !== "1";
         secretInput.dataset.secretCleared = willClear ? "1" : "0";
         if (willClear) secretInput.value = "";
-        updateSecretPill(pill, secretInput.dataset.secretWasSet === "1", willClear);
+        updateSecretPill(
+          pill,
+          secretInput.dataset.secretWasSet === "1",
+          secretInput.dataset.secretInherited === "1",
+          willClear
+        );
         clearSecretBtn.classList.toggle("is-active", willClear);
       });
       secretRow.appendChild(clearSecretBtn);
@@ -971,7 +1228,12 @@
         if (secretInput.value.trim()) {
           secretInput.dataset.secretCleared = "0";
           clearSecretBtn.classList.remove("is-active");
-          updateSecretPill(pill, secretInput.dataset.secretWasSet === "1", false);
+          updateSecretPill(
+            pill,
+            secretInput.dataset.secretWasSet === "1",
+            secretInput.dataset.secretInherited === "1",
+            false
+          );
         }
       });
 
@@ -1004,7 +1266,7 @@
       });
       mediaRow.appendChild(imgInput);
 
-      if (field.upload_kind) {
+      if (scope !== "site" && field.upload_kind) {
         var uploadBtn = document.createElement("button");
         uploadBtn.type = "button";
         uploadBtn.className = "btn btn-sm";
@@ -1447,11 +1709,13 @@
       updateLivePreview();
     }
 
+    renderDrawerContext(item);
+    drawerInitialValues = collectDrawerFields().all;
     activeGroup = groups.length ? groups[0].id : "";
 
     drawerBackdropEl.hidden = false;
     drawerEl.hidden = false;
-    document.body.classList.add("ext-drawer-open");
+    if (!siteDialogEl) document.body.classList.add("ext-drawer-open");
     requestAnimationFrame(function () {
       drawerBackdropEl.classList.add("is-open");
       drawerEl.classList.add("is-open");
@@ -1469,6 +1733,7 @@
     drawerEl.hidden = true;
     drawerBackdropEl.hidden = true;
     activeExtId = null;
+    drawerInitialValues = {};
     setStatus(drawerStatusEl, "", false);
     if (lastTrigger && typeof lastTrigger.focus === "function" && document.contains(lastTrigger)) {
       lastTrigger.focus();
@@ -1478,28 +1743,64 @@
 
   function syncDrawerSecrets(updatedExt) {
     if (!drawerFormEl || !updatedExt) return;
-    var secretsSet = updatedExt.secrets_set || {};
+    var localSecrets = updatedExt.local_secrets_set || updatedExt.secrets_set || {};
+    var inheritedSecrets = updatedExt.secret_inherited || {};
     drawerFormEl.querySelectorAll('input[data-field-kind="secret"]').forEach(function (input) {
       var key = input.name;
-      var isSet = Boolean(secretsSet[key]);
+      var isInherited = Boolean(inheritedSecrets[key]);
+      var isLocalSet = Boolean(localSecrets[key]) && !isInherited;
       input.value = "";
-      input.dataset.secretWasSet = isSet ? "1" : "0";
+      input.dataset.secretWasSet = isLocalSet ? "1" : "0";
+      input.dataset.secretInherited = isInherited ? "1" : "0";
       input.dataset.secretCleared = "0";
-      if (isSet) {
+      if (isLocalSet) {
         input.placeholder = t("ext.secret_keep_placeholder", null, "已配置，留空保持不变");
         input.setAttribute("data-i18n-placeholder", "ext.secret_keep_placeholder");
+      } else if (isInherited) {
+        input.placeholder = t("ext.secret_inherited_placeholder", null, "已继承上级密钥，留空继续继承或输入新密钥覆盖");
+        input.setAttribute("data-i18n-placeholder", "ext.secret_inherited_placeholder");
       } else {
         input.placeholder = t("ext.secret_empty_placeholder", null, "请输入密钥");
         input.setAttribute("data-i18n-placeholder", "ext.secret_empty_placeholder");
       }
       var pill = drawerFormEl.querySelector('[data-secret-pill="' + CSS.escape(key) + '"]');
-      updateSecretPill(pill, isSet, false);
+      updateSecretPill(pill, isLocalSet, isInherited, false);
       var clearBtn = drawerFormEl.querySelector('[data-secret-clear-btn="' + CSS.escape(key) + '"]');
       if (clearBtn) {
-        clearBtn.hidden = !isSet;
+        clearBtn.hidden = !isLocalSet;
         clearBtn.classList.remove("is-active");
       }
     });
+  }
+
+  function collectDrawerFields() {
+    var all = {};
+    var secrets = {};
+    if (!drawerFormEl) return { all: all, secrets: secrets };
+    Array.from(drawerFormEl.elements).forEach(function (field) {
+      if (!field.name) return;
+      var kind = field.dataset.fieldKind || field.type;
+      if (kind === "boolean" || field.type === "checkbox") {
+        all[field.name] = Boolean(field.checked);
+      } else if (kind === "range" || kind === "number") {
+        all[field.name] = field.value === "" ? null : Number(field.value);
+      } else if (kind === "textarea" && field.dataset.fieldList === "1") {
+        all[field.name] = field.value
+          .split("\n")
+          .map(function (line) { return line.trim(); })
+          .filter(Boolean);
+      } else if (kind === "secret") {
+        var secretVal = field.value.trim();
+        if (secretVal) {
+          secrets[field.name] = secretVal;
+        } else if (field.dataset.secretCleared === "1") {
+          secrets["clear_" + field.name] = true;
+        }
+      } else {
+        all[field.name] = field.value.trim();
+      }
+    });
+    return { all: all, secrets: secrets };
   }
 
   if (searchEl) {
@@ -1578,35 +1879,69 @@
       return;
     }
 
-    var installBtn = event.target.closest("[data-ext-install]");
-    if (installBtn) {
-      var installId = installBtn.dataset.extInstall;
-      installBtn.disabled = true;
-      setStatus(panelStatusEl, t("ext.installing", null, "正在安装插件…"), false, "ext.installing");
+    var modeBtn = event.target.closest("[data-ext-mode]");
+    if (modeBtn && scope !== "site") {
+      var modeExtId = modeBtn.dataset.extId;
+      var nextMode = modeBtn.dataset.extMode;
+      var curItem = findExt(modeExtId);
+      if (curItem && curItem.local_mode === nextMode) return;
+      var group = modeBtn.closest(".ext-mode-group");
+      var groupBtns = group ? Array.from(group.querySelectorAll("button")) : [modeBtn];
+      groupBtns.forEach(function (b) { b.disabled = true; });
       try {
-        var res = await apiJson("POST", base + "/extensions/" + encodeURIComponent(installId) + "/install", {
-          enabled: true
+        var modeRes = await apiJson("PUT", base + "/extensions/" + encodeURIComponent(modeExtId), {
+          mode: nextMode
         });
-        if (res.extension) {
-          replaceExt(res.extension);
-          updateSingleCard(res.extension);
+        if (modeRes.extension) {
+          replaceExt(modeRes.extension);
+          updateSingleCard(modeRes.extension);
+          if (activeExtId === modeExtId) {
+            renderDrawerContext(modeRes.extension);
+            syncDrawerSecrets(modeRes.extension);
+          }
         } else {
           await refreshAll();
         }
-        setStatus(panelStatusEl, t("ext.installed", null, "插件已安装并启用"), false, "ext.installed");
+        var statusKey = nextMode === "override"
+          ? "ext.mode_saved_override"
+          : nextMode === "disabled"
+            ? "ext.mode_saved_disabled"
+            : "ext.mode_saved_inherit";
+        setStatus(panelStatusEl, t(statusKey), false, statusKey);
       } catch (error) {
         setStatus(panelStatusEl, error.message, true);
-        installBtn.disabled = false;
+        groupBtns.forEach(function (b) { b.disabled = false; });
+      }
+      return;
+    }
+
+    var siteDelBtn = event.target.closest("[data-ext-site-delete]");
+    if (siteDelBtn && scope === "site") {
+      if (!confirm(t("ext.site_confirm_clear", null, "确定清除该插件的全站默认设置？子页面将不再从全站继承该插件。"))) return;
+      var siteDelId = siteDelBtn.dataset.extSiteDelete;
+      siteDelBtn.disabled = true;
+      try {
+        var siteDelRes = await apiJson("DELETE", base + "/extensions/" + encodeURIComponent(siteDelId));
+        if (activeExtId === siteDelId) closeDrawer();
+        if (siteDelRes.extension) {
+          replaceExt(siteDelRes.extension);
+          updateSingleCard(siteDelRes.extension);
+        } else {
+          await refreshAll();
+        }
+        setStatus(panelStatusEl, t("ext.site_cleared", null, "已清除全站默认设置"), false, "ext.site_cleared");
+      } catch (error) {
+        setStatus(panelStatusEl, error.message, true);
+        siteDelBtn.disabled = false;
       }
       return;
     }
 
     var uninstallBtn = event.target.closest("[data-ext-uninstall]");
     if (uninstallBtn) {
-      if (!confirm(t("blog.ext_confirm_uninstall", null, "确定卸载该插件？插件配置将被移除。"))) return;
+      if (!confirm(t("ext.confirm_reset_inherit", null, "确定清除本层配置并恢复继承？"))) return;
       var uninstallId = uninstallBtn.dataset.extUninstall;
       uninstallBtn.disabled = true;
-      setStatus(panelStatusEl, t("ext.uninstalling", null, "正在卸载插件…"), false, "ext.uninstalling");
       try {
         var delRes = await apiJson("DELETE", base + "/extensions/" + encodeURIComponent(uninstallId));
         if (activeExtId === uninstallId) closeDrawer();
@@ -1616,7 +1951,7 @@
         } else {
           await refreshAll();
         }
-        setStatus(panelStatusEl, t("ext.uninstalled", null, "插件已卸载"), false, "ext.uninstalled");
+        setStatus(panelStatusEl, t("ext.mode_saved_inherit", null, "已切换为继承模式"), false, "ext.mode_saved_inherit");
       } catch (error) {
         setStatus(panelStatusEl, error.message, true);
         uninstallBtn.disabled = false;
@@ -1680,13 +2015,62 @@
   }
 
   document.addEventListener("keydown", function (event) {
-    if (event.key === "Escape" && drawerEl && !drawerEl.hidden) {
+    if (event.key === "Escape" && drawerEl && !drawerEl.hidden && (!siteDialogEl || !siteDialogEl.open)) {
       event.preventDefault();
       closeDrawer();
     }
   });
 
   panel.addEventListener("change", async function (event) {
+    var siteToggle = event.target.closest("[data-ext-site-toggle]");
+    if (siteToggle && scope === "site") {
+      var siteExtId = siteToggle.dataset.extSiteToggle;
+      var siteEnabled = Boolean(siteToggle.checked);
+      siteToggle.disabled = true;
+      try {
+        var siteRes = await apiJson("PUT", base + "/extensions/" + encodeURIComponent(siteExtId), {
+          enabled: siteEnabled
+        });
+        if (siteRes.extension) {
+          replaceExt(siteRes.extension);
+          updateSingleCard(siteRes.extension);
+        } else {
+          await refreshAll();
+        }
+        setStatus(panelStatusEl, "", false);
+      } catch (error) {
+        siteToggle.checked = !siteEnabled;
+        siteToggle.disabled = false;
+        setStatus(panelStatusEl, error.message, true);
+      }
+      return;
+    }
+
+    var cascadeToggle = event.target.closest("[data-ext-cascade]");
+    if (cascadeToggle && scope !== "site") {
+      var casExtId = cascadeToggle.dataset.extCascade;
+      var nextCascade = Boolean(cascadeToggle.checked);
+      cascadeToggle.disabled = true;
+      try {
+        var casRes = await apiJson("PATCH", base + "/extensions/" + encodeURIComponent(casExtId), {
+          cascade: nextCascade
+        });
+        if (casRes.extension) {
+          replaceExt(casRes.extension);
+          updateSingleCard(casRes.extension);
+        } else {
+          await refreshAll();
+        }
+        var casKey = nextCascade ? "ext.cascade_saved_on" : "ext.cascade_saved_off";
+        setStatus(panelStatusEl, t(casKey), false, casKey);
+      } catch (error) {
+        cascadeToggle.checked = !nextCascade;
+        cascadeToggle.disabled = false;
+        setStatus(panelStatusEl, error.message, true);
+      }
+      return;
+    }
+
     var toggle = event.target.closest("[data-ext-toggle]");
     if (!toggle) return;
     var extId = toggle.dataset.extToggle;
@@ -1714,43 +2098,44 @@
     drawerFormEl.addEventListener("submit", async function (event) {
       event.preventDefault();
       if (!activeExtId || drawerSaving) return;
+      var curItem = findExt(activeExtId);
       drawerSaving = true;
       if (drawerSaveBtn) drawerSaveBtn.disabled = true;
       setStatus(drawerStatusEl, t("resume.saving", null, "保存中…"), false, "resume.saving");
 
+      var collected = collectDrawerFields();
       var config = {};
-      Array.from(drawerFormEl.elements).forEach(function (field) {
-        if (!field.name) return;
-        var kind = field.dataset.fieldKind || field.type;
-        if (kind === "boolean" || field.type === "checkbox") {
-          config[field.name] = Boolean(field.checked);
-        } else if (kind === "range" || kind === "number") {
-          config[field.name] = field.value === "" ? null : Number(field.value);
-        } else if (kind === "textarea" && field.dataset.fieldList === "1") {
-          config[field.name] = field.value
-            .split("\n")
-            .map(function (line) { return line.trim(); })
-            .filter(Boolean);
-        } else if (kind === "secret") {
-          var secretVal = field.value.trim();
-          if (secretVal) {
-            config[field.name] = secretVal;
-          } else if (field.dataset.secretCleared === "1") {
-            config["clear_" + field.name] = true;
+      if (scope !== "site" && curItem && curItem.inherited_enabled) {
+        var existingLocal = curItem.local_config || {};
+        Object.keys(collected.all).forEach(function (k) {
+          var prevVal = drawerInitialValues[k];
+          var curVal = collected.all[k];
+          var changed = JSON.stringify(prevVal) !== JSON.stringify(curVal);
+          if (changed || Object.prototype.hasOwnProperty.call(existingLocal, k)) {
+            config[k] = curVal;
           }
-        } else {
-          config[field.name] = field.value.trim();
-        }
+        });
+      } else {
+        Object.keys(collected.all).forEach(function (k) {
+          config[k] = collected.all[k];
+        });
+      }
+      Object.keys(collected.secrets).forEach(function (k) {
+        config[k] = collected.secrets[k];
       });
 
+      var payload = scope === "site"
+        ? { enabled: curItem && curItem.configured ? Boolean(curItem.enabled) : true, config: config }
+        : { mode: "override", config: config };
+
       try {
-        var res = await apiJson("PATCH", base + "/extensions/" + encodeURIComponent(activeExtId), {
-          config: config
-        });
+        var res = await apiJson("PUT", base + "/extensions/" + encodeURIComponent(activeExtId), payload);
         if (res.extension) {
           replaceExt(res.extension);
           updateSingleCard(res.extension);
+          renderDrawerContext(res.extension);
           syncDrawerSecrets(res.extension);
+          drawerInitialValues = collectDrawerFields().all;
         }
         setStatus(drawerStatusEl, t("blog.ext_saved", null, "配置已保存"), false, "blog.ext_saved");
       } catch (error) {
@@ -1774,13 +2159,18 @@
       var item = findExt(activeExtId);
       if (item && drawerTitleEl) drawerTitleEl.textContent = getExtDisplayName(item);
       if (item && drawerDescEl) drawerDescEl.textContent = getExtDisplayDesc(item);
+      if (item) {
+        renderDrawerContext(item);
+        syncDrawerSecrets(item);
+      }
     }
     refreshStatusLang(panelStatusEl);
     refreshStatusLang(packStatusEl);
     refreshStatusLang(drawerStatusEl);
   });
 
+  panel.querySelectorAll('input[type="checkbox"][switch]').forEach(applySwitchSemantics);
   renderPackFilters();
   renderPacksList();
-  applyFilters();
+  renderCards();
 })();
