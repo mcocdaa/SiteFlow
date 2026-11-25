@@ -1,0 +1,6 @@
+{% set cover_ctx = ext_ctx if ext_ctx is defined else (ext.contexts["post_cover"] if ext is defined and ext.contexts is defined and "post_cover" in ext.contexts else {}) %}
+{% if cover_ctx and cover_ctx.url %}
+<figure class="post-cover-banner {{ cover_ctx.aspect_class }}">
+  <img src="{{ cover_ctx.url }}" alt="{{ cover_ctx.alt }}" decoding="async" referrerpolicy="no-referrer">
+</figure>
+{% endif %}

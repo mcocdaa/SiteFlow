@@ -7,6 +7,7 @@ from sqlalchemy import select
 
 from app import stats, store
 from app.auth import (
+    SESSION_MAX_AGE,
     allow_attempt,
     apply_session,
     check_csrf,
@@ -30,6 +31,8 @@ from app.auth import (
     verify_project_token,
 )
 from app.deps import DbSession, get_config
+from app.extensions.base import EXT_ID_RE, PACK_ID_RE
+from app.extensions.packs import PackError, resolve_pack_asset_path
 from app.models import Project
 from app.plugins import registry
 from app.svg_cover import generate_svg_cover
@@ -39,7 +42,21 @@ router = APIRouter()
 
 SANDBOX_CSP = "sandbox allow-scripts allow-forms allow-modals allow-popups allow-downloads"
 _SVG_CSP = "default-src 'none'; style-src 'unsafe-inline'"
+_USER_SVG_CSP = "default-src 'none'; sandbox"
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+_BLOG_MEDIA_FILE_RE = re.compile(r"^(?:[a-z0-9][a-z0-9_-]{0,63}\.webp|avatar-[0-9a-f]{16}\.svg)$")
+_PACK_ASSET_MEDIA_TYPES = {
+    ".css": "text/css; charset=utf-8",
+    ".js": "text/javascript; charset=utf-8",
+    ".svg": "image/svg+xml; charset=utf-8",
+    ".png": "image/png",
+    ".jpg": "image/jpeg",
+    ".jpeg": "image/jpeg",
+    ".webp": "image/webp",
+    ".gif": "image/gif",
+    ".woff2": "font/woff2",
+    ".json": "application/json; charset=utf-8",
+}
 
 MEDIA_TYPES = {
     ".html": "text/html",
@@ -170,6 +187,23 @@ def unlock_project(request: Request, slug: str, db: DbSession, password: str = F
     token = make_project_token(config, slug)
     response = RedirectResponse(f"/projects/{slug}/", status_code=303)
     set_project_cookie(config, response, slug, token)
+    extra_paths: list[str] = []
+    if project.type == "blog":
+        extra_paths.extend([f"/media/blog/{slug}", f"/api/projects/{slug}"])
+    elif project.type == "space":
+        extra_paths.extend([f"/media/ext/{slug}", f"/api/projects/{slug}"])
+    elif project.type == "resume":
+        extra_paths.append(f"/media/ext/{slug}")
+    for cookie_path in extra_paths:
+        response.set_cookie(
+            project_cookie_name(slug),
+            token,
+            max_age=SESSION_MAX_AGE,
+            httponly=True,
+            samesite="lax",
+            secure=config.secure,
+            path=cookie_path,
+        )
     return response
 
 
@@ -277,6 +311,115 @@ def cover_file(request: Request, name: str):
     response = FileResponse(target, media_type="image/webp")
     response.headers["ETag"] = etag
     response.headers["Cache-Control"] = cache_control
+    return response
+
+
+def _serve_project_media(
+    request: Request,
+    slug: str,
+    name: str,
+    db,
+    *,
+    namespace: str,
+    allowed_types: tuple[str, ...],
+):
+    config = get_config(request)
+    if not _SLUG_RE.match(slug) or not _BLOG_MEDIA_FILE_RE.match(name):
+        raise HTTPException(404)
+    project = store.by_slug(db, slug)
+    if project is None or project.type not in allowed_types:
+        raise HTTPException(404)
+    session = read_session(config, request)
+    is_admin = bool(session and session.get("admin") is True)
+    is_public = store.is_visible(db, project)
+    if not is_admin:
+        if not is_public:
+            raise HTTPException(404)
+        if not check_project_access(request, config, project):
+            raise HTTPException(401, "需要访问密码")
+    media_root = (config.data / "media" / namespace / slug).resolve()
+    target = (media_root / name).resolve()
+    if not target.is_relative_to(media_root) or not target.is_file():
+        raise HTTPException(404)
+    stat_res = target.stat()
+    etag = f'"{stat_res.st_mtime_ns:x}-{stat_res.st_size:x}"'
+    cache_control = (
+        "private, max-age=86400" if (project.password_hash or not is_public) else "public, max-age=86400"
+    )
+    is_svg = target.suffix.lower() == ".svg"
+    headers = {
+        "ETag": etag,
+        "Cache-Control": cache_control,
+        "X-Content-Type-Options": "nosniff",
+    }
+    if is_svg:
+        headers["Content-Security-Policy"] = _USER_SVG_CSP
+        headers["Content-Disposition"] = "inline"
+    if_none_match = request.headers.get("if-none-match")
+    if if_none_match and (if_none_match.strip() == etag or if_none_match.strip() == f"W/{etag}"):
+        return Response(status_code=304, headers=headers)
+    media_type = "image/svg+xml; charset=utf-8" if is_svg else "image/webp"
+    response = FileResponse(target, media_type=media_type)
+    for key, value in headers.items():
+        response.headers[key] = value
+    return response
+
+
+@router.get("/media/blog/{slug}/{name}")
+def blog_media_file(request: Request, slug: str, name: str, db: DbSession):
+    return _serve_project_media(request, slug, name, db, namespace="blog", allowed_types=("blog",))
+
+
+@router.get("/media/ext/{slug}/{name}")
+def ext_media_file(request: Request, slug: str, name: str, db: DbSession):
+    return _serve_project_media(
+        request,
+        slug,
+        name,
+        db,
+        namespace="ext",
+        allowed_types=("space", "resume"),
+    )
+
+
+@router.get("/media/plugins/{pack_id}/{plugin_id}/{asset_path:path}")
+def pack_plugin_asset_file(request: Request, pack_id: str, plugin_id: str, asset_path: str):
+    config = get_config(request)
+    if not PACK_ID_RE.match(pack_id) or not EXT_ID_RE.match(plugin_id):
+        raise HTTPException(404)
+    if not asset_path or any(
+        part in ("", ".", "..") or part.startswith(".") for part in Path(asset_path).parts
+    ):
+        raise HTTPException(404)
+    try:
+        target = resolve_pack_asset_path(config, pack_id, plugin_id, asset_path)
+    except (PackError, ValueError):
+        raise HTTPException(404) from None
+    if target is None or not target.is_file():
+        raise HTTPException(404)
+    suffix = target.suffix.lower()
+    media_type = _PACK_ASSET_MEDIA_TYPES.get(suffix)
+    if media_type is None:
+        raise HTTPException(404)
+    stat_res = target.stat()
+    etag = f'"{stat_res.st_mtime_ns:x}-{stat_res.st_size:x}"'
+    cache_control = (
+        "public, max-age=31536000, immutable" if request.query_params.get("v") else "public, max-age=86400"
+    )
+    headers = {
+        "ETag": etag,
+        "Cache-Control": cache_control,
+        "X-Content-Type-Options": "nosniff",
+    }
+    if suffix == ".svg":
+        headers["Content-Security-Policy"] = _USER_SVG_CSP
+        headers["Content-Disposition"] = "inline"
+    if_none_match = request.headers.get("if-none-match")
+    if if_none_match and (if_none_match.strip() == etag or if_none_match.strip() == f"W/{etag}"):
+        return Response(status_code=304, headers=headers)
+    response = FileResponse(target, media_type=media_type)
+    for key, value in headers.items():
+        response.headers[key] = value
     return response
 
 

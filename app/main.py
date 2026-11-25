@@ -1,3 +1,4 @@
+import mimetypes
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -6,6 +7,8 @@ from fastapi.staticfiles import StaticFiles
 from app import store
 from app.config import Config
 from app.routes import router
+
+mimetypes.add_type("font/woff2", ".woff2")
 
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 
@@ -48,6 +51,11 @@ def create_app(config: Config | None = None) -> FastAPI:
         response.headers.setdefault("Referrer-Policy", "same-origin")
         if request.url.path.startswith(("/admin", "/api/admin", "/api/deploy")):
             response.headers.setdefault("Cache-Control", "no-store")
+        elif request.url.path.startswith("/static/"):
+            if request.query_params.get("v") and response.status_code < 400:
+                response.headers.setdefault("Cache-Control", "public, max-age=31536000, immutable")
+            else:
+                response.headers.setdefault("Cache-Control", "no-cache")
         return response
 
     return app

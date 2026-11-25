@@ -4,20 +4,59 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ post.title }}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
-  <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
+  {% set ext = ext | default({}) %}
+  {% set toc = toc | default([]) %}
+  {% set toc_title = toc_title | default('') %}
+  {% set has_math = has_math | default(false) %}
+  {% if has_math %}
+  <link rel="stylesheet" href="{{ static_url('vendor/katex/katex.min.css') }}">
+  {% endif %}
+  {% for href in ext.css_files | default([]) %}
+  <link rel="stylesheet" href="{{ href }}">
+  {% endfor %}
+  <script src="{{ static_url('js/theme-init.js') }}"></script>
 </head>
-<body class="blog-body">
+<body class="blog-body{% for cls in ext.body_classes | default([]) %} {{ cls }}{% endfor %}">
   {% import "icons.html" as icons %}
-  <div class="blog-actions">
-    <a class="btn ghost" href="/projects/{{ project.slug }}/">{{ icons.icon("arrow-left") }}<span data-i18n="blog.back_to_list">文章列表</span></a>
+  {% for frag in ext.body_start_fragments | default([]) %}{{ frag }}{% endfor %}
+  <div class="blog-actions{{ ' has-toc' if toc else '' }}">
+    <a class="btn ghost blog-back-btn" href="/projects/{{ project.slug }}/">{{ icons.icon("arrow-left") }}<span data-i18n="blog.back_to_list">文章列表</span></a>
     <span class="actions-right">
       <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
       <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings") }}</a>
     </span>
   </div>
-  <main class="blog">
+  <main class="blog post-layout{{ ' has-toc' if toc else '' }}">
+    {% if toc %}
+    <aside class="post-toc" aria-label="目录" data-i18n-aria-label="blog.toc_title">
+      <details class="toc-box" data-toc-box>
+        <summary class="toc-summary">
+          <span class="toc-title-wrap">
+            {% if toc_title %}
+            <span class="toc-title">{{ toc_title }}</span>
+            {% else %}
+            <span class="toc-title" data-i18n="blog.toc_title">目录</span>
+            {% endif %}
+            <span class="toc-count">{{ toc | length }}</span>
+          </span>
+          <span class="toc-chevron">{{ icons.icon("chevron-down", 16) }}</span>
+        </summary>
+        <nav class="toc-nav">
+          <ol class="toc-list">
+            {% for item in toc %}
+            <li class="toc-item" data-depth="{{ item.depth }}">
+              <a class="toc-link" data-toc-link data-depth="{{ item.depth }}" href="#{{ item.id }}" title="{{ item.text }}">{{ item.text }}</a>
+            </li>
+            {% endfor %}
+          </ol>
+        </nav>
+      </details>
+    </aside>
+    {% endif %}
     <article class="post">
+      {% for frag in ext.main_start_fragments | default([]) %}{{ frag }}{% endfor %}
+      {% for ext_id, tpl in ext.post_header_templates | default([]) %}{% set ext_ctx = (ext.contexts | default({})).get(ext_id, {}) %}{% include tpl %}{% endfor %}
       <header class="post-head">
         <h1 data-i18n-auto>{{ post.title }}</h1>
         <p class="post-meta">
@@ -30,13 +69,13 @@
       {% if prev_post or next_post %}
       <nav class="post-nav">
         {% if prev_post %}
-        <a class="post-nav-link" href="/projects/{{ project.slug }}/posts/{{ prev_post.slug }}">
+        <a class="post-nav-link" href="/projects/{{ project.slug }}/posts/{{ prev_post.slug | urlencode }}">
           <span class="muted" data-i18n="blog.prev_post">上一篇</span>
           <strong data-i18n-auto>{{ prev_post.title }}</strong>
         </a>
         {% else %}<span></span>{% endif %}
         {% if next_post %}
-        <a class="post-nav-link next" href="/projects/{{ project.slug }}/posts/{{ next_post.slug }}">
+        <a class="post-nav-link next" href="/projects/{{ project.slug }}/posts/{{ next_post.slug | urlencode }}">
           <span class="muted" data-i18n="blog.next_post">下一篇</span>
           <strong data-i18n-auto>{{ next_post.title }}</strong>
         </a>
@@ -45,6 +84,16 @@
       {% endif %}
     </article>
   </main>
-  <script src="/static/js/i18n.js" defer></script>
+  {% for frag in ext.body_end_fragments | default([]) %}{{ frag }}{% endfor %}
+  <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  {% if has_math %}
+  <script src="{{ static_url('vendor/katex/katex.min.js') }}" defer></script>
+  {% endif %}
+  {% if has_math or toc %}
+  <script src="{{ static_url('js/blog_post.js') }}" defer></script>
+  {% endif %}
+  {% for src in ext.js_files | default([]) %}
+  <script src="{{ src }}" defer></script>
+  {% endfor %}
 </body>
 </html>

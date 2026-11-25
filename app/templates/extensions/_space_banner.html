@@ -1,0 +1,16 @@
+{% import "icons.html" as icons %}
+<section class="sf-space-banner sf-space-banner-{{ ext_ctx.tone }}" role="region" aria-label="{{ ext_ctx.title or '空间公告' }}" data-space-banner data-banner-key="{{ ext_ctx.storage_key }}">
+  <div class="sf-space-banner-icon" aria-hidden="true">{{ icons.icon("megaphone", 18) }}</div>
+  <div class="sf-space-banner-body">
+    {% if ext_ctx.title %}<strong class="sf-space-banner-title">{{ ext_ctx.title }}</strong>{% endif %}
+    {% if ext_ctx.message %}<p class="sf-space-banner-msg">{{ ext_ctx.message }}</p>{% endif %}
+  </div>
+  <div class="sf-space-banner-actions">
+    {% if ext_ctx.link_url %}
+    <a class="sf-space-banner-link" href="{{ ext_ctx.link_url }}"{% if ext_ctx.is_external %} target="_blank" rel="noopener noreferrer"{% endif %}>{{ ext_ctx.link_label }}{% if ext_ctx.is_external %}{{ icons.icon("external-link", 13) }}{% endif %}</a>
+    {% endif %}
+    {% if ext_ctx.dismissible %}
+    <button type="button" class="sf-space-banner-close" data-banner-dismiss aria-label="关闭公告" data-i18n-aria-label="common.close">{{ icons.icon("x", 15) }}</button>
+    {% endif %}
+  </div>
+</section>

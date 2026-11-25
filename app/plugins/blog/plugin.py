@@ -1,18 +1,24 @@
 import json
 import re
+from typing import Any
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse, RedirectResponse
-from markdown_it import MarkdownIt
 from sqlalchemy.orm import Session
 
+from app.auth import read_session
+from app.extensions.registry import (
+    build_render_bundle,
+    normalize_extensions,
+    normalize_post_meta,
+)
 from app.models import Project
 from app.plugins.base import InvalidContent
+from app.plugins.blog.markdown import BLOG_CSP, render_inline_math, render_markdown
 from app.templating import templates
 
 MAX_POSTS = 200
 MAX_BODY = 200_000
-_markdown = MarkdownIt("commonmark", {"html": False})
 
 
 def _text(value: object, limit: int) -> str:
@@ -36,8 +42,13 @@ def default_content() -> dict:
     return {"title": "", "description": "", "posts": []}
 
 
-def normalize(parsed: dict, strict: bool = False) -> dict:
-    posts_out: list[dict] = []
+def normalize(
+    parsed: dict,
+    strict: bool = False,
+    project_slug: str | None = None,
+    config: Any = None,
+) -> dict:
+    posts_out: list[dict[str, Any]] = []
     seen: set[str] = set()
     posts = parsed.get("posts")
     if strict and (not isinstance(posts, list) or len(posts) > MAX_POSTS):
@@ -59,25 +70,47 @@ def normalize(parsed: dict, strict: bool = False) -> dict:
             if not slug or slug in seen:
                 continue
             seen.add(slug)
-            posts_out.append(
-                {
-                    "slug": slug,
-                    "title": _text(raw.get("title"), 200) or slug,
-                    "date": _text(raw.get("date"), 20),
-                    "tags": _tags(raw.get("tags")),
-                    "summary": _text(raw.get("summary"), 500),
-                    "body": _text(raw.get("body"), MAX_BODY),
-                }
+            post_item: dict[str, Any] = {
+                "slug": slug,
+                "title": _text(raw.get("title"), 200) or slug,
+                "date": _text(raw.get("date"), 20),
+                "tags": _tags(raw.get("tags")),
+                "summary": _text(raw.get("summary"), 500),
+                "body": _text(raw.get("body"), MAX_BODY),
+            }
+            meta = normalize_post_meta(
+                raw.get("meta"),
+                strict=strict,
+                project_slug=project_slug,
+                config=config,
             )
+            if meta:
+                post_item["meta"] = meta
+            posts_out.append(post_item)
     posts_out.sort(key=lambda post: (post["date"] or "", post["title"]), reverse=True)
-    return {
+    extensions = normalize_extensions(
+        parsed.get("extensions"),
+        strict=strict,
+        project_slug=project_slug,
+        target="blog",
+        config=config,
+    )
+    result: dict[str, Any] = {
         "title": _text(parsed.get("title"), 200),
         "description": _text(parsed.get("description"), 500),
         "posts": posts_out,
     }
+    if extensions:
+        result["extensions"] = extensions
+    return result
 
 
-def validate_content(raw: str, strict: bool = False) -> dict:
+def validate_content(
+    raw: str,
+    strict: bool = False,
+    project_slug: str | None = None,
+    config: Any = None,
+) -> dict:
     try:
         parsed = json.loads(raw or "{}")
     except json.JSONDecodeError as exc:
@@ -86,7 +119,7 @@ def validate_content(raw: str, strict: bool = False) -> dict:
         raise InvalidContent("博客内容必须是 JSON 对象")
     if strict and "posts" not in parsed:
         parsed["posts"] = []
-    return normalize(parsed, strict=strict)
+    return normalize(parsed, strict=strict, project_slug=project_slug, config=config)
 
 
 class BlogApp:
@@ -100,8 +133,13 @@ class BlogApp:
     def default_content(self) -> dict:
         return default_content()
 
-    def validate_content(self, raw: str) -> dict:
-        return validate_content(raw, strict=True)
+    def validate_content(
+        self,
+        raw: str,
+        project_slug: str | None = None,
+        config: Any = None,
+    ) -> dict:
+        return validate_content(raw, strict=True, project_slug=project_slug, config=config)
 
     def route(self, request: Request, project: Project, path: str, db: Session):
         clean = path.strip("/")
@@ -113,29 +151,79 @@ class BlogApp:
         if not path.startswith("posts/"):
             return None
         slug = path[len("posts/") :].strip("/")
-        content = validate_content(project.content)
+        config = request.app.state.config
+        session = read_session(config, request)
+        is_admin = bool(session and session.get("admin") is True)
+        content = validate_content(project.content, project_slug=project.slug, config=config)
         posts = content["posts"]
         index = next((position for position, item in enumerate(posts) if item["slug"] == slug), None)
         if index is None:
             return None
+        post = posts[index]
         prev_post = posts[index - 1] if index > 0 else None
         next_post = posts[index + 1] if index + 1 < len(posts) else None
-        return templates.TemplateResponse(
+        rendered = render_markdown(post["body"])
+        ext = build_render_bundle(
+            "post",
+            project,
+            content,
+            post=post,
+            target="blog",
+            config=config,
+            is_admin=is_admin,
+        )
+        response = templates.TemplateResponse(
             request,
             "blog_post.html",
             {
                 "project": project,
-                "post": posts[index],
-                "body_html": _markdown.render(posts[index]["body"]),
+                "post": post,
+                "body_html": rendered.html,
+                "toc": rendered.toc,
+                "toc_title": rendered.toc_title,
+                "has_math": rendered.has_math,
+                "ext": ext,
                 "prev_post": prev_post,
                 "next_post": next_post,
             },
         )
+        response.headers["Content-Security-Policy"] = BLOG_CSP
+        return response
 
     def render(self, request: Request, project: Project, db: Session) -> HTMLResponse:
-        content = validate_content(project.content)
-        return templates.TemplateResponse(
+        config = request.app.state.config
+        session = read_session(config, request)
+        is_admin = bool(session and session.get("admin") is True)
+        content = validate_content(project.content, project_slug=project.slug, config=config)
+        display_posts: list[dict[str, Any]] = []
+        has_math = False
+        for post in content["posts"]:
+            item = dict(post)
+            if item["summary"]:
+                summary_html, post_has_math = render_inline_math(item["summary"])
+                item["summary_html"] = summary_html
+                if post_has_math:
+                    has_math = True
+            display_posts.append(item)
+        ext = build_render_bundle(
+            "list",
+            project,
+            content,
+            posts=content["posts"],
+            target="blog",
+            config=config,
+            is_admin=is_admin,
+        )
+        response = templates.TemplateResponse(
             request,
             "blog.html",
-            {"project": project, "blog": content, "posts": content["posts"]},
+            {
+                "project": project,
+                "blog": content,
+                "posts": display_posts,
+                "has_math": has_math,
+                "ext": ext,
+            },
         )
+        response.headers["Content-Security-Policy"] = BLOG_CSP
+        return response

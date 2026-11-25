@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ project.title }} - 管理 - {{ site_title }}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
   <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
   <meta name="csrf" content="{{ csrf }}">
 </head>
@@ -60,12 +60,21 @@
       <p><a class="btn" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}<span data-i18n="admin.open_app">打开应用</span></a></p>
     </section>
     {% endif %}
+    {% if ext_catalog is defined %}
+    {% set ext_section_id = "space-extensions" %}
+    {% set ext_section_title_key = "ext.space_section_title" %}
+    {% set ext_section_title_default = "空间插件" %}
+    {% include "_extensions_panel.html" %}
+    {% endif %}
   </main>
   {% include "_preview_modal.html" %}
   {% include "_command_palette.html" %}
-  <script src="/static/js/i18n.js" defer></script>
-  <script src="/static/js/preview.js" defer></script>
-  <script src="/static/js/palette.js" defer></script>
-  <script src="/static/js/admin.js" defer></script>
+  <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  <script src="{{ static_url('js/preview.js') }}" defer></script>
+  <script src="{{ static_url('js/palette.js') }}" defer></script>
+  <script src="{{ static_url('js/admin.js') }}" defer></script>
+  {% if ext_catalog is defined %}
+  <script src="{{ static_url('js/extensions_admin.js') }}" defer></script>
+  {% endif %}
 </body>
 </html>

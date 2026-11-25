@@ -4,7 +4,11 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ project.title }}{% if site_title and site_title != project.title %} - {{ site_title }}{% endif %}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
+  {% set ext = ext | default({}) %}
+  {% for href in ext.css_files | default([]) %}
+  <link rel="stylesheet" href="{{ href }}">
+  {% endfor %}
   <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
   {% if theme and (theme.accent or theme.radius_card or theme.font_family) %}
   <style>
@@ -25,9 +29,10 @@
   </style>
   {% endif %}
 </head>
-<body>
+<body{% if ext.body_classes %} class="{{ ext.body_classes | join(' ') }}"{% endif %}>
   {% import "icons.html" as icons %}
   {% import "_cards.html" as cards %}
+  {% for frag in ext.body_start_fragments | default([]) %}{{ frag }}{% endfor %}
   <header class="site-header">
     <div class="wrap row-between">
       <div>
@@ -45,6 +50,7 @@
     </div>
   </header>
   <main class="wrap">
+    {% for frag in ext.main_start_fragments | default([]) %}{{ frag }}{% endfor %}
     {% if projects %}
     {{ cards.cards(projects, hue) }}
     {% else %}
@@ -59,8 +65,12 @@
   </footer>
   {% include "_preview_modal.html" %}
   {% include "_command_palette.html" %}
-  <script src="/static/js/i18n.js" defer></script>
-  <script src="/static/js/preview.js" defer></script>
-  <script src="/static/js/palette.js" defer></script>
+  {% for frag in ext.body_end_fragments | default([]) %}{{ frag }}{% endfor %}
+  <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  <script src="{{ static_url('js/preview.js') }}" defer></script>
+  <script src="{{ static_url('js/palette.js') }}" defer></script>
+  {% for src in ext.js_files | default([]) %}
+  <script src="{{ src }}" defer></script>
+  {% endfor %}
 </body>
 </html>

@@ -4,11 +4,16 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ resume.basics.name or project.title }}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
+  {% set ext = ext | default({}) %}
+  {% for href in ext.css_files | default([]) %}
+  <link rel="stylesheet" href="{{ href }}">
+  {% endfor %}
   <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
 </head>
-<body class="resume-body">
+<body class="resume-body{% for cls in ext.body_classes | default([]) %} {{ cls }}{% endfor %}">
   {% import "icons.html" as icons %}
+  {% for frag in ext.body_start_fragments | default([]) %}{{ frag }}{% endfor %}
   <div class="resume-actions">
     <a class="btn ghost" href="/">{{ icons.icon("arrow-left") }}<span data-i18n="common.back">返回</span></a>
     <span class="actions-right">
@@ -18,6 +23,7 @@
     </span>
   </div>
   <main class="resume">
+    {% for frag in ext.main_start_fragments | default([]) %}{{ frag }}{% endfor %}
     <header class="resume-head">
       {% set avatar = resume.basics.image or project.cover %}
       {% if avatar %}<img class="resume-avatar" src="/media/covers/{{ avatar }}" alt="">{% endif %}
@@ -72,6 +78,10 @@
     {% endif %}
     {% endfor %}
   </main>
-  <script src="/static/js/i18n.js" defer></script>
+  {% for frag in ext.body_end_fragments | default([]) %}{{ frag }}{% endfor %}
+  <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  {% for src in ext.js_files | default([]) %}
+  <script src="{{ src }}" defer></script>
+  {% endfor %}
 </body>
 </html>

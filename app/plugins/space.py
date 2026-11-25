@@ -1,5 +1,6 @@
 import json
 import re
+from typing import Any
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse
@@ -7,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from app import store
 from app.auth import read_session
+from app.extensions.registry import build_render_bundle, normalize_extensions
 from app.models import Project
 from app.templating import placeholder_hue, templates
 
@@ -14,7 +16,7 @@ VALID_FONTS = {"sans", "serif", "mono"}
 VALID_RADII = {"0px", "6px", "10px", "14px", "20px", "24px"}
 
 
-def default_space_content() -> dict:
+def default_space_content() -> dict[str, Any]:
     return {
         "accent": "",
         "font_family": "",
@@ -22,7 +24,13 @@ def default_space_content() -> dict:
     }
 
 
-def validate_space_content(raw: str | dict) -> dict:
+def validate_space_content(
+    raw: str | dict,
+    *,
+    strict: bool = False,
+    project_slug: str | None = None,
+    config: Any = None,
+) -> dict[str, Any]:
     if isinstance(raw, dict):
         parsed = raw
     else:
@@ -46,6 +54,16 @@ def validate_space_content(raw: str | dict) -> dict:
     if radius_card in VALID_RADII:
         content["radius_card"] = radius_card
 
+    extensions = normalize_extensions(
+        parsed.get("extensions"),
+        strict=strict,
+        project_slug=project_slug,
+        target="space",
+        config=config,
+    )
+    if extensions:
+        content["extensions"] = extensions
+
     return content
 
 
@@ -57,11 +75,16 @@ class SpaceApp:
     content_editable: bool = False
     admin_template: str | None = None
 
-    def default_content(self) -> dict:
+    def default_content(self) -> dict[str, Any]:
         return default_space_content()
 
-    def validate_content(self, raw: str) -> dict:
-        return validate_space_content(raw)
+    def validate_content(
+        self,
+        raw: str,
+        project_slug: str | None = None,
+        config: Any = None,
+    ) -> dict[str, Any]:
+        return validate_space_content(raw, strict=False, project_slug=project_slug, config=config)
 
     def route(self, request: Request, project: Project, path: str, db: Session):
         return None
@@ -69,16 +92,26 @@ class SpaceApp:
     def render(self, request: Request, project: Project, db: Session) -> HTMLResponse:
         config = request.app.state.config
         session = read_session(config, request)
-        theme = validate_space_content(project.content)
+        is_admin = bool(session and session.get("admin") is True)
+        content = validate_space_content(project.content, project_slug=project.slug, config=config)
+        ext = build_render_bundle(
+            "space",
+            project,
+            content,
+            target="space",
+            config=config,
+            is_admin=is_admin,
+        )
         return templates.TemplateResponse(
             request,
             "space.html",
             {
                 "site_title": config.site_title,
                 "project": project,
-                "theme": theme,
+                "theme": content,
+                "ext": ext,
                 "projects": store.visible_projects(db, project.id),
                 "hue": placeholder_hue,
-                "is_admin": bool(session and session.get("admin") is True),
+                "is_admin": is_admin,
             },
         )

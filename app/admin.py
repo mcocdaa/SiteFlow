@@ -3,7 +3,7 @@ import re
 import secrets
 import shutil
 from datetime import UTC, datetime
-from typing import Annotated
+from typing import Annotated, Any
 from urllib.parse import quote, urlparse
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
@@ -14,17 +14,47 @@ from starlette.concurrency import run_in_threadpool
 from app import stats, store
 from app.auth import csrf_for, hash_project_password, read_session
 from app.deps import AdminConfig, DbSession, api_error, get_config
+from app.extensions.base import EXTENSIBLE_TARGETS, TargetType
+from app.extensions.mascot import MASCOT_CHARACTERS
+from app.extensions.packs import (
+    PackError,
+    delete_pack,
+    install_pack_from_url,
+    install_pack_from_zip,
+    list_packs,
+    sync_pack,
+)
+from app.extensions.registry import (
+    build_admin_catalog,
+    build_editor_bundle,
+    extension_catalog_item,
+    merge_content_extension_secrets,
+    redact_content_extensions,
+    referenced_media_urls,
+)
+from app.extensions.registry import get as get_extension
 from app.models import Project
 from app.og import fetch_image, fetch_og
 from app.plugins import registry
 from app.plugins.base import InvalidContent
 from app.plugins.blog.plugin import validate_content as blog_content
+from app.plugins.resume.plugin import validate_content as resume_content
+from app.plugins.space import validate_space_content
 from app.templating import templates
-from app.uploads import InvalidUpload, extract_site, make_cover, remove_tree, save_cover
+from app.uploads import (
+    InvalidUpload,
+    delete_project_media_url,
+    extract_site,
+    make_cover,
+    remove_tree,
+    save_cover,
+    save_project_media,
+)
 
 router = APIRouter()
 
 COVER_LIMIT = 10 * 1024 * 1024
+PACK_UPLOAD_LIMIT = 10 * 1024 * 1024
 _SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
 
@@ -55,6 +85,106 @@ class AppPayload(BaseModel):
     title: str = ""
     description: str = ""
     parent_id: int | None = None
+
+
+class ExtensionInstallPayload(BaseModel):
+    enabled: bool = True
+    config: dict[str, Any] | None = None
+
+
+class ExtensionPatchPayload(BaseModel):
+    enabled: bool | None = None
+    config: dict[str, Any] | None = None
+
+
+class PackUrlPayload(BaseModel):
+    url: str
+
+
+def _target_of(project: Project) -> TargetType | None:
+    if project.type == "blog":
+        return "blog"
+    if project.type == "space":
+        return "space"
+    if project.type == "resume":
+        return "resume"
+    return None
+
+
+def _parse_project_content(project: Project, config, *, strict: bool = False) -> dict[str, Any]:
+    if project.type == "blog":
+        return blog_content(project.content, strict=strict, project_slug=project.slug, config=config)
+    if project.type == "space":
+        return validate_space_content(
+            project.content,
+            strict=strict,
+            project_slug=project.slug,
+            config=config,
+        )
+    if project.type == "resume":
+        return resume_content(project.content, strict=strict, project_slug=project.slug, config=config)
+    return {}
+
+
+def _project_dict_redacted(project: Project, config) -> dict[str, Any]:
+    data = project.as_dict()
+    if project.type not in EXTENSIBLE_TARGETS or not project.content:
+        return data
+    try:
+        parsed = json.loads(project.content)
+    except (TypeError, ValueError):
+        return data
+    if not isinstance(parsed, dict) or "extensions" not in parsed:
+        return data
+    redacted = redact_content_extensions(parsed, target=project.type, config=config)
+    data["content"] = json.dumps(redacted, ensure_ascii=False)
+    return data
+
+
+def _get_extensible_project(db, project_id: int):
+    project = store.by_id(db, project_id)
+    if project is None:
+        return None, api_error("作品不存在", 404)
+    if project.type not in EXTENSIBLE_TARGETS:
+        return None, api_error("该类型不支持插件", 400)
+    return project, None
+
+
+def _get_project_and_extension(db, config, project_id: int, ext_id: str):
+    project, error = _get_extensible_project(db, project_id)
+    if error is not None or project is None:
+        return None, None, error
+    ext = get_extension(ext_id, config=config)
+    if ext is None:
+        return None, None, api_error("插件不存在", 404)
+    if project.type not in ext.targets:
+        return None, None, api_error("该插件不适用于当前应用类型", 400)
+    return project, ext, None
+
+
+def _cleanup_unreferenced_media(
+    config,
+    project_slug: str,
+    old_media: set[str],
+    new_media: set[str],
+) -> None:
+    for stale_url in old_media - new_media:
+        delete_project_media_url(config, project_slug, stale_url)
+
+
+def _install_pack_url_sync(config, url: str):
+    pack = install_pack_from_url(config, url)
+    return pack, list_packs(config)
+
+
+def _install_pack_zip_sync(config, raw: bytes, replace: bool):
+    pack = install_pack_from_zip(config, raw, replace=replace)
+    return pack, list_packs(config)
+
+
+def _sync_pack_sync(config, pack_id: str):
+    pack = sync_pack(config, pack_id)
+    return pack, list_packs(config)
 
 
 def hostname_of(url: str) -> str:
@@ -142,12 +272,15 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
         "plugin_types": plugin_types(),
         "stats": stats.get_7day_stats(db, project_id=project.id),
     }
+    if project.type in EXTENSIBLE_TARGETS:
+        content = _parse_project_content(project, config)
+        context["content"] = redact_content_extensions(content, target=project.type, config=config)
+        context["ext_catalog"] = build_admin_catalog(content, target=project.type, config=config)
+        context["ext_packs"] = list_packs(config)
+        context["mascot_characters"] = list(MASCOT_CHARACTERS)
+    elif plugin.admin_template:
+        context["content"] = plugin.validate_content(project.content)
     if plugin.admin_template:
-        context["content"] = (
-            blog_content(project.content)
-            if project.type == "blog"
-            else plugin.validate_content(project.content)
-        )
         return templates.TemplateResponse(request, plugin.admin_template, context)
     return templates.TemplateResponse(request, "admin_app.html", context)
 
@@ -161,7 +294,7 @@ def admin_blog_post(request: Request, project_id: int, db: DbSession, post_slug:
     project = store.by_id(db, project_id)
     if project is None or project.type != "blog":
         raise HTTPException(404)
-    content = blog_content(project.content)
+    content = blog_content(project.content, project_slug=project.slug, config=config)
     post = next((post for post in content["posts"] if post["slug"] == post_slug), None)
     if post_slug is not None and post is None:
         raise HTTPException(404)
@@ -173,6 +306,7 @@ def admin_blog_post(request: Request, project_id: int, db: DbSession, post_slug:
             "csrf": csrf_for(request),
             "project": project,
             "post": post,
+            "ext_editor": build_editor_bundle(content, project=project, post=post, config=config),
             "parent": store.by_id(db, project.parent_id) if project.parent_id else None,
         },
     )
@@ -181,60 +315,335 @@ def admin_blog_post(request: Request, project_id: int, db: DbSession, post_slug:
 @router.post("/api/admin/projects/{project_id}/posts")
 @router.patch("/api/admin/projects/{project_id}/posts/{post_slug}")
 def save_blog_post(
-    project_id: int, payload: dict, _auth: AdminConfig, db: DbSession, post_slug: str | None = None
+    project_id: int, payload: dict, config: AdminConfig, db: DbSession, post_slug: str | None = None
 ):
     project = store.by_id(db, project_id)
     if project is None or project.type != "blog":
         return api_error("博客不存在", 404)
-    content = blog_content(project.content)
+    content = blog_content(project.content, project_slug=project.slug, config=config)
+    old_media = referenced_media_urls(content, target="blog", config=config)
     posts = content["posts"]
     index = next((i for i, post in enumerate(posts) if post["slug"] == post_slug), None)
     if post_slug is not None and index is None:
         return api_error("文章不存在，请返回文章列表", 404)
+    candidate = dict(payload)
     if index is None:
-        posts.append(payload)
+        posts.append(candidate)
     else:
-        posts[index] = payload
+        existing_meta = posts[index].get("meta")
+        if isinstance(existing_meta, dict):
+            incoming_meta = candidate.get("meta")
+            if incoming_meta is None:
+                candidate["meta"] = dict(existing_meta)
+            elif isinstance(incoming_meta, dict):
+                merged_meta = dict(existing_meta)
+                for key, value in incoming_meta.items():
+                    if value == "" or value is None:
+                        merged_meta.pop(key, None)
+                    else:
+                        merged_meta[key] = value
+                candidate["meta"] = merged_meta
+        posts[index] = candidate
     try:
-        validated = blog_content(json.dumps(content, ensure_ascii=False), strict=True)
-        saved = blog_content(json.dumps({"posts": [payload]}, ensure_ascii=False), strict=True)["posts"][0]
+        validated = blog_content(
+            json.dumps(content, ensure_ascii=False),
+            strict=True,
+            project_slug=project.slug,
+            config=config,
+        )
+        saved = blog_content(
+            json.dumps({"posts": [candidate]}, ensure_ascii=False),
+            strict=True,
+            project_slug=project.slug,
+            config=config,
+        )["posts"][0]
     except InvalidContent as exc:
         return api_error(str(exc), 422)
     project.content = json.dumps(validated, ensure_ascii=False)
     touch(project)
     db.commit()
+    _cleanup_unreferenced_media(
+        config,
+        project.slug,
+        old_media,
+        referenced_media_urls(validated, target="blog", config=config),
+    )
     return {"ok": True, "post": saved}
 
 
 @router.delete("/api/admin/projects/{project_id}/posts/{post_slug}")
-def delete_blog_post(project_id: int, post_slug: str, _auth: AdminConfig, db: DbSession):
+def delete_blog_post(project_id: int, post_slug: str, config: AdminConfig, db: DbSession):
     project = store.by_id(db, project_id)
     if project is None or project.type != "blog":
         return api_error("博客不存在", 404)
-    content = blog_content(project.content)
+    content = blog_content(project.content, project_slug=project.slug, config=config)
+    old_media = referenced_media_urls(content, target="blog", config=config)
     if not any(post["slug"] == post_slug for post in content["posts"]):
         return api_error("文章不存在，请返回文章列表", 404)
     content["posts"] = [post for post in content["posts"] if post["slug"] != post_slug]
     project.content = json.dumps(content, ensure_ascii=False)
     touch(project)
     db.commit()
+    _cleanup_unreferenced_media(
+        config,
+        project.slug,
+        old_media,
+        referenced_media_urls(content, target="blog", config=config),
+    )
     return {"ok": True}
 
 
+@router.get("/api/admin/projects/{project_id}/extensions")
+def list_project_extensions(project_id: int, config: AdminConfig, db: DbSession):
+    project, error = _get_extensible_project(db, project_id)
+    if error is not None or project is None:
+        return error
+    content = _parse_project_content(project, config)
+    return {"ok": True, "extensions": build_admin_catalog(content, target=project.type, config=config)}
+
+
+@router.post("/api/admin/projects/{project_id}/extensions/{ext_id}/install")
+def install_project_extension(
+    project_id: int,
+    ext_id: str,
+    config: AdminConfig,
+    db: DbSession,
+    payload: ExtensionInstallPayload | None = None,
+):
+    project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
+    if error is not None or project is None or ext is None:
+        return error
+    content = _parse_project_content(project, config)
+    old_media = referenced_media_urls(content, target=project.type, config=config)
+    ext_map = dict(content.get("extensions") or {})
+    existing_state = ext_map.get(ext.id)
+    raw_existing_cfg = existing_state.get("config") if isinstance(existing_state, dict) else None
+    existing_cfg: dict[str, Any] = raw_existing_cfg if isinstance(raw_existing_cfg, dict) else {}
+    enabled = payload.enabled if payload is not None else True
+    if payload is not None and payload.config is not None:
+        raw_cfg: object = ext.merge_config(existing_cfg, payload.config)
+    else:
+        raw_cfg = existing_cfg or None
+    try:
+        normalized_cfg = ext.normalize_config(raw_cfg, strict=True, project_slug=project.slug)
+    except InvalidContent as exc:
+        return api_error(str(exc), 422)
+    ext_map[ext.id] = {"installed": True, "enabled": enabled, "config": normalized_cfg}
+    content["extensions"] = ext_map
+    project.content = json.dumps(content, ensure_ascii=False)
+    touch(project)
+    db.commit()
+    _cleanup_unreferenced_media(
+        config,
+        project.slug,
+        old_media,
+        referenced_media_urls(content, target=project.type, config=config),
+    )
+    return {"ok": True, "extension": extension_catalog_item(ext, content)}
+
+
+@router.patch("/api/admin/projects/{project_id}/extensions/{ext_id}")
+def update_project_extension(
+    project_id: int,
+    ext_id: str,
+    payload: ExtensionPatchPayload,
+    config: AdminConfig,
+    db: DbSession,
+):
+    project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
+    if error is not None or project is None or ext is None:
+        return error
+    content = _parse_project_content(project, config)
+    ext_map = dict(content.get("extensions") or {})
+    state = ext_map.get(ext.id)
+    if not isinstance(state, dict) or state.get("installed") is not True:
+        return api_error("请先安装该插件", 400)
+    old_media = referenced_media_urls(content, target=project.type, config=config)
+    enabled = state.get("enabled") is True if payload.enabled is None else payload.enabled
+    raw_existing_cfg = state.get("config")
+    existing_cfg: dict[str, Any] = raw_existing_cfg if isinstance(raw_existing_cfg, dict) else {}
+    if payload.config is not None:
+        merged_cfg = ext.merge_config(existing_cfg, payload.config)
+        try:
+            normalized_cfg = ext.normalize_config(merged_cfg, strict=True, project_slug=project.slug)
+        except InvalidContent as exc:
+            return api_error(str(exc), 422)
+    else:
+        normalized_cfg = ext.normalize_config(existing_cfg, strict=False, project_slug=project.slug)
+    ext_map[ext.id] = {"installed": True, "enabled": enabled, "config": normalized_cfg}
+    content["extensions"] = ext_map
+    project.content = json.dumps(content, ensure_ascii=False)
+    touch(project)
+    db.commit()
+    _cleanup_unreferenced_media(
+        config,
+        project.slug,
+        old_media,
+        referenced_media_urls(content, target=project.type, config=config),
+    )
+    return {"ok": True, "extension": extension_catalog_item(ext, content)}
+
+
+@router.delete("/api/admin/projects/{project_id}/extensions/{ext_id}")
+def uninstall_project_extension(
+    project_id: int,
+    ext_id: str,
+    config: AdminConfig,
+    db: DbSession,
+):
+    project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
+    if error is not None or project is None or ext is None:
+        return error
+    content = _parse_project_content(project, config)
+    old_media = referenced_media_urls(content, target=project.type, config=config)
+    ext_map = dict(content.get("extensions") or {})
+    ext_map.pop(ext.id, None)
+    if ext_map:
+        content["extensions"] = ext_map
+    else:
+        content.pop("extensions", None)
+    project.content = json.dumps(content, ensure_ascii=False)
+    touch(project)
+    db.commit()
+    _cleanup_unreferenced_media(
+        config,
+        project.slug,
+        old_media,
+        referenced_media_urls(content, target=project.type, config=config),
+    )
+    return {"ok": True, "extension": extension_catalog_item(ext, content)}
+
+
+@router.post("/api/admin/projects/{project_id}/extensions/{ext_id}/media")
+async def upload_project_extension_media(
+    project_id: int,
+    ext_id: str,
+    file: Annotated[UploadFile, File()],
+    config: AdminConfig,
+    db: DbSession,
+    kind: Annotated[str, Form()] = "",
+):
+    filename = file.filename or ""
+    content_type = file.content_type or ""
+    raw = await file.read(COVER_LIMIT + 1)
+    await file.close()
+    if len(raw) > COVER_LIMIT:
+        return api_error("封面不能超过 10MB", 413)
+    return await run_in_threadpool(
+        _save_project_ext_media,
+        project_id,
+        ext_id,
+        kind,
+        raw,
+        filename,
+        content_type,
+        config,
+        db,
+    )
+
+
+def _save_project_ext_media(
+    project_id: int,
+    ext_id: str,
+    kind: str,
+    raw: bytes,
+    filename: str,
+    content_type: str,
+    config,
+    db,
+):
+    project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
+    if error is not None or project is None or ext is None:
+        return error
+    content = _parse_project_content(project, config)
+    ext_map = content.get("extensions")
+    state = ext_map.get(ext.id) if isinstance(ext_map, dict) else None
+    if not isinstance(state, dict) or state.get("installed") is not True:
+        return api_error("请先安装该插件", 400)
+    cleaned_kind = kind.strip()
+    if not cleaned_kind or cleaned_kind not in ext.media_kinds:
+        return api_error("不支持该图片用途", 400)
+    try:
+        url = save_project_media(
+            config,
+            project.type,
+            project.slug,
+            cleaned_kind,
+            raw,
+            filename=filename,
+            content_type=content_type,
+        )
+    except InvalidUpload as exc:
+        return api_error(str(exc), 422)
+    return {"ok": True, "url": url}
+
+
+@router.get("/api/admin/plugin-packs")
+def list_plugin_packs(config: AdminConfig):
+    return {"ok": True, "packs": list_packs(config)}
+
+
+@router.post("/api/admin/plugin-packs")
+async def subscribe_plugin_pack(payload: PackUrlPayload, config: AdminConfig):
+    try:
+        pack, packs = await run_in_threadpool(_install_pack_url_sync, config, payload.url)
+    except PackError as exc:
+        return api_error(exc.message, exc.status_code)
+    return {"ok": True, "pack": pack, "packs": packs}
+
+
+@router.post("/api/admin/plugin-packs/upload")
+async def upload_plugin_pack(
+    file: Annotated[UploadFile, File()],
+    config: AdminConfig,
+    replace: Annotated[bool, Form()] = True,
+):
+    raw = await file.read(PACK_UPLOAD_LIMIT + 1)
+    await file.close()
+    if len(raw) > PACK_UPLOAD_LIMIT:
+        return api_error("插件包不能超过 10MB", 413)
+    try:
+        pack, packs = await run_in_threadpool(_install_pack_zip_sync, config, raw, replace)
+    except PackError as exc:
+        return api_error(exc.message, exc.status_code)
+    return {"ok": True, "pack": pack, "packs": packs}
+
+
+@router.post("/api/admin/plugin-packs/{pack_id}/sync")
+async def sync_plugin_pack(pack_id: str, config: AdminConfig):
+    try:
+        pack, packs = await run_in_threadpool(_sync_pack_sync, config, pack_id)
+    except PackError as exc:
+        return api_error(exc.message, exc.status_code)
+    return {"ok": True, "pack": pack, "packs": packs}
+
+
+@router.delete("/api/admin/plugin-packs/{pack_id}")
+def delete_plugin_pack(pack_id: str, config: AdminConfig, db: DbSession):
+    try:
+        removed = delete_pack(config, pack_id, db)
+    except PackError as exc:
+        return api_error(exc.message, exc.status_code)
+    return {"ok": True, "removed": removed, "packs": list_packs(config)}
+
+
 @router.get("/api/admin/projects")
-def list_projects(_auth: AdminConfig, db: DbSession, parent_id: int | None = None):
-    return {"ok": True, "projects": [p.as_dict() for p in store.all_projects(db, parent_id)]}
+def list_projects(config: AdminConfig, db: DbSession, parent_id: int | None = None):
+    return {
+        "ok": True,
+        "projects": [_project_dict_redacted(p, config) for p in store.all_projects(db, parent_id)],
+    }
 
 
 @router.get("/api/admin/projects/{project_id}")
-def get_project_detail(project_id: int, _auth: AdminConfig, db: DbSession):
+def get_project_detail(project_id: int, config: AdminConfig, db: DbSession):
     project = store.by_id(db, project_id)
     if project is None:
         return api_error("作品不存在", 404)
     return {
         "ok": True,
-        "project": project.as_dict(),
-        "children": [c.as_dict() for c in store.all_projects(db, project.id)],
+        "project": _project_dict_redacted(project, config),
+        "children": [_project_dict_redacted(c, config) for c in store.all_projects(db, project.id)],
         "stats": stats.get_7day_stats(db, project_id=project.id),
     }
 
@@ -462,7 +871,7 @@ def add_link(payload: LinkPayload, config: AdminConfig, db: DbSession):
 def patch_project(
     project_id: int,
     payload: PatchPayload,
-    _auth: AdminConfig,
+    config: AdminConfig,
     db: DbSession,
 ):
     project = store.by_id(db, project_id)
@@ -472,18 +881,61 @@ def patch_project(
     url = updates.get("url")
     if url is not None and not url.lower().startswith(("http://", "https://")):
         return api_error("链接必须以 http:// 或 https:// 开头")
+    old_ext_media: set[str] | None = None
+    ext_target = _target_of(project)
     content = updates.pop("content", None)
     if content is not None:
         plugin = registry.get(project.type)
         if plugin is None or not plugin.content_editable:
             return api_error("该类型不支持内容编辑")
         try:
-            validated = plugin.validate_content(content)
+            if ext_target in ("blog", "resume"):
+                existing_parsed = _parse_project_content(project, config)
+                old_ext_media = referenced_media_urls(
+                    existing_parsed,
+                    target=ext_target,
+                    config=config,
+                )
+                try:
+                    incoming_parsed = json.loads(content or "{}")
+                except json.JSONDecodeError as exc:
+                    msg = "博客内容不是合法 JSON" if ext_target == "blog" else "简历内容不是合法 JSON"
+                    raise InvalidContent(msg) from exc
+                if not isinstance(incoming_parsed, dict):
+                    msg = "博客内容必须是 JSON 对象" if ext_target == "blog" else "简历内容必须是 JSON 对象"
+                    raise InvalidContent(msg)
+                if "extensions" not in incoming_parsed:
+                    if existing_parsed.get("extensions"):
+                        incoming_parsed["extensions"] = existing_parsed["extensions"]
+                else:
+                    incoming_parsed = merge_content_extension_secrets(
+                        existing_parsed,
+                        incoming_parsed,
+                        target=ext_target,
+                        config=config,
+                    )
+                merged_raw = json.dumps(incoming_parsed, ensure_ascii=False)
+                if ext_target == "blog":
+                    validated = blog_content(
+                        merged_raw,
+                        strict=True,
+                        project_slug=project.slug,
+                        config=config,
+                    )
+                else:
+                    validated = resume_content(
+                        merged_raw,
+                        strict=True,
+                        project_slug=project.slug,
+                        config=config,
+                    )
+            else:
+                validated = plugin.validate_content(content)
         except InvalidContent as exc:
             return api_error(str(exc), 422)
         project.content = json.dumps(validated, ensure_ascii=False)
     if project.type == "blog" and ("title" in updates or "description" in updates):
-        blog = blog_content(project.content)
+        blog = blog_content(project.content, project_slug=project.slug, config=config)
         for field, limit in (("title", 200), ("description", 500)):
             if field in updates:
                 value = updates[field].strip()[:limit]
@@ -496,10 +948,16 @@ def patch_project(
     if theme is not None:
         if project.type != "space":
             return api_error("只有空间支持主题配置")
-        plugin = registry.get("space")
-        if plugin is not None:
-            validated_theme = plugin.validate_content(theme)
-            project.content = json.dumps(validated_theme, ensure_ascii=False)
+        existing_space = validate_space_content(project.content, project_slug=project.slug, config=config)
+        merged_space = dict(theme) if isinstance(theme, dict) else {}
+        if existing_space.get("extensions") and "extensions" not in merged_space:
+            merged_space["extensions"] = existing_space["extensions"]
+        validated_theme = validate_space_content(
+            merged_space,
+            project_slug=project.slug,
+            config=config,
+        )
+        project.content = json.dumps(validated_theme, ensure_ascii=False)
     password = updates.pop("password", None)
     if password is not None:
         p_clean = password.strip()
@@ -511,7 +969,14 @@ def patch_project(
         setattr(project, field, value)
     touch(project)
     db.commit()
-    return {"ok": True, "project": project.as_dict()}
+    if old_ext_media is not None and ext_target is not None:
+        new_ext_media = referenced_media_urls(
+            _parse_project_content(project, config),
+            target=ext_target,
+            config=config,
+        )
+        _cleanup_unreferenced_media(config, project.slug, old_ext_media, new_ext_media)
+    return {"ok": True, "project": _project_dict_redacted(project, config)}
 
 
 @router.post("/api/admin/projects/{project_id}/move")

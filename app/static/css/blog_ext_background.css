@@ -1,0 +1,104 @@
+.blog-bg-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.blog-bg-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.blog-bg-op-05 { opacity: 0.05; }
+.blog-bg-op-10 { opacity: 0.10; }
+.blog-bg-op-15 { opacity: 0.15; }
+.blog-bg-op-20 { opacity: 0.20; }
+.blog-bg-op-25 { opacity: 0.25; }
+.blog-bg-op-30 { opacity: 0.30; }
+.blog-bg-op-35 { opacity: 0.35; }
+.blog-bg-op-40 { opacity: 0.40; }
+.blog-bg-op-45 { opacity: 0.45; }
+.blog-bg-op-50 { opacity: 0.50; }
+.blog-bg-op-55 { opacity: 0.55; }
+.blog-bg-op-60 { opacity: 0.60; }
+
+.blog-bg-layer-dots {
+  background-image: radial-gradient(color-mix(in srgb, var(--text) 14%, transparent) 1px, transparent 1px);
+  background-size: 22px 22px;
+}
+
+.blog-bg-layer-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--border) 65%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border) 65%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+}
+
+.blog-bg-layer-aurora {
+  background-image:
+    radial-gradient(60% 45% at 12% 10%, color-mix(in srgb, var(--accent) 18%, transparent), transparent 70%),
+    radial-gradient(50% 45% at 88% 18%, color-mix(in srgb, #38bdf8 14%, transparent), transparent 72%),
+    radial-gradient(55% 45% at 50% 92%, color-mix(in srgb, #a855f7 12%, transparent), transparent 75%);
+}
+
+.blog-bg-layer-paper {
+  background-color: #f8f5ee;
+  background-image: radial-gradient(rgba(120, 96, 64, 0.06) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+
+@media (prefers-color-scheme: dark) {
+  .blog-bg-layer-paper {
+    background-color: #13151a;
+    background-image: radial-gradient(rgba(226, 214, 192, 0.06) 1px, transparent 1px);
+  }
+}
+
+:root[data-theme="light"] .blog-bg-layer-paper {
+  background-color: #f8f5ee;
+  background-image: radial-gradient(rgba(120, 96, 64, 0.06) 1px, transparent 1px);
+}
+
+:root[data-theme="dark"] .blog-bg-layer-paper {
+  background-color: #13151a;
+  background-image: radial-gradient(rgba(226, 214, 192, 0.06) 1px, transparent 1px);
+}
+
+body.has-blog-bg-card main.blog {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid color-mix(in srgb, var(--border) 80%, transparent);
+  border-radius: var(--radius-card);
+  margin-top: 16px;
+  margin-bottom: 48px;
+  padding: 32px 32px 64px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, .05);
+}
+
+@media (max-width: 640px) {
+  body.has-blog-bg-card main.blog {
+    padding: 20px 18px 48px;
+    border-radius: 0;
+    border-left: none;
+    border-right: none;
+  }
+}
+
+@media print {
+  .blog-bg-layer {
+    display: none !important;
+  }
+
+  body.has-blog-bg-card main.blog {
+    background: transparent;
+    border: none;
+    box-shadow: none;
+    backdrop-filter: none;
+    padding: 0;
+  }
+}

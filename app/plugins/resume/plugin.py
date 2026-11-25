@@ -1,9 +1,12 @@
 import json
+from typing import Any
 
 from fastapi import Request
 from fastapi.responses import HTMLResponse, RedirectResponse
 from sqlalchemy.orm import Session
 
+from app.auth import read_session
+from app.extensions.registry import build_render_bundle, normalize_extensions
 from app.models import Project
 from app.plugins.base import InvalidContent
 from app.templating import templates
@@ -65,8 +68,13 @@ def default_content() -> dict:
     }
 
 
-def normalize(parsed: dict) -> dict:
-    content = default_content()
+def normalize(
+    parsed: dict,
+    strict: bool = False,
+    project_slug: str | None = None,
+    config: Any = None,
+) -> dict[str, Any]:
+    content: dict[str, Any] = default_content()
     source = parsed.get("basics")
     if isinstance(source, dict):
         for field in BASICS_TEXT_FIELDS:
@@ -105,17 +113,31 @@ def normalize(parsed: dict) -> dict:
                 item[field] = _string_list(row.get(field))
             normalized_rows.append(item)
         content[section] = normalized_rows
+    extensions = normalize_extensions(
+        parsed.get("extensions"),
+        strict=strict,
+        project_slug=project_slug,
+        target="resume",
+        config=config,
+    )
+    if extensions:
+        content["extensions"] = extensions
     return content
 
 
-def validate_content(raw: str) -> dict:
+def validate_content(
+    raw: str,
+    strict: bool = False,
+    project_slug: str | None = None,
+    config: Any = None,
+) -> dict[str, Any]:
     try:
         parsed = json.loads(raw or "{}")
     except json.JSONDecodeError as exc:
         raise InvalidContent("简历内容不是合法 JSON") from exc
     if not isinstance(parsed, dict):
         raise InvalidContent("简历内容必须是 JSON 对象")
-    return normalize(parsed)
+    return normalize(parsed, strict=strict, project_slug=project_slug, config=config)
 
 
 class ResumeApp:
@@ -126,11 +148,16 @@ class ResumeApp:
     content_editable: bool = True
     admin_template: str | None = "resume_admin.html"
 
-    def default_content(self) -> dict:
+    def default_content(self) -> dict[str, Any]:
         return default_content()
 
-    def validate_content(self, raw: str) -> dict:
-        return validate_content(raw)
+    def validate_content(
+        self,
+        raw: str,
+        project_slug: str | None = None,
+        config: Any = None,
+    ) -> dict[str, Any]:
+        return validate_content(raw, strict=False, project_slug=project_slug, config=config)
 
     def route(self, request: Request, project: Project, path: str, db: Session):
         if path.strip("/") == "admin":
@@ -138,8 +165,20 @@ class ResumeApp:
         return None
 
     def render(self, request: Request, project: Project, db: Session) -> HTMLResponse:
+        config = request.app.state.config
+        session = read_session(config, request)
+        is_admin = bool(session and session.get("admin") is True)
+        resume = validate_content(project.content, project_slug=project.slug, config=config)
+        ext = build_render_bundle(
+            "resume",
+            project,
+            resume,
+            target="resume",
+            config=config,
+            is_admin=is_admin,
+        )
         return templates.TemplateResponse(
             request,
             "resume.html",
-            {"project": project, "resume": validate_content(project.content)},
+            {"project": project, "resume": resume, "ext": ext},
         )

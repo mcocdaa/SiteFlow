@@ -1,0 +1,1340 @@
+.sf-mascot {
+  --mascot-shell: #4f46e5;
+  --mascot-ear: #4338ca;
+  --mascot-ear-in: #c7d2fe;
+  --mascot-visor: #1e1b4b;
+  --mascot-eye: #38bdf8;
+  --mascot-blush: #f472b6;
+  --mascot-gem: #fde047;
+  --mascot-whale: #2563eb;
+  --mascot-whale-deep: #1d4ed8;
+  --mascot-whale-belly: #e0f2fe;
+  --mascot-slime: #38bdf8;
+  --mascot-slime-core: #bae6fd;
+  --mascot-vocaloid-eye: #e11d48;
+  --mascot-chat-user-bg: #4f46e5;
+  --mascot-chat-user-fg: #ffffff;
+  position: fixed;
+  bottom: 18px;
+  z-index: 45;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: none;
+}
+
+.sf-mascot-right {
+  right: 20px;
+}
+
+.sf-mascot-left {
+  left: 20px;
+}
+
+.sf-mascot.has-chat-dock {
+  bottom: 58px;
+}
+
+.sf-mascot.has-chat-dock.is-collapsed {
+  bottom: 18px;
+}
+
+.sf-mascot.is-positioned,
+.sf-mascot.has-chat-dock.is-positioned,
+.sf-mascot.has-chat-dock.is-collapsed.is-positioned {
+  right: auto;
+  bottom: auto;
+}
+
+.sf-mascot-theme-sakura {
+  --mascot-shell: #ec4899;
+  --mascot-ear: #db2777;
+  --mascot-ear-in: #fbcfe8;
+  --mascot-visor: #3b0724;
+  --mascot-eye: #f9a8d4;
+  --mascot-blush: #fda4af;
+  --mascot-gem: #fef08a;
+  --mascot-whale: #3b82f6;
+  --mascot-whale-deep: #2563eb;
+  --mascot-whale-belly: #fdf2f8;
+  --mascot-slime: #f472b6;
+  --mascot-slime-core: #fce7f3;
+  --mascot-vocaloid-eye: #db2777;
+  --mascot-chat-user-bg: #db2777;
+}
+
+.sf-mascot-theme-mint {
+  --mascot-shell: #10b981;
+  --mascot-ear: #059669;
+  --mascot-ear-in: #a7f3d0;
+  --mascot-visor: #052e23;
+  --mascot-eye: #5eead4;
+  --mascot-blush: #fb7185;
+  --mascot-gem: #fde68a;
+  --mascot-whale: #0284c7;
+  --mascot-whale-deep: #0369a1;
+  --mascot-whale-belly: #ecfdf5;
+  --mascot-slime: #2dd4bf;
+  --mascot-slime-core: #ccfbf1;
+  --mascot-vocaloid-eye: #059669;
+  --mascot-chat-user-bg: #059669;
+}
+
+.sf-mascot-theme-mono {
+  --mascot-shell: #334155;
+  --mascot-ear: #1e293b;
+  --mascot-ear-in: #cbd5e1;
+  --mascot-visor: #0f172a;
+  --mascot-eye: #f8fafc;
+  --mascot-blush: #94a3b8;
+  --mascot-gem: #e2e8f0;
+  --mascot-whale: #334155;
+  --mascot-whale-deep: #1e293b;
+  --mascot-whale-belly: #f1f5f9;
+  --mascot-slime: #64748b;
+  --mascot-slime-core: #e2e8f0;
+  --mascot-vocaloid-eye: #334155;
+  --mascot-chat-user-bg: #334155;
+}
+
+.sf-mascot-bubble {
+  position: absolute;
+  bottom: calc(100% + 10px);
+  top: auto;
+  left: 50%;
+  right: auto;
+  box-sizing: border-box;
+  pointer-events: auto;
+  width: max-content;
+  max-width: min(260px, calc(100vw - 40px));
+  padding: 9px 13px;
+  border-radius: 13px;
+  background: var(--surface, #ffffff);
+  color: var(--text, #0f172a);
+  border: 1px solid var(--border, #e2e8f0);
+  box-shadow: 0 10px 28px -6px rgba(15, 23, 42, .14), 0 2px 6px rgba(15, 23, 42, .06);
+  font-size: 13px;
+  line-height: 1.5;
+  word-break: break-word;
+  z-index: 46;
+  opacity: 1;
+  translate: 0 0;
+  visibility: visible;
+  transform: translateX(calc(-50% + var(--sf-bubble-shift, 0px)));
+  transition: opacity .28s ease, translate .28s ease, visibility 0s linear 0s, display .28s ease;
+  transition-behavior: allow-discrete;
+}
+
+.sf-mascot-bubble.is-rich {
+  min-width: 156px;
+  max-width: min(332px, calc(100vw - 40px));
+  padding: 10px 13px;
+}
+
+.sf-mascot-bubble.bubble-below {
+  top: calc(100% + 10px);
+  bottom: auto;
+}
+
+@starting-style {
+  .sf-mascot-bubble {
+    opacity: 0;
+    translate: 0 6px;
+  }
+
+  .sf-mascot-bubble.bubble-below {
+    translate: 0 -6px;
+  }
+}
+
+.sf-mascot-bubble.is-faded {
+  opacity: 0;
+  translate: 0 6px;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .38s ease, translate .38s ease, visibility 0s linear .38s;
+}
+
+.sf-mascot-bubble.is-faded::before {
+  pointer-events: none;
+}
+
+.sf-mascot-bubble.bubble-below.is-faded {
+  translate: 0 -6px;
+}
+
+.sf-mascot-bubble[hidden] {
+  display: none;
+  opacity: 0;
+  translate: 0 6px;
+}
+
+.sf-mascot-bubble.bubble-below[hidden] {
+  translate: 0 -6px;
+}
+
+.sf-mascot-bubble::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -12px;
+  height: 12px;
+  pointer-events: auto;
+}
+
+.sf-mascot-bubble.bubble-below::before {
+  top: -12px;
+  bottom: auto;
+}
+
+.sf-mascot-bubble::after {
+  content: "";
+  position: absolute;
+  bottom: -6px;
+  left: var(--sf-bubble-arrow-x, 50%);
+  right: auto;
+  width: 10px;
+  height: 10px;
+  background: var(--surface, #ffffff);
+  border-right: 1px solid var(--border, #e2e8f0);
+  border-bottom: 1px solid var(--border, #e2e8f0);
+  transform: translateX(-50%) rotate(45deg);
+  pointer-events: none;
+}
+
+.sf-mascot-bubble.bubble-below::after {
+  top: -6px;
+  bottom: auto;
+  border-right: 0;
+  border-bottom: 0;
+  border-left: 1px solid var(--border, #e2e8f0);
+  border-top: 1px solid var(--border, #e2e8f0);
+}
+
+.sf-mascot-bubble-body {
+  max-height: min(320px, 46vh);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border, #cbd5e1) transparent;
+}
+
+.sf-mascot-bubble-body::-webkit-scrollbar,
+.sf-mascot-thinking-body::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+
+.sf-mascot-bubble-body::-webkit-scrollbar-track,
+.sf-mascot-thinking-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.sf-mascot-bubble-body::-webkit-scrollbar-thumb,
+.sf-mascot-thinking-body::-webkit-scrollbar-thumb {
+  background: var(--border, #cbd5e1);
+  border-radius: 99px;
+}
+
+.sf-mascot-tool-inline {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 7px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.4;
+  color: var(--mascot-shell);
+  background: color-mix(in srgb, var(--mascot-shell) 10%, transparent);
+  animation: sfMascotPulse 1.4s ease-in-out infinite;
+}
+
+.sf-mascot-tool-inline[hidden],
+.sf-mascot-bubble-pending[hidden],
+.sf-mascot-error-inline[hidden] {
+  display: none;
+}
+
+.sf-mascot-bubble-pending {
+  display: inline-block;
+  letter-spacing: 2px;
+  color: var(--text-muted, #64748b);
+  font-size: 13px;
+  line-height: 1.4;
+  animation: sfMascotPulse 1.1s ease-in-out infinite;
+}
+
+.sf-mascot-error-inline {
+  font-size: 12px;
+  line-height: 1.45;
+  color: #dc2626;
+}
+
+@media (prefers-color-scheme: dark) {
+  .sf-mascot-error-inline {
+    color: #fca5a5;
+  }
+}
+
+:root[data-theme="dark"] .sf-mascot-error-inline,
+[data-theme="dark"] .sf-mascot-error-inline {
+  color: #fca5a5;
+}
+
+:root[data-theme="light"] .sf-mascot-error-inline,
+[data-theme="light"] .sf-mascot-error-inline {
+  color: #dc2626;
+}
+
+.sf-mascot-thinking {
+  margin: 0;
+  padding: 5px 8px 5px 9px;
+  border-left: 2px solid var(--border, #cbd5e1);
+  border-radius: 0 7px 7px 0;
+  background: color-mix(in srgb, var(--text-muted, #64748b) 6%, transparent);
+  color: var(--text-muted, #64748b);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.sf-mascot-thinking-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  color: var(--text-muted, #64748b);
+  font-size: 11.5px;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.sf-mascot-thinking-summary::-webkit-details-marker {
+  display: none;
+}
+
+.sf-mascot-thinking-ico,
+.sf-mascot-thinking-chev {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sf-mascot-thinking-chev {
+  transition: transform .16s ease;
+}
+
+.sf-mascot-thinking[open] .sf-mascot-thinking-chev {
+  transform: rotate(90deg);
+}
+
+.sf-mascot-thinking-body {
+  margin-top: 5px;
+  max-height: 150px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-muted, #64748b);
+  font-size: 12px;
+  line-height: 1.55;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border, #cbd5e1) transparent;
+}
+
+.sf-mascot-md {
+  min-width: 0;
+  word-break: break-word;
+  font-size: 13px;
+  line-height: 1.56;
+  color: var(--text, #0f172a);
+}
+
+.sf-mascot-md:empty {
+  display: none;
+}
+
+.sf-mascot-md p {
+  margin: 0 0 7px;
+}
+
+.sf-mascot-md p:last-child {
+  margin-bottom: 0;
+}
+
+.sf-mascot-md .sf-md-h {
+  font-weight: 600;
+  color: var(--text, #0f172a);
+  margin: 8px 0 4px;
+  line-height: 1.38;
+}
+
+.sf-mascot-md .sf-md-h:first-child {
+  margin-top: 0;
+}
+
+.sf-mascot-md .sf-md-h-1 {
+  font-size: 14.5px;
+}
+
+.sf-mascot-md .sf-md-h-2 {
+  font-size: 13.5px;
+}
+
+.sf-mascot-md .sf-md-h-3,
+.sf-mascot-md .sf-md-h-4 {
+  font-size: 13px;
+}
+
+.sf-mascot-md ul,
+.sf-mascot-md ol {
+  margin: 0 0 7px;
+  padding-left: 18px;
+}
+
+.sf-mascot-md ul:last-child,
+.sf-mascot-md ol:last-child {
+  margin-bottom: 0;
+}
+
+.sf-mascot-md li {
+  margin: 2px 0;
+}
+
+.sf-mascot-md blockquote {
+  margin: 6px 0;
+  padding: 4px 10px;
+  border-left: 2.5px solid var(--mascot-shell);
+  border-radius: 0 6px 6px 0;
+  background: color-mix(in srgb, var(--mascot-shell) 6%, transparent);
+  color: var(--text-muted, #64748b);
+}
+
+.sf-mascot-md pre.sf-md-pre {
+  margin: 6px 0;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--bg-hover, #f1f5f9);
+  border: 1px solid var(--border, #e2e8f0);
+  overflow-x: auto;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.sf-mascot-md code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11.5px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: var(--bg-hover, #f1f5f9);
+  border: 1px solid var(--border, #e2e8f0);
+}
+
+.sf-mascot-md pre.sf-md-pre code {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font-size: inherit;
+}
+
+.sf-mascot-md a {
+  color: var(--mascot-shell);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+
+.sf-mascot-md strong {
+  font-weight: 600;
+}
+
+.sf-mascot-md hr.sf-md-hr {
+  border: 0;
+  border-top: 1px solid var(--border, #e2e8f0);
+  margin: 8px 0;
+}
+
+.sf-mascot-stage {
+  position: relative;
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+
+.sf-mascot.has-chat-dock .sf-mascot-stage {
+  padding-bottom: 10px;
+  margin-bottom: -10px;
+}
+
+.sf-mascot.has-chat-dock.is-collapsed .sf-mascot-stage {
+  padding-bottom: 0;
+  margin-bottom: 0;
+}
+
+.sf-mascot-tools {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  align-self: center;
+  margin-inline: auto;
+  gap: 6px;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity .15s ease, transform .15s ease;
+}
+
+.sf-mascot:hover .sf-mascot-tools,
+.sf-mascot:focus-within .sf-mascot-tools {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.sf-mascot-act,
+.sf-mascot-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border-radius: 99px;
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--surface, #ffffff);
+  color: var(--text-muted, #64748b);
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, .08);
+  transition: color .15s ease, border-color .15s ease, background .15s ease, transform .15s ease;
+}
+
+.sf-mascot-act[hidden],
+.sf-mascot-pill[hidden] {
+  display: none;
+}
+
+.sf-mascot-ico-zoom-in,
+.sf-mascot-ico-zoom-out {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.sf-mascot-ico-zoom-in[hidden],
+.sf-mascot-ico-zoom-out[hidden] {
+  display: none;
+}
+
+.sf-mascot.is-zoomed .sf-mascot-ico-zoom-in {
+  display: none;
+}
+
+.sf-mascot.is-zoomed .sf-mascot-ico-zoom-out {
+  display: inline-flex;
+}
+
+.sf-mascot-act:hover,
+.sf-mascot-pill:hover {
+  color: var(--mascot-shell);
+  border-color: var(--mascot-shell);
+  transform: translateY(-1px);
+}
+
+.sf-mascot-pill {
+  width: 40px;
+  height: 40px;
+  color: var(--mascot-shell);
+}
+
+.sf-mascot-avatar {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transform-origin: center bottom;
+  transition: transform .18s ease;
+  user-select: none;
+}
+
+.sf-mascot-avatar .sf-mascot-svg {
+  width: 92px;
+  height: 92px;
+}
+
+.sf-mascot-avatar .sf-mascot-svg,
+.sf-mascot-avatar .sf-mascot-custom-img {
+  transition: width .3s cubic-bezier(.34, 1.56, .64, 1), height .3s cubic-bezier(.34, 1.56, .64, 1), filter .22s ease;
+}
+
+.sf-mascot.is-zoomed .sf-mascot-avatar .sf-mascot-svg,
+.sf-mascot.is-zoomed .sf-mascot-avatar .sf-mascot-custom-img {
+  width: 132px;
+  height: 132px;
+}
+
+.sf-mascot-fx {
+  position: absolute;
+  pointer-events: none;
+}
+
+.sf-mascot-fx-think {
+  top: 30px;
+  right: -4px;
+  display: inline-flex;
+  align-items: flex-end;
+  gap: 3px;
+  opacity: 0;
+  transform: translateY(4px) scale(0.85);
+  transition: opacity .16s ease, transform .16s ease;
+}
+
+.sf-mascot.is-thinking .sf-mascot-fx-think {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.sf-mascot-fx-think span {
+  display: block;
+  border-radius: 999px;
+  background: var(--mascot-eye, #38bdf8);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, .16);
+  animation: sfMascotFxDot 1.15s ease-in-out infinite;
+}
+
+.sf-mascot-fx-think span:nth-child(1) {
+  width: 4px;
+  height: 4px;
+  animation-delay: 0s;
+}
+
+.sf-mascot-fx-think span:nth-child(2) {
+  width: 5px;
+  height: 5px;
+  animation-delay: .18s;
+}
+
+.sf-mascot-fx-think span:nth-child(3) {
+  width: 6px;
+  height: 6px;
+  animation-delay: .36s;
+}
+
+.sf-mascot-fx-speak {
+  top: 32px;
+  right: -2px;
+  display: inline-flex;
+  align-items: center;
+  gap: 2.5px;
+  height: 14px;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity .15s ease, transform .15s ease;
+}
+
+.sf-mascot.is-speaking .sf-mascot-fx-speak {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.sf-mascot-fx-speak span {
+  display: block;
+  width: 3px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--mascot-shell, #4f46e5);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, .14);
+  animation: sfMascotFxWave .62s ease-in-out infinite;
+}
+
+.sf-mascot-fx-speak span:nth-child(1) {
+  height: 7px;
+  animation-delay: 0s;
+}
+
+.sf-mascot-fx-speak span:nth-child(2) {
+  height: 12px;
+  animation-delay: .14s;
+}
+
+.sf-mascot-fx-speak span:nth-child(3) {
+  height: 8px;
+  animation-delay: .28s;
+}
+
+.sf-mascot-draggable [data-mascot-drag-handle] {
+  touch-action: none;
+  cursor: grab;
+}
+
+.sf-mascot.is-dragging {
+  user-select: none;
+}
+
+.sf-mascot.is-dragging [data-mascot-drag-handle] {
+  cursor: grabbing;
+}
+
+.sf-mascot.is-dragging .sf-mascot-avatar {
+  transform: scale(1.05);
+}
+
+.sf-mascot.is-dragging .sf-mascot-bubble,
+.sf-mascot.is-dragging .sf-mascot-dock {
+  transition: none;
+}
+
+.sf-mascot-avatar:hover {
+  transform: translateY(-3px);
+}
+
+.sf-mascot:not(.is-dragging) .sf-mascot-avatar:active {
+  transform: translateY(2px) scale(0.92);
+}
+
+.sf-mascot.is-bouncing .sf-mascot-avatar {
+  animation: sfMascotBounce .62s cubic-bezier(.22, 1, .36, 1);
+}
+
+.sf-mascot-dock {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  right: auto;
+  margin-top: 0;
+  box-sizing: border-box;
+  width: 148px;
+  max-width: calc(100vw - 40px);
+  display: flex;
+  align-items: flex-end;
+  gap: 3px;
+  padding: 4px 5px 4px 10px;
+  border-radius: 14px;
+  border: 1px solid var(--border, #e2e8f0);
+  background: var(--surface, #ffffff);
+  box-shadow: 0 8px 22px -6px rgba(15, 23, 42, .14), 0 2px 6px rgba(15, 23, 42, .06);
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  translate: 0 -6px;
+  scale: 0.97;
+  transform: translateX(calc(-50% + var(--sf-dock-shift, 0px)));
+  transform-origin: top center;
+  transition: opacity .18s ease, translate .18s cubic-bezier(.22, 1, .36, 1), scale .18s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .18s, width .2s cubic-bezier(.22, 1, .36, 1), transform .2s cubic-bezier(.22, 1, .36, 1), border-color .15s ease, box-shadow .15s ease;
+}
+
+.sf-mascot-dock::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -12px;
+  height: 12px;
+}
+
+.sf-mascot.is-dock-open .sf-mascot-dock,
+.sf-mascot:hover .sf-mascot-dock,
+.sf-mascot-dock:hover,
+.sf-mascot-dock:focus-within,
+.sf-mascot.is-streaming .sf-mascot-dock,
+.sf-mascot.is-thinking .sf-mascot-dock,
+.sf-mascot.is-dock-dirty .sf-mascot-dock {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  translate: 0 0;
+  scale: 1;
+  transition-delay: 0s;
+}
+
+.sf-mascot-dock:focus-within,
+.sf-mascot.is-dock-dirty .sf-mascot-dock,
+.sf-mascot.is-streaming .sf-mascot-dock {
+  width: min(268px, calc(100vw - 40px));
+}
+
+.sf-mascot-dock:focus-within {
+  border-color: var(--mascot-shell);
+  box-shadow: 0 10px 26px -6px rgba(15, 23, 42, .18), 0 0 0 2px color-mix(in srgb, var(--mascot-shell) 18%, transparent);
+}
+
+.sf-mascot-dock-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  min-height: 26px;
+  max-height: 88px;
+  padding: 3px 0;
+  border: 0;
+  background: transparent;
+  color: var(--text, #0f172a);
+  font: inherit;
+  font-size: 12.5px;
+  line-height: 1.45;
+  resize: none;
+  outline: none;
+}
+
+.sf-mascot-dock-input::placeholder {
+  color: var(--text-muted, #64748b);
+}
+
+.sf-mascot-dock-reset {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  margin-bottom: 1px;
+  padding: 0;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--text-muted, #64748b);
+  opacity: .55;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity .15s ease, background .15s ease, color .15s ease;
+}
+
+.sf-mascot-dock-reset:hover {
+  opacity: 1;
+  background: var(--bg-hover, #f1f5f9);
+  color: var(--text, #0f172a);
+}
+
+.sf-mascot-dock-reset.has-context {
+  opacity: 1;
+  color: var(--mascot-shell);
+  background: color-mix(in srgb, var(--mascot-shell) 10%, transparent);
+}
+
+.sf-mascot-dock-reset.has-context:hover {
+  background: color-mix(in srgb, var(--mascot-shell) 18%, transparent);
+}
+
+.sf-mascot-dock-send,
+.sf-mascot-dock-stop {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: opacity .15s ease, transform .15s ease;
+}
+
+.sf-mascot-dock-send {
+  background: var(--mascot-shell);
+  color: var(--mascot-chat-user-fg);
+}
+
+.sf-mascot-dock-send:hover:not(:disabled) {
+  opacity: .92;
+  transform: translateY(-1px);
+}
+
+.sf-mascot-dock-send:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.sf-mascot-dock-stop {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+.sf-mascot-dock-stop:hover {
+  opacity: .92;
+}
+
+.sf-mascot-dock-send[hidden],
+.sf-mascot-dock-stop[hidden] {
+  display: none;
+}
+
+.sf-mascot.is-collapsed .sf-mascot-bubble,
+.sf-mascot.is-collapsed .sf-mascot-tools,
+.sf-mascot.is-collapsed .sf-mascot-avatar,
+.sf-mascot.is-collapsed .sf-mascot-fx,
+.sf-mascot.is-collapsed .sf-mascot-dock {
+  display: none;
+}
+
+.sf-mascot-custom-img {
+  width: 76px;
+  height: 76px;
+  object-fit: contain;
+  display: block;
+  border-radius: 18px;
+  filter: drop-shadow(0 6px 14px rgba(15, 23, 42, .16));
+  transform-origin: center bottom;
+  animation: sfMascotFloat 3.2s ease-in-out infinite;
+  pointer-events: none;
+  user-select: none;
+}
+
+.sf-mascot-svg {
+  display: block;
+  overflow: visible;
+  filter: drop-shadow(0 6px 14px rgba(15, 23, 42, .16));
+  pointer-events: none;
+}
+
+.sf-mascot-sprite-svg {
+  object-fit: contain;
+  display: block;
+  transform-origin: center bottom;
+  animation: sfMascotFloat 3.6s ease-in-out infinite;
+  user-select: none;
+}
+
+.sf-mascot-sprite-svg.is-pose-swapping {
+  animation: sfMascotPoseIn .26s ease-out, sfMascotFloat 3.6s ease-in-out .26s infinite;
+}
+
+.sf-mascot-shadow {
+  fill: rgba(15, 23, 42, .16);
+}
+
+.sf-mascot-body-group {
+  animation: sfMascotFloat 3.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.sf-mascot.is-thinking .sf-mascot-sprite-svg,
+.sf-mascot.is-thinking .sf-mascot-body-group,
+.sf-mascot.is-thinking .sf-mascot-custom-img {
+  animation: sfMascotThinkBob 1.6s ease-in-out infinite;
+}
+
+.sf-mascot.is-thinking .sf-mascot-sprite-svg,
+.sf-mascot.is-thinking .sf-mascot-svg,
+.sf-mascot.is-thinking .sf-mascot-custom-img {
+  filter: drop-shadow(0 6px 16px rgba(56, 189, 248, .38));
+}
+
+.sf-mascot.is-speaking .sf-mascot-sprite-svg,
+.sf-mascot.is-speaking .sf-mascot-body-group,
+.sf-mascot.is-speaking .sf-mascot-custom-img {
+  animation: sfMascotSpeak .54s ease-in-out infinite;
+}
+
+.sf-mascot.has-pose-thinking .sf-mascot-fx-think {
+  display: none;
+}
+
+.sf-mascot.has-pose-thinking.is-thinking .sf-mascot-sprite-svg {
+  animation: sfMascotPoseFloat 2.4s ease-in-out infinite;
+  filter: drop-shadow(0 6px 16px rgba(56, 189, 248, .38));
+}
+
+.sf-mascot.has-pose-thinking.is-thinking .sf-mascot-sprite-svg.is-pose-swapping {
+  animation: sfMascotPoseIn .26s ease-out, sfMascotPoseFloat 2.4s ease-in-out .26s infinite;
+}
+
+.sf-mascot.has-pose-speaking.is-speaking .sf-mascot-sprite-svg {
+  animation: sfMascotPoseSpeak .62s ease-in-out infinite;
+}
+
+.sf-mascot.has-pose-speaking.is-speaking .sf-mascot-sprite-svg.is-pose-swapping {
+  animation: sfMascotPoseIn .26s ease-out, sfMascotPoseSpeak .62s ease-in-out .26s infinite;
+}
+
+.sf-mascot.has-pose-tap.is-tapping .sf-mascot-sprite-svg {
+  animation: sfMascotFloat 3.6s ease-in-out infinite;
+}
+
+.sf-mascot.has-pose-tap.is-tapping .sf-mascot-sprite-svg.is-pose-swapping {
+  animation: sfMascotPoseIn .26s ease-out, sfMascotFloat 3.6s ease-in-out .26s infinite;
+}
+
+.sf-mascot-slime-group {
+  animation: sfMascotSquish 3.2s ease-in-out infinite;
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+
+.sf-mascot-ear {
+  fill: var(--mascot-ear, #4338ca);
+}
+
+.sf-mascot-ear-l {
+  transform-box: fill-box;
+  transform-origin: bottom right;
+  transition: transform .22s ease;
+}
+
+.sf-mascot-ear-r {
+  transform-box: fill-box;
+  transform-origin: bottom left;
+  transition: transform .22s ease;
+}
+
+.sf-mascot-avatar:hover .sf-mascot-ear-l {
+  transform: rotate(-7deg);
+}
+
+.sf-mascot-avatar:hover .sf-mascot-ear-r {
+  transform: rotate(7deg);
+}
+
+.sf-mascot-ear-inner {
+  fill: var(--mascot-ear-in, #c7d2fe);
+}
+
+.sf-mascot-head {
+  fill: var(--mascot-shell, #4f46e5);
+}
+
+.sf-mascot-visor {
+  fill: var(--mascot-visor, #1e1b4b);
+}
+
+.sf-mascot-eye {
+  fill: var(--mascot-eye, #38bdf8);
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sfMascotBlink 4.8s infinite;
+}
+
+.sf-mascot-dark-eye {
+  fill: #1e293b;
+}
+
+.sf-mascot-skin-dog .sf-mascot-dark-eye {
+  fill: #2d1e17;
+}
+
+.sf-mascot-gemini-eye-l {
+  fill: #38bdf8;
+}
+
+.sf-mascot-gemini-eye-r {
+  fill: #c084fc;
+}
+
+.sf-mascot-vocaloid-eye {
+  fill: var(--mascot-vocaloid-eye, #e11d48);
+}
+
+.sf-mascot-glint {
+  fill: #ffffff;
+}
+
+.sf-mascot-blush {
+  fill: var(--mascot-blush, #f472b6);
+  opacity: .55;
+}
+
+.sf-mascot-smile {
+  stroke: var(--mascot-eye, #38bdf8);
+}
+
+.sf-mascot-collar {
+  fill: var(--mascot-ear, #4338ca);
+}
+
+.sf-mascot-gem {
+  fill: var(--mascot-gem, #fde047);
+}
+
+.sf-mascot-cat-tail {
+  stroke: var(--mascot-ear, #4338ca);
+  transform-box: fill-box;
+  transform-origin: bottom left;
+  animation: sfMascotTailWag 3.2s ease-in-out infinite;
+}
+
+.sf-mascot-dog-tail {
+  transform-box: fill-box;
+  transform-origin: bottom left;
+  animation: sfMascotTailWag 1.8s ease-in-out infinite;
+}
+
+.sf-mascot-whale-body {
+  fill: var(--mascot-whale, #2563eb);
+}
+
+.sf-mascot-whale-belly {
+  fill: var(--mascot-whale-belly, #e0f2fe);
+}
+
+.sf-mascot-whale-tail,
+.sf-mascot-fin {
+  fill: var(--mascot-whale-deep, #1d4ed8);
+}
+
+.sf-mascot-whale-tail {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: sfMascotTailWag 2.8s ease-in-out infinite;
+}
+
+.sf-mascot-fin-l {
+  transform-box: fill-box;
+  transform-origin: right center;
+  animation: sfMascotFinL 2.6s ease-in-out infinite;
+}
+
+.sf-mascot-fin-r {
+  transform-box: fill-box;
+  transform-origin: left center;
+  animation: sfMascotFinR 2.6s ease-in-out infinite;
+}
+
+.sf-mascot-drop {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sfMascotDropFloat 2.8s ease-in-out infinite;
+}
+
+.sf-mascot-drop-2 {
+  animation-delay: .45s;
+}
+
+.sf-mascot-drop-3 {
+  animation-delay: .9s;
+}
+
+.sf-mascot-gemini-tail {
+  transform-box: fill-box;
+  transform-origin: bottom left;
+  animation: sfMascotTailWag 3.4s ease-in-out infinite;
+}
+
+.sf-mascot-sparkle {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: sfMascotTwinkle 2.4s ease-in-out infinite;
+}
+
+.sf-mascot-sparkle-2 {
+  animation-delay: 1.2s;
+}
+
+.sf-mascot-slime-body {
+  fill: var(--mascot-slime, #38bdf8);
+}
+
+.sf-mascot-slime-core {
+  fill: var(--mascot-slime-core, #bae6fd);
+}
+
+.sf-mascot-ponytail {
+  transform-box: fill-box;
+  transform-origin: top right;
+  animation: sfMascotSway 3.4s ease-in-out infinite;
+}
+
+@media (hover: none) {
+  .sf-mascot-tools {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .sf-mascot-dock {
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    translate: 0 0;
+    scale: 1;
+  }
+}
+
+@keyframes sfMascotFloat {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+@keyframes sfMascotPoseIn {
+  from { opacity: .45; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes sfMascotPoseFloat {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-3.5px) rotate(-1.5deg); }
+  50% { transform: translateY(-1px) rotate(0deg); }
+  75% { transform: translateY(-3.5px) rotate(1.5deg); }
+}
+
+@keyframes sfMascotPoseSpeak {
+  0%, 100% { transform: translateY(0) rotate(0deg); }
+  25% { transform: translateY(-4px) rotate(-1.5deg); }
+  55% { transform: translateY(0) rotate(1.5deg); }
+  80% { transform: translateY(-2px) rotate(-0.8deg); }
+}
+
+@keyframes sfMascotThinkBob {
+  0%, 100% { transform: translateY(0) rotate(0deg) scale(1, 1); }
+  25% { transform: translateY(-4px) rotate(-6.5deg) scale(0.97, 1.03); }
+  50% { transform: translateY(-1px) rotate(-2deg) scale(1.02, 0.98); }
+  75% { transform: translateY(-4.5px) rotate(6deg) scale(0.98, 1.025); }
+}
+
+@keyframes sfMascotSpeak {
+  0%, 100% { transform: translateY(0) scale(1, 1) rotate(0deg); }
+  28% { transform: translateY(-5.5px) scale(0.95, 1.06) rotate(-3deg); }
+  56% { transform: translateY(0.5px) scale(1.04, 0.95) rotate(2.5deg); }
+  80% { transform: translateY(-3px) scale(0.98, 1.03) rotate(-1.5deg); }
+}
+
+@keyframes sfMascotFxDot {
+  0%, 100% { transform: translateY(0) scale(0.9); opacity: .55; }
+  50% { transform: translateY(-4px) scale(1.12); opacity: 1; }
+}
+
+@keyframes sfMascotFxWave {
+  0%, 100% { transform: scaleY(0.42); opacity: .68; }
+  50% { transform: scaleY(1.15); opacity: 1; }
+}
+
+@keyframes sfMascotSquish {
+  0%, 100% { transform: scale(1, 1); }
+  50% { transform: scale(1.04, 0.95); }
+}
+
+@keyframes sfMascotBlink {
+  0%, 92%, 100% { transform: scaleY(1); }
+  96% { transform: scaleY(0.12); }
+}
+
+@keyframes sfMascotTailWag {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(9deg); }
+}
+
+@keyframes sfMascotFinL {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(-10deg); }
+}
+
+@keyframes sfMascotFinR {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(10deg); }
+}
+
+@keyframes sfMascotDropFloat {
+  0%, 100% { transform: translateY(0); opacity: .82; }
+  50% { transform: translateY(-3px); opacity: 1; }
+}
+
+@keyframes sfMascotTwinkle {
+  0%, 100% { transform: scale(1); opacity: .88; }
+  50% { transform: scale(0.74); opacity: .45; }
+}
+
+@keyframes sfMascotSway {
+  0%, 100% { transform: rotate(0deg); }
+  50% { transform: rotate(4deg); }
+}
+
+@keyframes sfMascotBounce {
+  0% { transform: translateY(2px) scale(0.92); }
+  30% { transform: translateY(-9px) scale(1.14); }
+  60% { transform: translateY(1px) scale(0.96); }
+  82% { transform: translateY(-2px) scale(1.03); }
+  100% { transform: translateY(0) scale(1); }
+}
+
+@keyframes sfMascotPulse {
+  0%, 100% { opacity: .4; }
+  50% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sf-mascot-body-group,
+  .sf-mascot.is-thinking .sf-mascot-body-group,
+  .sf-mascot.is-speaking .sf-mascot-body-group,
+  .sf-mascot-sprite-svg,
+  .sf-mascot-sprite-svg.is-pose-swapping,
+  .sf-mascot.is-thinking .sf-mascot-sprite-svg,
+  .sf-mascot.is-speaking .sf-mascot-sprite-svg,
+  .sf-mascot.has-pose-thinking.is-thinking .sf-mascot-sprite-svg,
+  .sf-mascot.has-pose-thinking.is-thinking .sf-mascot-sprite-svg.is-pose-swapping,
+  .sf-mascot.has-pose-speaking.is-speaking .sf-mascot-sprite-svg,
+  .sf-mascot.has-pose-speaking.is-speaking .sf-mascot-sprite-svg.is-pose-swapping,
+  .sf-mascot.has-pose-tap.is-tapping .sf-mascot-sprite-svg,
+  .sf-mascot.has-pose-tap.is-tapping .sf-mascot-sprite-svg.is-pose-swapping,
+  .sf-mascot-custom-img,
+  .sf-mascot.is-thinking .sf-mascot-custom-img,
+  .sf-mascot.is-speaking .sf-mascot-custom-img,
+  .sf-mascot-slime-group,
+  .sf-mascot-eye,
+  .sf-mascot-cat-tail,
+  .sf-mascot-dog-tail,
+  .sf-mascot-whale-tail,
+  .sf-mascot-gemini-tail,
+  .sf-mascot-fin-l,
+  .sf-mascot-fin-r,
+  .sf-mascot-drop,
+  .sf-mascot-sparkle,
+  .sf-mascot-ponytail,
+  .sf-mascot.is-bouncing .sf-mascot-avatar,
+  .sf-mascot-fx-think span,
+  .sf-mascot-fx-speak span,
+  .sf-mascot-tool-inline,
+  .sf-mascot-bubble-pending {
+    animation: none;
+  }
+
+  .sf-mascot-bubble,
+  .sf-mascot-bubble.is-faded,
+  .sf-mascot-bubble.bubble-below.is-faded,
+  .sf-mascot-bubble[hidden],
+  .sf-mascot-bubble.bubble-below[hidden] {
+    translate: none;
+  }
+
+  .sf-mascot-bubble {
+    transition: opacity .12s ease, visibility 0s linear 0s, display .12s ease;
+    transition-behavior: allow-discrete;
+  }
+
+  .sf-mascot-bubble.is-faded {
+    transition: opacity .12s ease, visibility 0s linear .12s;
+  }
+
+  @starting-style {
+    .sf-mascot-bubble,
+    .sf-mascot-bubble.bubble-below {
+      opacity: 0;
+      translate: none;
+    }
+  }
+
+  .sf-mascot-dock,
+  .sf-mascot-dock-reset,
+  .sf-mascot-thinking-chev,
+  .sf-mascot-avatar .sf-mascot-svg,
+  .sf-mascot-avatar .sf-mascot-custom-img,
+  .sf-mascot-fx-think,
+  .sf-mascot-fx-speak {
+    transition: none;
+  }
+}
+
+@media (max-width: 768px) {
+  .sf-mascot-hide-mobile {
+    display: none;
+  }
+}
+
+@media print {
+  .sf-mascot {
+    display: none !important;
+  }
+}

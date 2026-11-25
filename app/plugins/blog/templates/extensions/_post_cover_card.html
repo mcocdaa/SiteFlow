@@ -1,0 +1,7 @@
+{% set cover_ctx = ext_ctx if ext_ctx is defined else (ext.contexts["post_cover"] if ext is defined and ext.contexts is defined and "post_cover" in ext.contexts else {}) %}
+{% set cover = cover_ctx.covers.get(post.slug) if cover_ctx and cover_ctx.covers else None %}
+{% if cover and cover.url %}
+<div class="post-cover-thumb {{ cover_ctx.aspect_class }}">
+  <img src="{{ cover.url }}" alt="{{ cover.alt }}" loading="lazy" decoding="async" referrerpolicy="no-referrer">
+</div>
+{% endif %}

@@ -4,8 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{{ post.title if post else '新建文章' }} - {{ project.title }}</title>
-  <link rel="stylesheet" href="/static/css/app.css">
-  <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
+  <script src="{{ static_url('js/theme-init.js') }}"></script>
   <meta name="csrf" content="{{ csrf }}">
 </head>
 <body data-plugin-id="{{ project.id }}" data-preview-url="/projects/{{ project.slug }}/" data-post-slug="{{ post.slug if post else '' }}">
@@ -13,10 +13,10 @@
   <header class="site-header">
     <div class="wrap row-between">
       <div>
-        <p class="crumbs"><a href="/admin" data-i18n="admin.crumb_admin">管理</a>{% if parent %} <span class="muted">/</span> <a href="/admin/projects/{{ parent.id }}" data-i18n-auto>{{ parent.title }}</a>{% endif %} <span class="muted">/</span> <a href="/admin/projects/{{ project.id }}">{{ project.title }}</a> <span class="muted">/</span> <span data-i18n="blog.edit_post">编辑文章</span></p>
-        <p class="brand" data-i18n="blog.edit_post">编辑文章</p>
+        <p class="crumbs"><a href="/admin" data-i18n="admin.crumb_admin">管理</a>{% if parent %} <span class="muted">/</span> <a href="/admin/projects/{{ parent.id }}" data-i18n-auto>{{ parent.title }}</a>{% endif %} <span class="muted">/</span> <a href="/admin/projects/{{ project.id }}" data-i18n-auto>{{ project.title }}</a> <span class="muted">/</span> <span data-i18n="{{ 'blog.edit_post' if post else 'blog.new_post' }}">{{ '编辑文章' if post else '新建文章' }}</span></p>
+        <p class="brand" data-i18n="{{ 'blog.edit_post' if post else 'blog.new_post' }}">{{ '编辑文章' if post else '新建文章' }}</p>
       </div>
-      <div class="row-actions header-actions">
+      <div class="header-actions">
         <a class="btn ghost" href="/admin/projects/{{ project.id }}" data-i18n="blog.back_to_list">文章列表</a>
         <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
         <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
@@ -35,22 +35,28 @@
         <label><span data-i18n="blog.col_date">日期</span><input type="date" name="date" value="{{ post.date if post else '' }}"></label>
         <label class="full"><span data-i18n="blog.col_tags">标签</span><input name="tags" placeholder="逗号分隔" data-i18n-placeholder="blog.tags_hint" value="{{ post.tags | join(', ') if post else '' }}"></label>
         <label class="full"><span data-i18n="blog.col_summary">摘要</span><textarea name="summary" rows="2" maxlength="500">{{ post.summary if post else '' }}</textarea></label>
+        {% if ext_editor is defined and ext_editor %}
+        {% for field in ext_editor.fields | default([]) %}
+        {% include field.template %}
+        {% endfor %}
+        {% endif %}
         <label class="full"><span data-i18n="blog.col_body">正文（Markdown）</span><textarea name="body" class="mono post-editor-body" rows="22" maxlength="200000">{{ post.body if post else '' }}</textarea></label>
       </div>
     </form>
     <div id="post-saved" class="post-saved plugin-block" hidden>
-      {{ icons.icon("check", 32) }}
+      <div class="post-saved-icon">{{ icons.icon("check", 28) }}</div>
       <h2 data-i18n="blog.saved_title">文章已保存</h2>
-      <p id="saved-post-title"></p>
+      <p id="saved-post-title" class="muted"></p>
       <div class="content-choices">
         <a class="btn primary" id="view-post" data-i18n="blog.view_post">查看文章</a>
+        <a class="btn" id="add-another-post" href="/admin/projects/{{ project.id }}/posts/new" data-i18n="blog.continue_add">继续添加文章</a>
         <a class="btn" id="continue-post" data-i18n="blog.continue_edit">继续编辑</a>
         <a class="btn ghost" href="/admin/projects/{{ project.id }}" data-i18n="blog.back_to_list">文章列表</a>
       </div>
     </div>
   </main>
-  <script src="/static/js/i18n.js" defer></script>
-  <script src="/static/js/blog.js" defer></script>
-  <script src="/static/js/admin.js" defer></script>
+  <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  <script src="{{ static_url('js/blog.js') }}" defer></script>
+  <script src="{{ static_url('js/admin.js') }}" defer></script>
 </body>
 </html>

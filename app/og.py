@@ -19,15 +19,124 @@ class OpenGraph:
     image_url: str
 
 
+def _is_public_ip(address: ipaddress.IPv4Address | ipaddress.IPv6Address) -> bool:
+    if isinstance(address, ipaddress.IPv6Address) and address.ipv4_mapped is not None:
+        return _is_public_ip(address.ipv4_mapped)
+    return (
+        address.is_global
+        and not address.is_private
+        and not address.is_loopback
+        and not address.is_link_local
+        and not address.is_multicast
+        and not address.is_reserved
+        and not address.is_unspecified
+    )
+
+
+def _is_blocked_hostname(host: str) -> bool:
+    normalized = host.strip().lower().rstrip(".")
+    return (
+        not normalized
+        or normalized == "localhost"
+        or normalized.endswith((".localhost", ".local", ".internal"))
+    )
+
+
 def _safe_host(url: str) -> tuple[ipaddress.IPv4Address | ipaddress.IPv6Address, str]:
     parsed = urlparse(url)
-    host = parsed.hostname or ""
+    host = (parsed.hostname or "").strip().lower().rstrip(".")
+    if _is_blocked_hostname(host):
+        raise ValueError(f"不安全的目标地址: {host or url}")
+    try:
+        literal = ipaddress.ip_address(host)
+    except ValueError:
+        literal = None
+    if literal is not None:
+        if not _is_public_ip(literal):
+            raise ValueError(f"不安全的目标地址: {host}")
+        return literal, host
     infos = socket.getaddrinfo(host, None)
     addresses = {ipaddress.ip_address(info[4][0]) for info in infos}
+    if not addresses:
+        raise ValueError(f"无法解析目标主机: {host}")
     for address in addresses:
-        if not address.is_global:
+        if not _is_public_ip(address):
             raise ValueError(f"不安全的目标地址: {host}")
     return addresses.pop(), host
+
+
+def validate_public_host(url: str) -> str:
+    raw = url if isinstance(url, str) else ""
+    if any(ord(ch) < 32 or ord(ch) == 127 for ch in raw):
+        raise ValueError("目标地址包含非法控制字符")
+    cleaned = raw.strip()
+    if not cleaned:
+        raise ValueError("目标地址不能为空")
+    parsed = urlparse(cleaned)
+    if parsed.scheme.lower() != "https":
+        raise ValueError("仅支持 HTTPS 目标地址")
+    if parsed.username is not None or parsed.password is not None:
+        raise ValueError("目标地址不允许包含认证信息")
+    host = (parsed.hostname or "").strip().lower().rstrip(".")
+    if _is_blocked_hostname(host):
+        raise ValueError(f"不安全的目标地址: {host or cleaned}")
+    try:
+        _, resolved_host = _safe_host(cleaned)
+    except ValueError:
+        raise
+    except OSError as exc:
+        raise ValueError(f"无法解析目标主机: {host}") from exc
+    return resolved_host
+
+
+def fetch_archive(
+    url: str,
+    *,
+    max_bytes: int = 10 * 1024 * 1024,
+    timeout: float = 15.0,
+) -> bytes:
+    current = url.strip() if isinstance(url, str) else ""
+    for hop in range(_MAX_REDIRECTS + 1):
+        validate_public_host(current)
+        try:
+            with httpx.stream(
+                "GET",
+                current,
+                timeout=timeout,
+                follow_redirects=False,
+                headers={"User-Agent": "SiteFlow/1.0"},
+            ) as response:
+                if response.status_code in (301, 302, 303, 307, 308):
+                    if hop >= _MAX_REDIRECTS:
+                        raise ValueError("下载重定向次数过多")
+                    location = response.headers.get("location", "").strip()
+                    if not location:
+                        raise ValueError("重定向响应缺少目标地址")
+                    current = str(httpx.URL(current).join(location))
+                    continue
+                if response.status_code >= 400:
+                    raise ValueError(f"下载失败（HTTP {response.status_code}）")
+                content_length = response.headers.get("content-length")
+                if content_length and content_length.isdigit() and int(content_length) > max_bytes:
+                    raise ValueError("下载文件超过大小限制")
+                chunks: list[bytes] = []
+                total = 0
+                for chunk in response.iter_bytes(chunk_size=65536):
+                    total += len(chunk)
+                    if total > max_bytes:
+                        raise ValueError("下载文件超过大小限制")
+                    chunks.append(chunk)
+                data = b"".join(chunks)
+                if not data:
+                    raise ValueError("下载内容为空")
+                return data
+        except ValueError:
+            raise
+        except httpx.TimeoutException as exc:
+            raise ValueError("下载超时，请稍后重试") from exc
+        except (httpx.HTTPError, OSError) as exc:
+            raise ValueError("网络请求失败，无法下载目标文件") from exc
+    raise ValueError("下载重定向次数过多")
 
 
 def _stream_bytes(url: str, limit: int, *, allow_truncate: bool, depth: int = 0) -> tuple[bytes, str] | None:
