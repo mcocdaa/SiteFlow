@@ -4,8 +4,9 @@
 {% set link_icon_name = "external-link" if (not icon_overrides or "external-link" in icon_overrides or "link" not in icon_overrides) else "link" %}
 <div class="grid"{% if layout %} data-space-layout="{{ layout }}"{% endif %}>
   {% for project in projects %}
-  <a class="card" href="{{ project.url if project.type == 'link' else '/projects/' + project.slug + '/' }}"
-     {% if project.type == 'link' %}target="_blank" rel="noopener noreferrer"{% endif %}
+  {% set is_direct_link = project.type == 'link' and not project.password_hash %}
+  <a class="card" href="{{ project.url if is_direct_link else '/projects/' + project.slug + '/' }}"
+     {% if is_direct_link %}target="_blank" rel="noopener noreferrer"{% endif %}
      data-slug="{{ project.slug }}" data-title="{{ project.title }}" data-type="{{ project.type }}">
     {% if project.type == 'link' %}<span class="card-external">{{ icons.icon(link_icon_name, 14, icon_overrides) }}</span>{% endif %}
     <div class="cover">

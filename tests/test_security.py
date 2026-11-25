@@ -374,25 +374,26 @@ def test_session_and_project_token_tolerate_minor_clock_skew(monkeypatch) -> Non
     signed = auth._get_serializer(cfg).dumps(
         {"csrf": "csrf-tok", "admin": True, "version": auth.password_version(cfg)}
     )
-    proj_tok = auth.make_project_token(cfg, "demo")
+    proj_hash = auth.hash_project_password("demo-pass")
+    proj_tok = auth.make_project_token(cfg, "demo", proj_hash)
     req = Request({"type": "http", "headers": [(b"cookie", f"{auth.SESSION_COOKIE}={signed}".encode())]})
 
     now["ts"] = t0 - 2.0
     session_ok = auth.read_session(cfg, req)
     assert session_ok is not None and session_ok["csrf"] == "csrf-tok"
-    assert auth.verify_project_token(cfg, "demo", proj_tok) is True
+    assert auth.verify_project_token(cfg, "demo", proj_tok, proj_hash) is True
 
     now["ts"] = t0 - 30.0
     assert auth.read_session(cfg, req) is None
-    assert auth.verify_project_token(cfg, "demo", proj_tok) is False
+    assert auth.verify_project_token(cfg, "demo", proj_tok, proj_hash) is False
 
     now["ts"] = t0 + auth.SESSION_MAX_AGE + 10.0
     assert auth.read_session(cfg, req) is None
-    assert auth.verify_project_token(cfg, "demo", proj_tok) is False
+    assert auth.verify_project_token(cfg, "demo", proj_tok, proj_hash) is False
 
     now["ts"] = t0
     tampered = Request(
         {"type": "http", "headers": [(b"cookie", f"{auth.SESSION_COOKIE}={signed}x".encode())]}
     )
     assert auth.read_session(cfg, tampered) is None
-    assert auth.verify_project_token(cfg, "demo", proj_tok + "x") is False
+    assert auth.verify_project_token(cfg, "demo", proj_tok + "x", proj_hash) is False
