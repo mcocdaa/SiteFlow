@@ -6,10 +6,15 @@
   <title>{{ project.title }}{% if site_title and site_title != project.title %} - {{ site_title }}{% endif %}</title>
   <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
   {% set ext = ext | default({}) %}
+  {% set ext_slots = ext.slots | default({}) %}
+  {% set icon_overrides = ext.icon_overrides | default({}) %}
   {% for href in ext.css_files | default([]) %}
   <link rel="stylesheet" href="{{ href }}">
   {% endfor %}
   <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+  {% if ext.tokens %}
+  <style data-ext-tokens>:root { {% for k, v in ext.tokens.items() %}{{ k }}: {{ v }}; {% endfor %}}</style>
+  {% endif %}
   {% if theme and (theme.accent or theme.radius_card or theme.font_family) %}
   <style>
     :root {
@@ -29,7 +34,7 @@
   </style>
   {% endif %}
 </head>
-<body{% if ext.body_classes %} class="{{ ext.body_classes | join(' ') }}"{% endif %}>
+<body{% if ext.body_classes %} class="{{ ext.body_classes | join(' ') }}"{% endif %}{% if ext.layout %} data-space-layout="{{ ext.layout }}"{% endif %}>
   {% import "icons.html" as icons %}
   {% import "_cards.html" as cards %}
   {% for frag in ext.body_start_fragments | default([]) %}{{ frag }}{% endfor %}
@@ -37,22 +42,32 @@
     <div class="wrap row-between">
       <div>
         <p class="crumbs"><a href="/" data-i18n-auto>{{ site_title }}</a> <span class="muted">/</span> <span data-i18n-auto>{{ project.title }}</span></p>
-        <a class="brand" href="/projects/{{ project.slug }}/" data-i18n-auto>{{ project.title }}</a>
+        <div class="sf-title-row">
+          <a class="brand" href="/projects/{{ project.slug }}/" data-i18n-auto>{{ project.title }}</a>
+          {% for frag in ext_slots.title_deco | default([]) %}{{ frag }}{% endfor %}
+        </div>
         {% if project.description %}<p class="tagline" data-i18n-auto>{{ project.description }}</p>{% endif %}
       </div>
       <div class="header-actions">
+        {% for frag in ext_slots.icons | default([]) %}{{ frag }}{% endfor %}
         <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索" data-i18n-tip="common.search" aria-label="搜索" data-i18n-aria-label="common.search">
-          {{ icons.icon("search", 16) }}
+          {{ icons.icon("search", 16, icon_overrides) }}
         </button>
-        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
-        <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings") }}</a>
+        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe", 16, icon_overrides) }}<span class="lang-label">EN</span></button>
+        <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings", 16, icon_overrides) }}</a>
       </div>
     </div>
+    {% if ext_slots.header %}
+    <div class="wrap sf-slot sf-slot-header">{% for frag in ext_slots.header %}{{ frag }}{% endfor %}</div>
+    {% endif %}
   </header>
   <main class="wrap">
     {% for frag in ext.main_start_fragments | default([]) %}{{ frag }}{% endfor %}
+    {% if ext_slots.aside %}
+    <aside class="sf-slot sf-slot-aside">{% for frag in ext_slots.aside %}{{ frag }}{% endfor %}</aside>
+    {% endif %}
     {% if projects %}
-    {{ cards.cards(projects, hue) }}
+    {{ cards.cards(projects, hue, icon_overrides, ext.layout | default('')) }}
     {% else %}
     <div class="empty">
       <h2 data-i18n="space.empty_title">这个空间还是空的</h2>
@@ -61,10 +76,14 @@
     {% endif %}
   </main>
   <footer class="site-footer">
-    <div class="wrap"><span>Powered by SiteFlow</span></div>
+    <div class="wrap">
+      {% if ext_slots.footer %}<div class="sf-slot sf-slot-footer">{% for frag in ext_slots.footer %}{{ frag }}{% endfor %}</div>{% endif %}
+      <span>Powered by SiteFlow</span>
+    </div>
   </footer>
   {% include "_preview_modal.html" %}
   {% include "_command_palette.html" %}
+  {% for frag in ext_slots.overlay | default([]) %}{{ frag }}{% endfor %}
   {% for frag in ext.body_end_fragments | default([]) %}{{ frag }}{% endfor %}
   <script src="{{ static_url('js/i18n.js') }}" defer></script>
   <script src="{{ static_url('js/preview.js') }}" defer></script>

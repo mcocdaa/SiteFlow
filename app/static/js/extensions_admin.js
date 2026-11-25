@@ -647,7 +647,7 @@
     updateLivePreview();
   }
 
-  var LIVE_PREVIEW_IDS = { space_background: true, resume_style: true };
+  var LIVE_PREVIEW_IDS = { space_background: true, space_layout: true, resume_style: true };
 
   function readDrawerValue(name) {
     if (!drawerBodyEl) return "";
@@ -689,6 +689,31 @@
         cards.appendChild(card);
       }
       stage.appendChild(cards);
+    } else if (item.id === "space_layout") {
+      stage.className = "ext-lp-layout ext-lp-mode-grid ext-lp-tilt-medium";
+      var topbar = document.createElement("div");
+      topbar.className = "ext-lp-layout-bar";
+      var pillA = document.createElement("span");
+      pillA.className = "ext-lp-layout-pill";
+      var pillB = document.createElement("span");
+      pillB.className = "ext-lp-layout-pill";
+      topbar.appendChild(pillA);
+      topbar.appendChild(pillB);
+      stage.appendChild(topbar);
+      var layoutCards = document.createElement("div");
+      layoutCards.className = "ext-lp-layout-cards";
+      for (var k = 0; k < 4; k++) {
+        var lCard = document.createElement("div");
+        lCard.className = "ext-lp-layout-card ext-lp-lc-" + String(k + 1);
+        var thumb = document.createElement("div");
+        thumb.className = "ext-lp-layout-thumb";
+        var caption = document.createElement("span");
+        caption.className = "ext-lp-layout-line";
+        lCard.appendChild(thumb);
+        lCard.appendChild(caption);
+        layoutCards.appendChild(lCard);
+      }
+      stage.appendChild(layoutCards);
     } else {
       stage.className = "ext-lp-resume";
       var paper = document.createElement("div");
@@ -735,7 +760,8 @@
     var box = drawerBodyEl.querySelector("[data-live-preview]");
     if (!box) return;
     var stage = box.lastElementChild;
-    if (box.getAttribute("data-live-preview") === "space_background") {
+    var previewId = box.getAttribute("data-live-preview");
+    if (previewId === "space_background") {
       var preset = String(readDrawerValue("preset") || "none");
       stage.querySelector(".ext-lp-space-layer").className = "ext-lp-space-layer ext-lp-bg-" + preset;
       var img = stage.querySelector(".ext-lp-space-img");
@@ -750,6 +776,18 @@
       var op = parseFloat(readDrawerValue("opacity"));
       img.style.opacity = String(isNaN(op) ? 0.2 : op);
       stage.classList.toggle("is-frosted", Boolean(readDrawerValue("frosted_cards")));
+    } else if (previewId === "space_layout") {
+      var mode = String(readDrawerValue("mode") || "grid");
+      var tilt = String(readDrawerValue("card_tilt") || "medium");
+      var showDeskControls = mode === "desk" && Boolean(readDrawerValue("show_desk_controls"));
+      stage.className = [
+        "ext-lp-layout",
+        "ext-lp-mode-" + mode,
+        "ext-lp-tilt-" + tilt,
+        showDeskControls ? "has-controls" : ""
+      ]
+        .filter(Boolean)
+        .join(" ");
     } else {
       stage.className = [
         "ext-lp-resume",

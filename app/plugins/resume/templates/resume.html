@@ -6,38 +6,53 @@
   <title>{{ resume.basics.name or project.title }}</title>
   <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
   {% set ext = ext | default({}) %}
+  {% set ext_slots = ext.slots | default({}) %}
+  {% set icon_overrides = ext.icon_overrides | default({}) %}
   {% for href in ext.css_files | default([]) %}
   <link rel="stylesheet" href="{{ href }}">
   {% endfor %}
   <script>(function(){try{var t=localStorage.getItem("sf_theme");if(t)document.documentElement.setAttribute("data-theme",t);}catch(e){}})();</script>
+  {% if ext.tokens %}
+  <style data-ext-tokens>:root { {% for k, v in ext.tokens.items() %}{{ k }}: {{ v }}; {% endfor %}}</style>
+  {% endif %}
 </head>
 <body class="resume-body{% for cls in ext.body_classes | default([]) %} {{ cls }}{% endfor %}">
   {% import "icons.html" as icons %}
   {% for frag in ext.body_start_fragments | default([]) %}{{ frag }}{% endfor %}
   <div class="resume-actions">
-    <a class="btn ghost" href="/">{{ icons.icon("arrow-left") }}<span data-i18n="common.back">返回</span></a>
+    <a class="btn ghost" href="/">{{ icons.icon("arrow-left", 16, icon_overrides) }}<span data-i18n="common.back">返回</span></a>
     <span class="actions-right">
-      <button class="btn" onclick="window.print()">{{ icons.icon("printer") }}<span data-i18n="resume.print_pdf">打印 / 导出 PDF</span></button>
-      <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
-      <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings") }}</a>
+      {% for frag in ext_slots.icons | default([]) %}{{ frag }}{% endfor %}
+      <button class="btn" onclick="window.print()">{{ icons.icon("printer", 16, icon_overrides) }}<span data-i18n="resume.print_pdf">打印 / 导出 PDF</span></button>
+      <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe", 16, icon_overrides) }}<span class="lang-label">EN</span></button>
+      <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings", 16, icon_overrides) }}</a>
     </span>
   </div>
+  {% if ext_slots.header %}
+  <div class="resume sf-slot sf-slot-header">{% for frag in ext_slots.header %}{{ frag }}{% endfor %}</div>
+  {% endif %}
   <main class="resume">
     {% for frag in ext.main_start_fragments | default([]) %}{{ frag }}{% endfor %}
+    {% if ext_slots.aside %}
+    <aside class="sf-slot sf-slot-aside">{% for frag in ext_slots.aside %}{{ frag }}{% endfor %}</aside>
+    {% endif %}
     <header class="resume-head">
       {% set avatar = resume.basics.image or project.cover %}
       {% if avatar %}<img class="resume-avatar" src="/media/covers/{{ avatar }}" alt="">{% endif %}
       <div>
-        <h1 data-i18n-auto>{{ resume.basics.name or project.title }}</h1>
+        <div class="sf-title-row">
+          <h1 data-i18n-auto>{{ resume.basics.name or project.title }}</h1>
+          {% for frag in ext_slots.title_deco | default([]) %}{{ frag }}{% endfor %}
+        </div>
         {% if resume.basics.label %}<p class="resume-label" data-i18n-auto>{{ resume.basics.label }}</p>{% endif %}
         {% if resume.basics.summary %}<p class="resume-summary" data-i18n-auto>{{ resume.basics.summary }}</p>{% endif %}
         <ul class="resume-contact">
-          {% if resume.basics.email %}<li>{{ icons.icon("mail", 14) }}<a href="mailto:{{ resume.basics.email }}">{{ resume.basics.email }}</a></li>{% endif %}
-          {% if resume.basics.phone %}<li>{{ icons.icon("phone", 14) }}<span>{{ resume.basics.phone }}</span></li>{% endif %}
-          {% if resume.basics.url %}<li>{{ icons.icon("globe", 14) }}<a href="{{ resume.basics.url }}" target="_blank" rel="noopener">{{ resume.basics.url }}</a></li>{% endif %}
+          {% if resume.basics.email %}<li>{{ icons.icon("mail", 14, icon_overrides) }}<a href="mailto:{{ resume.basics.email }}">{{ resume.basics.email }}</a></li>{% endif %}
+          {% if resume.basics.phone %}<li>{{ icons.icon("phone", 14, icon_overrides) }}<span>{{ resume.basics.phone }}</span></li>{% endif %}
+          {% if resume.basics.url %}<li>{{ icons.icon("globe", 14, icon_overrides) }}<a href="{{ resume.basics.url }}" target="_blank" rel="noopener">{{ resume.basics.url }}</a></li>{% endif %}
           {% set loc = resume.basics.location %}
-          {% if loc.city or loc.region %}<li>{{ icons.icon("map-pin", 14) }}<span><span data-i18n-auto>{{ loc.city }}</span>{% if loc.region %} · <span data-i18n-auto>{{ loc.region }}</span>{% endif %}</span></li>{% endif %}
-          {% for profile in resume.basics.profiles %}{% if profile.url %}<li>{{ icons.icon("link", 14) }}<a href="{{ profile.url }}" target="_blank" rel="noopener">{{ profile.network or profile.username or profile.url }}</a></li>{% endif %}{% endfor %}
+          {% if loc.city or loc.region %}<li>{{ icons.icon("map-pin", 14, icon_overrides) }}<span><span data-i18n-auto>{{ loc.city }}</span>{% if loc.region %} · <span data-i18n-auto>{{ loc.region }}</span>{% endif %}</span></li>{% endif %}
+          {% for profile in resume.basics.profiles %}{% if profile.url %}<li>{{ icons.icon("link", 14, icon_overrides) }}<a href="{{ profile.url }}" target="_blank" rel="noopener">{{ profile.network or profile.username or profile.url }}</a></li>{% endif %}{% endfor %}
         </ul>
       </div>
     </header>
@@ -45,7 +60,7 @@
     {% for section_key, section_title, section_icon in [("work", "工作经历", "briefcase"), ("education", "教育经历", "graduation-cap"), ("projects", "项目", "layers"), ("skills", "技能", "wrench")] %}
     {% if resume[section_key] %}
     <section class="resume-section">
-      <h2>{{ icons.icon(section_icon, 16) }}<span data-i18n="resume.sec_{{ section_key }}">{{ section_title }}</span></h2>
+      <h2>{{ icons.icon(section_icon, 16, icon_overrides) }}<span data-i18n="resume.sec_{{ section_key }}">{{ section_title }}</span></h2>
       {% if section_key == "skills" %}
       <ul class="skill-list">
         {% for item in resume[section_key] %}
@@ -77,7 +92,11 @@
     </section>
     {% endif %}
     {% endfor %}
+    {% if ext_slots.footer %}
+    <footer class="sf-slot sf-slot-footer">{% for frag in ext_slots.footer %}{{ frag }}{% endfor %}</footer>
+    {% endif %}
   </main>
+  {% for frag in ext_slots.overlay | default([]) %}{{ frag }}{% endfor %}
   {% for frag in ext.body_end_fragments | default([]) %}{{ frag }}{% endfor %}
   <script src="{{ static_url('js/i18n.js') }}" defer></script>
   {% for src in ext.js_files | default([]) %}

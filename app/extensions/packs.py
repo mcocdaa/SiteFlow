@@ -14,22 +14,26 @@ from sqlalchemy.orm import Session
 
 from app.config import Config
 from app.extensions.base import (
+    ALLOWED_OVERRIDE_ICONS,
     EXT_ID_RE,
     EXTENSIBLE_TARGETS,
     OFFICIAL_PACK_ID,
     OFFICIAL_PACK_NAME,
     PACK_ID_RE,
+    STRUCTURED_SLOTS,
     BaseExtension,
     ConfigField,
     ConfigOption,
     PageKind,
     SlotKind,
+    StructuredSlotKind,
     TargetType,
     sanitize_bool,
     sanitize_choice,
     sanitize_float,
     sanitize_int,
     sanitize_text,
+    sanitize_theme_tokens,
 )
 from app.models import Project
 from app.og import fetch_archive, validate_public_host
@@ -57,9 +61,23 @@ ALLOWED_ASSET_EXTS = frozenset(
     {".css", ".js", ".svg", ".png", ".jpg", ".jpeg", ".webp", ".gif", ".woff2", ".json"}
 )
 ALLOWED_PACK_FIELD_KINDS = frozenset({"select", "text", "textarea", "number", "range", "boolean"})
-ALLOWED_MOUNT_TAGS = frozenset({"div", "aside", "section"})
-ALLOWED_SLOTS = frozenset({"body_start", "main_start", "body_end", "none"})
+ALLOWED_MOUNT_TAGS = frozenset({"div", "aside", "section", "span"})
+ALLOWED_SLOTS = frozenset(
+    {
+        "body_start",
+        "main_start",
+        "body_end",
+        "header",
+        "aside",
+        "overlay",
+        "footer",
+        "title_deco",
+        "none",
+    }
+)
 ALLOWED_PAGES: tuple[PageKind, ...] = ("list", "post", "space", "resume")
+MAX_THEME_TOKENS = 30
+MAX_ICON_OVERRIDES = 30
 
 _SEMVER_RE = re.compile(r"^[0-9]{1,4}\.[0-9]{1,4}\.[0-9]{1,4}(?:-[a-zA-Z0-9.-]{1,32})?$")
 _ICON_RE = re.compile(r"^[a-z0-9-]{1,32}$")
@@ -102,6 +120,8 @@ class PackExtension(BaseExtension):
         config_schema: tuple[ConfigField, ...],
         defaults: dict[str, Any],
         int_fields: set[str],
+        tokens: dict[str, str] | None = None,
+        icon_overrides: dict[str, str] | None = None,
     ) -> None:
         self.id = f"{pack_id}.{local_id}"
         self.pack_id = pack_id
@@ -126,6 +146,8 @@ class PackExtension(BaseExtension):
         self.config_schema = config_schema
         self._defaults = defaults
         self._int_fields = int_fields
+        self._tokens = dict(tokens) if tokens else {}
+        self._icon_overrides = dict(icon_overrides) if icon_overrides else {}
         self.body_start_template = "extensions/_declarative_widget.html" if slot == "body_start" else None
         self.main_start_template = "extensions/_declarative_widget.html" if slot == "main_start" else None
         self.body_end_template = "extensions/_declarative_widget.html" if slot == "body_end" else None
@@ -219,6 +241,24 @@ class PackExtension(BaseExtension):
             "config": config,
         }
 
+    def theme_tokens(
+        self,
+        page: PageKind,
+        config: dict[str, Any],
+    ) -> dict[str, str]:
+        if page not in self.pages or not self._tokens:
+            return {}
+        return dict(self._tokens)
+
+    def icon_overrides(
+        self,
+        page: PageKind,
+        config: dict[str, Any],
+    ) -> dict[str, str]:
+        if page not in self.pages or not self._icon_overrides:
+            return {}
+        return dict(self._icon_overrides)
+
     def inject_html(
         self,
         *,
@@ -241,6 +281,38 @@ class PackExtension(BaseExtension):
         return self.render_fragment(
             "extensions/_declarative_widget.html",
             {
+                "page": page,
+                "project": project,
+                "content": content,
+                "config": config,
+                "ext_ctx": context,
+            },
+        )
+
+    def inject_slot(
+        self,
+        slot: StructuredSlotKind | SlotKind,
+        page: PageKind,
+        project: Project,
+        content: dict[str, Any],
+        config: dict[str, Any],
+        context: dict[str, Any],
+    ) -> Markup:
+        if slot in ("start", "main_start", "end"):
+            return self.inject_html(
+                slot=slot,
+                page=page,
+                project=project,
+                content=content,
+                config=config,
+                context=context,
+            )
+        if not context.get("active") or slot not in STRUCTURED_SLOTS or slot != self.slot:
+            return Markup("")
+        return self.render_fragment(
+            "extensions/_declarative_widget.html",
+            {
+                "slot": slot,
                 "page": page,
                 "project": project,
                 "content": content,
@@ -357,7 +429,7 @@ def _normalize_asset_rel(raw: object, expected_suffix: str) -> str:
     if not isinstance(raw, str):
         raise PackError("插件资源路径必须是文本", 422)
     cleaned = raw.strip().replace("\\", "/").removeprefix("assets/")
-    if not cleaned or cleaned.startswith("/") or "\x00" in cleaned:
+    if not cleaned or cleaned.startswith("/") or "\x00" in cleaned or ":" in cleaned:
         raise PackError("插件资源路径不合法", 422)
     parts = PurePosixPath(cleaned).parts
     if not parts or any(part in ("", ".", "..") or part.startswith(".") for part in parts):
@@ -366,6 +438,43 @@ def _normalize_asset_rel(raw: object, expected_suffix: str) -> str:
     if not rel.lower().endswith(expected_suffix):
         raise PackError(f"插件资源路径必须以 {expected_suffix} 结尾", 422)
     return rel
+
+
+def _parse_pack_tokens(raw_tokens: object, local_id: str) -> dict[str, str]:
+    if raw_tokens is None:
+        return {}
+    if not isinstance(raw_tokens, dict) or len(raw_tokens) > MAX_THEME_TOKENS:
+        raise PackError(f"插件 {local_id} 的 tokens 必须是对象且不超过 {MAX_THEME_TOKENS} 项", 422)
+    try:
+        return sanitize_theme_tokens(raw_tokens, strict=True)
+    except InvalidContent as exc:
+        raise PackError(f"插件 {local_id} 的 tokens 校验失败：{exc}", 422) from exc
+
+
+def _parse_pack_icon_overrides(raw_overrides: object, local_id: str) -> dict[str, str]:
+    if raw_overrides is None:
+        return {}
+    if not isinstance(raw_overrides, dict) or len(raw_overrides) > MAX_ICON_OVERRIDES:
+        raise PackError(
+            f"插件 {local_id} 的 icon_overrides 必须是对象且不超过 {MAX_ICON_OVERRIDES} 项",
+            422,
+        )
+    out: dict[str, str] = {}
+    for key, raw_path in raw_overrides.items():
+        if not isinstance(key, str) or key.strip() not in ALLOWED_OVERRIDE_ICONS:
+            raise PackError(f"插件 {local_id} 声明了不支持的图标覆盖名称：{key}", 422)
+        if not isinstance(raw_path, str):
+            raise PackError(f"插件 {local_id} 的图标覆盖路径必须是文本", 422)
+        stripped = raw_path.strip()
+        if (
+            stripped.startswith(("/", "\\"))
+            or "://" in stripped
+            or ".." in stripped.replace("\\", "/").split("/")
+        ):
+            raise PackError(f"插件 {local_id} 的图标覆盖路径不合法：{raw_path}", 422)
+        rel = _normalize_asset_rel(stripped, ".svg")
+        out[key.strip()] = rel
+    return out
 
 
 def _default_pages_for_targets(targets: tuple[TargetType, ...]) -> tuple[PageKind, ...]:
@@ -641,6 +750,8 @@ def _validate_plugin_dir(
 
     mount = _validate_mount(manifest.get("mount"), slot)
     normalized_schema, _, _, _ = _parse_config_schema(manifest.get("config_schema"))
+    normalized_tokens = _parse_pack_tokens(manifest.get("tokens"), local_id)
+    normalized_icon_overrides = _parse_pack_icon_overrides(manifest.get("icon_overrides"), local_id)
 
     raw_assets = manifest.get("assets")
     if raw_assets is None:
@@ -691,12 +802,12 @@ def _validate_plugin_dir(
             dst_file.write_bytes(raw_bytes)
             copied_assets[rel_path.as_posix()] = hashlib.sha256(raw_bytes).hexdigest()[:8]
 
-    for rel in (*css_rels, *js_rels):
+    for rel in (*css_rels, *js_rels, *normalized_icon_overrides.values()):
         if rel not in copied_assets:
             raise PackError(f"插件 {local_id} 声明的资源文件不存在：assets/{rel}", 422)
 
     dst_plugin_dir.mkdir(parents=True, exist_ok=True)
-    normalized_manifest = {
+    normalized_manifest: dict[str, Any] = {
         "schema_version": 1,
         "id": local_id,
         "name": name,
@@ -712,6 +823,10 @@ def _validate_plugin_dir(
         "assets": {"css": css_rels, "js": js_rels},
         "config_schema": normalized_schema,
     }
+    if normalized_tokens:
+        normalized_manifest["tokens"] = normalized_tokens
+    if normalized_icon_overrides:
+        normalized_manifest["icon_overrides"] = normalized_icon_overrides
     (dst_plugin_dir / "plugin.json").write_text(
         json.dumps(normalized_manifest, ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -988,6 +1103,31 @@ def _load_pack_extension_from_disk(
             urls.append(f"/media/plugins/{pack_id}/{local_id}/{rel}?v={digest}")
         return tuple(urls)
 
+    def _build_icon_override_urls() -> dict[str, str]:
+        raw_map = manifest.get("icon_overrides")
+        if not isinstance(raw_map, dict) or not assets_dir.is_dir():
+            return {}
+        assets_root = assets_dir.resolve()
+        resolved: dict[str, str] = {}
+        for icon_name, rel in raw_map.items():
+            if not isinstance(icon_name, str) or icon_name not in ALLOWED_OVERRIDE_ICONS:
+                continue
+            if not isinstance(rel, str):
+                continue
+            try:
+                norm_rel = _normalize_asset_rel(rel, ".svg")
+            except PackError:
+                continue
+            file_path = (assets_dir / norm_rel).resolve()
+            if not file_path.is_relative_to(assets_root) or not file_path.is_file():
+                continue
+            try:
+                digest = hashlib.sha256(file_path.read_bytes()).hexdigest()[:8]
+            except OSError:
+                continue
+            resolved[icon_name] = f"/media/plugins/{pack_id}/{local_id}/{norm_rel}?v={digest}"
+        return resolved
+
     return PackExtension(
         pack_id=pack_id,
         pack_name=pack_name,
@@ -1013,6 +1153,8 @@ def _load_pack_extension_from_disk(
         config_schema=schema_fields,
         defaults=defaults,
         int_fields=int_fields,
+        tokens=sanitize_theme_tokens(manifest.get("tokens"), strict=False),
+        icon_overrides=_build_icon_override_urls(),
     )
 
 

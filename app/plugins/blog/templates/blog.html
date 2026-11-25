@@ -6,6 +6,8 @@
   <title>{{ blog.title or project.title }}</title>
   <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
   {% set ext = ext | default({}) %}
+  {% set ext_slots = ext.slots | default({}) %}
+  {% set icon_overrides = ext.icon_overrides | default({}) %}
   {% set has_math = has_math | default(false) %}
   {% if has_math %}
   <link rel="stylesheet" href="{{ static_url('vendor/katex/katex.min.css') }}">
@@ -14,21 +16,34 @@
   <link rel="stylesheet" href="{{ href }}">
   {% endfor %}
   <script src="{{ static_url('js/theme-init.js') }}"></script>
+  {% if ext.tokens %}
+  <style data-ext-tokens>:root { {% for k, v in ext.tokens.items() %}{{ k }}: {{ v }}; {% endfor %}}</style>
+  {% endif %}
 </head>
 <body class="blog-body{% for cls in ext.body_classes | default([]) %} {{ cls }}{% endfor %}">
   {% import "icons.html" as icons %}
   {% for frag in ext.body_start_fragments | default([]) %}{{ frag }}{% endfor %}
   <div class="blog-actions">
-    <a class="btn ghost blog-back-btn" href="/">{{ icons.icon("arrow-left") }}<span data-i18n="common.back">返回</span></a>
+    <a class="btn ghost blog-back-btn" href="/">{{ icons.icon("arrow-left", 16, icon_overrides) }}<span data-i18n="common.back">返回</span></a>
     <span class="actions-right">
-      <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
-      <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings") }}</a>
+      {% for frag in ext_slots.icons | default([]) %}{{ frag }}{% endfor %}
+      <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe", 16, icon_overrides) }}<span class="lang-label">EN</span></button>
+      <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings", 16, icon_overrides) }}</a>
     </span>
   </div>
+  {% if ext_slots.header %}
+  <div class="blog sf-slot sf-slot-header">{% for frag in ext_slots.header %}{{ frag }}{% endfor %}</div>
+  {% endif %}
   <main class="blog">
     {% for frag in ext.main_start_fragments | default([]) %}{{ frag }}{% endfor %}
+    {% if ext_slots.aside %}
+    <aside class="sf-slot sf-slot-aside">{% for frag in ext_slots.aside %}{{ frag }}{% endfor %}</aside>
+    {% endif %}
     <header class="blog-head">
-      <h1 data-i18n-auto>{{ blog.title or project.title }}</h1>
+      <div class="sf-title-row">
+        <h1 data-i18n-auto>{{ blog.title or project.title }}</h1>
+        {% for frag in ext_slots.title_deco | default([]) %}{{ frag }}{% endfor %}
+      </div>
       {% if blog.description %}<p data-i18n-auto>{{ blog.description }}</p>{% endif %}
     </header>
     {% if posts %}
@@ -49,7 +64,7 @@
             {% elif post.summary %}
             <p class="post-summary" data-i18n-auto>{{ post.summary }}</p>
             {% endif %}
-            <span class="post-more"><span data-i18n="blog.read_more">阅读全文</span>{{ icons.icon("arrow-right", 14) }}</span>
+            <span class="post-more"><span data-i18n="blog.read_more">阅读全文</span>{{ icons.icon("arrow-right", 14, icon_overrides) }}</span>
           </div>
         </a>
       </li>
@@ -60,7 +75,11 @@
       <p data-i18n="blog.empty">还没有文章。</p>
     </div>
     {% endif %}
+    {% if ext_slots.footer %}
+    <footer class="sf-slot sf-slot-footer">{% for frag in ext_slots.footer %}{{ frag }}{% endfor %}</footer>
+    {% endif %}
   </main>
+  {% for frag in ext_slots.overlay | default([]) %}{{ frag }}{% endfor %}
   {% for frag in ext.body_end_fragments | default([]) %}{{ frag }}{% endfor %}
   <script src="{{ static_url('js/i18n.js') }}" defer></script>
   {% if has_math %}
