@@ -2,13 +2,14 @@
 
 # SiteFlow
 
-Self-hosted sandboxed gallery & headless deployment portal for HTML reports, static sites, and AI artifacts.
+Self-hosted sandboxed gallery, extensible page platform, and headless deployment portal for HTML reports, static sites, blogs, resumes, and AI artifacts.
 
 [![Family: *Flow](https://img.shields.io/badge/family-*Flow-8A2BE2.svg)](https://github.com/mcocdaa)
 [![CI](https://github.com/mcocdaa/SiteFlow/actions/workflows/ci.yml/badge.svg)](https://github.com/mcocdaa/SiteFlow/actions/workflows/ci.yml)
 [![Release](https://img.shields.io/github/v/release/mcocdaa/SiteFlow)](https://github.com/mcocdaa/SiteFlow/releases)
-[![Python 3.12](https://img.shields.io/badge/python-3.12-blue.svg)](https://www.python.org/)
+[![Python 3.12+](https://img.shields.io/badge/python-3.12+-blue.svg)](https://www.python.org/)
 [![Docker Ready](https://img.shields.io/badge/docker-ready-blue.svg)](Dockerfile)
+[![Plugin Packs](https://img.shields.io/badge/plugins-siteflow--plugins-0EA5E9.svg)](https://github.com/mcocdaa/siteflow-plugins)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 [English](README.md) · [简体中文](README_CN.md)
@@ -17,16 +18,59 @@ Self-hosted sandboxed gallery & headless deployment portal for HTML reports, sta
 
 </div>
 
-## ✨ Highlights
+## Highlights
 
-- **Human via UI, AI via API**: One-command headless `PUT /api/admin/projects/{slug}/deploy` endpoint for AI agents and CI/CD pipelines alongside a full drag-and-drop Admin Console for humans.
-- **Zero-Trust Sandbox & ZipBomb Defense**: Hosted projects render inside a strict opaque-origin CSP sandbox (`allow-scripts` isolated from admin session cookies), backed by a hardened ZIP extractor with 100:1 compression-ratio circuit breakers, inode caps, and CP437/GBK filename transcoding.
-- **Multi-Tier Spaces**: Organize HTML reports, static ZIP sites, external links, resumes, and CommonMark blogs into up to 3 levels of nested Spaces.
-- **Responsive Viewport Modal & `Cmd+K` Palette**: Preview artifacts across desktop (`100%`), tablet (`768px`), and mobile (`375px`) viewports with orientation toggle, LAN QR code debugging, and instant `Cmd+K` / `Ctrl+K` global search.
-- **Procedural Covers, Password Locks & Sparklines**: Deterministic geometric SVG/WebP cover generation per slug, Argon2id per-project password protection (`Path=/projects/{slug}/` scoped cookies), and privacy-first 7-day PV/UV SVG sparklines.
-- **Single-Container Footprint**: FastAPI + SQLite WAL in a <60 MB memory footprint with ETag/304 static caching and wildcard `BASE_DOMAIN` subdomain routing.
+- **Human via UI, AI via API**: Drag-and-drop Admin Console for humans alongside an idempotent `PUT /api/admin/projects/{slug}/deploy` endpoint for AI agents and CI/CD pipelines.
+- **PageSurface Extension Architecture & Layered Inheritance**: Decoupled `PageSurface` contract (`meta / context / slots / tokens / items / capabilities`) with three-tier inheritance (`Site Default → Parent Space → Child Space / Page`), three-state controls (`Inherit / Enable / Off`), one-click `Reset to Default`, parent-space cascade confirmation, secret-safe cross-layer inheritance, and `visitor / plugin / admin` privacy boundaries.
+- **Zero-Build Declarative Plugin Pack Ecosystem**: Subscribe to GitHub plugin repositories (with one-click sync) or import offline ZIP packs—pure declarative CSS/JS/SVG with zero frontend build step and zero server-side code execution. Official pack: [`mcocdaa/siteflow-plugins`](https://github.com/mcocdaa/siteflow-plugins).
+- **Rich Built-in Apps & Interactive Extensions**: Multi-tier Spaces (up to 3 levels, with Grid / Masonry / Polaroid / Draggable Desk layouts, background, banner, and live preview), GFM + offline KaTeX Blogs, auto-saving Resumes with Plugin Privacy Controls, moderated Drift Bottle Spaces, and Mascot v3 with streaming DeepSeek/OpenAI AI chat.
+- **Hardened Zero-Trust Security**: Opaque-origin `CSP: sandbox` for hosted HTML/ZIP artifacts, ZipBomb defense, immediate gate-token invalidation on project password change, locked external links routed through the gate without leaking target URLs, and SSRF-protected outbound requests.
+- **Unified Minimalist UI & Single-Container Footprint**: Pure monochrome SVG icon topbars (zero cartoon emojis), real-time `zh-CN / en-US` switching, dark/light themes, Top Layer (`popover="manual"`) toasts & anti-clipping hover tooltips, and FastAPI + SQLite WAL in a <60 MB footprint.
 
-## 🚀 Quick Start
+## PageSurface Architecture & Plugin Ecosystem
+
+### Layered Inheritance & Privacy Boundaries
+
+SiteFlow separates page types (`space`, `blog`, `resume`, `bottle`) from extensions through the [`PageSurface`](docs/PLUGIN_DESIGN.md) contract:
+
+```text
+Site Default (site_settings)  →  Parent Space (depth < 3)  →  Child Space / Page
+```
+
+- **Three-State Controls**: Each layer sets every applicable extension to **Inherit**, **Enable** (shallow-merged local override), or **Off**, with **Reset to Default** to return to inheritance. When no upstream layer enables an extension, `Inherit` is disabled with an explanatory hover tip. Enabling downward cascading (`cascade`) on a parent space prompts an explicit confirmation modal.
+- **Secret-Safe Cross-Layer Inheritance**: Secret fields (such as AI API keys) are stored only at the layer that configures them, merged server-side for descendants, and never returned in plaintext to browsers or API clients.
+- **Capability Matching & Privacy Audience**: Extensions declare capability requirements (`requires` / `excludes`) instead of hardcoding page types. Data providers filter `PageSurface.context(audience)` across `visitor`, `plugin` (with `ai` kept as a backward-compatible alias), and `admin`—for example, Resumes hide email, phone, and location from plugins and AI by default under **Plugin Privacy Controls**.
+
+### Declarative Plugin Packs (`siteflow-plugins`)
+
+In the Admin Console (`Plugin Sources`), subscribe to any compatible GitHub repository URL or upload an offline `.zip` pack:
+
+- **Official Companion Repository**: [https://github.com/mcocdaa/siteflow-plugins](https://github.com/mcocdaa/siteflow-plugins)
+  - `dafeiyu_theme`: DaFeiYu deep-sea theme pack using CSS variable `tokens`, `icon_overrides`, and `title_deco` slot decorations (enable at Site Default to theme the whole site while allowing individual spaces to opt out).
+  - `reading_progress`, `code_copy_badge`, `space_welcome_badge`, and `resume_print_badge`.
+- **Structured Extension Points**: Supports structured slots (`title_deco`, `header`, `aside`, `overlay`, `footer`), whitelisted CSS design `tokens` (`--accent`, `--radius-card`, `--font-family`, etc.), and validated local SVG `icon_overrides`.
+
+## Built-in Apps & Extensions
+
+| App / Extension | Key Capabilities |
+|-----------------|------------------|
+| **Multi-Tier Spaces (`space`)** | Up to 3 nested levels for HTML reports, static ZIP sites, links, and nested apps. Built-in **Space Layout** extension switches between **Standard Grid**, **Masonry**, **Polaroid**, and **Draggable Desk** (per-space browser-persisted positions with shuffle/reset and tilt controls), alongside **Space Background**, **Announcement Banner**, custom theme controls, and **real-time preview** inside the Admin drawer. |
+| **Markdown + KaTeX Blog (`blog`)** | CommonMark + GFM tables, task lists, footnotes, auto TOC anchors, and **offline vendored KaTeX** math rendering (zero CDN). Dedicated per-post editor with unsaved-change guards, inline error retention, **Post Cover**, and **Post Background** extensions. |
+| **Auto-Saving Resume (`resume`)** | JSON Resume subset with timeline rendering, print/PDF export, **debounced auto-save**, strict length validation (zero silent truncation), avatar preservation on partial updates, **Resume Style** extension with live preview, and **Plugin Privacy Controls**. |
+| **Drift Bottle Space (`bottle`)** | Anonymous message beach powered by generic visitor submission moderation (`visitor_submissions` & `visitor_ip_bans`): **pre-moderation by default**, **throw-one-pick-one** signed visitor credits (excluding own bottles), **per-IP hourly rate limits**, **anti-obfuscation link blocking** + honeypot, and Admin moderation queue with approve/reject/delete, IP-hash ban/unban, and **one-click clear**. |
+| **Mascot v3 (`mascot`)** | 7 pure-local vector characters (Starlight Cat, Shiba Inu, Whale, Twin Cat, Slime, Vocaloid, and **MIT-licensed DaFeiYu 4-pose SVG** `idle / thinking / speaking / tap`) + custom avatar upload (PNG/WebP/sanitized SVG), draggable dock, parameterized rotating tips, **DeepSeek (Anthropic protocol) & OpenAI-compatible streaming AI chat** (with collapsible thinking process and optional web search/URL read/safety check on DeepSeek), **page-type-aware default prompts** (general, resume-specialized, and per-layer custom override), and privacy-isolated resume context via `PageSurface`. |
+| **Preview, Search & Analytics** | Multi-viewport preview modal (desktop `100%` / tablet `768px` / mobile `375px` + orientation toggle + LAN QR code), `Cmd+K` / `Ctrl+K` global search, deterministic procedural SVG covers, ETag/304 caching, `BASE_DOMAIN` wildcard subdomain routing, and privacy-first persistent UTC daily PV/UV SVG sparklines. |
+
+## Security Guardrails
+
+1. **Strict Sandbox & Template CSP**: Hosted `/projects/*` static HTML/ZIP files always serve with opaque-origin `CSP: sandbox` (`PROJECTS_SANDBOX=false` refuses startup); Blog and Drift Bottle templates enforce dedicated strict CSPs, and all template-rendered content stays Jinja auto-escaped.
+2. **Hardened ZIP & SVG Processing**: Rejects path traversal (`..`), absolute paths, symlinks, encrypted entries, inode/size overflows, and 100:1 ZipBomb expansion ratios (with CP437/GBK filename transcoding). Uploaded SVGs and plugin pack SVGs undergo strict sanitization.
+3. **Password Rotation Invalidation**: Changing `ADMIN_PASSWORD` immediately invalidates existing admin sessions (`password_version`); changing a project's password immediately invalidates existing unlock cookies via HMAC `project_password_version` across views, mascot chat, and bottle APIs.
+4. **Locked External Link Gate**: Password-protected external links expose only `/projects/{slug}/` in gallery cards and `/api/search` for visitors, redirecting (`302` with `Cache-Control: no-store`) only after gate verification so the target URL never leaks.
+5. **Safe Headless Redeploy & Outbound SSRF Defense**: Updating an existing project via `/deploy` without specifying `visible` preserves its current visibility (new projects default to visible). All platform outbound fetches (`app/og.py`), plugin pack syncs, and LLM API URLs enforce public-host/private-IP checks, timeouts, and size/redirect caps.
+6. **Visitor Submission Hardening**: Public submission routes (such as Drift Bottle) enforce same-origin validation, default pre-moderation, link/obfuscation blocking, IP-hash rate limiting, and IP ban lists.
+
+## Quick Start
 
 **Option 1 — Docker Compose (Recommended)**
 
@@ -35,35 +79,29 @@ cp .env.example .env   # set ADMIN_PASSWORD
 docker compose up -d --build
 ```
 
-Open `http://127.0.0.1:8000` (Admin console: `/admin`).
+Open `http://127.0.0.1:8000` (Admin Console: `/admin`).
 
-**Option 2 — Local `uv` Run**
+**Option 2 — Local `uv` Development**
 
 ```bash
-ADMIN_PASSWORD=dev COOKIE_SECURE=false uv run uvicorn app.main:app --port 8000
+uv sync --frozen --extra dev
+ADMIN_PASSWORD=dev DATA_DIR=./data COOKIE_SECURE=false \
+  uv run uvicorn app.main:app --reload --port 8000
 ```
 
-## Managing content and writing
+**Run the full local quality gate before submitting changes:**
 
-The admin console and Spaces share one Add Content panel for HTML / ZIP uploads, links, Spaces, resumes,
-and blogs. Select or drop multiple files, see each result, and retry failed files separately.
-Project editors support replacing covers and restoring generated covers; replacements use fresh image URLs.
+```bash
+./scripts/check.sh
+```
 
-Blogs use a post list and a dedicated Markdown editor per post. Empty URL identifiers are generated from
-the title; duplicates are rejected. After saving, view the post, continue editing, or return to the list.
-Save errors remain visible without clearing your input, and leaving with unsaved changes prompts a warning.
+## Headless API Deployment
 
-Statistics use UTC dates. PV counts page views; UV deduplicates IP and browser per day across the site.
-Seven-day UV is the sum of daily UV. Admin visits, embedded previews, and entry redirects are excluded;
-blog post pages are counted. Daily visitor hashes persist across restarts and are retained only for the
-current day. Existing historical counts are not recalculated.
-
-## 🤖 AI / Headless API Deployment
-
-AI agents and CI jobs can publish or update single-file HTML reports and multi-file ZIP bundles idempotently using `SITEFLOW_API_TOKEN` (configured via `.env` or derived automatically from `ADMIN_PASSWORD`):
+AI agents and CI jobs can idempotently publish or update single-file HTML reports and multi-file ZIP sites using `SITEFLOW_API_TOKEN` (set explicitly in `.env` or derived automatically from `ADMIN_PASSWORD` / `SECRET_KEY`):
 
 ```bash
 # Deploy or update a static HTML report or ZIP site
+# Omitting "visible" on updates preserves the existing visibility state
 curl -X PUT http://127.0.0.1:8000/api/admin/projects/my-report/deploy \
   -H "Authorization: Bearer <SITEFLOW_API_TOKEN>" \
   -F "file=@./report.html" \
@@ -75,9 +113,19 @@ curl -H "Authorization: Bearer <SITEFLOW_API_TOKEN>" \
   http://127.0.0.1:8000/api/admin/projects
 ```
 
-## ⚙️ Configuration & Docs
+## Configuration & Docs
 
-See [DESIGN.md](DESIGN.md) for architecture & security internals, and [deploy/README.md](deploy/README.md) for zero-source server bootstrap.
+| Document | Description |
+|----------|-------------|
+| [docs/index.md](docs/index.md) | Documentation directory & entry hub |
+| [docs/PLUGIN_DESIGN.md](docs/PLUGIN_DESIGN.md) | Implemented `PageSurface` contract, layered inheritance & submission architecture |
+| [DESIGN.md](DESIGN.md) · [DESIGN-v2.md](DESIGN-v2.md) | v1/v2 product architecture & security boundaries |
+| [docs/deployment.md](docs/deployment.md) · [deploy/README.md](deploy/README.md) | Docker deployment, reverse proxy, HTTPS & zero-source server bootstrap |
+| [docs/operations.md](docs/operations.md) | Backup, upgrade & troubleshooting runbook |
+| [CHANGELOG.md](CHANGELOG.md) | Release history (Keep a Changelog) |
+| [CONTRIBUTING.md](CONTRIBUTING.md) · [AGENTS.md](AGENTS.md) | Contribution workflow, Git/CI standards, codebase map & security red lines |
+| [SECURITY.md](SECURITY.md) | Private vulnerability reporting policy |
+| [`mcocdaa/siteflow-plugins`](https://github.com/mcocdaa/siteflow-plugins) | Official declarative plugin pack repository (themes, widgets & badges) |
 
 <details>
 <summary>Environment Variables & Nginx Reverse Proxy</summary>
@@ -86,8 +134,9 @@ See [DESIGN.md](DESIGN.md) for architecture & security internals, and [deploy/RE
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `ADMIN_PASSWORD` | *(Required)* | Admin console password; rotating invalidates active sessions |
+| `ADMIN_PASSWORD` | *(Required)* | Admin console password; rotating invalidates active admin sessions |
 | `SITEFLOW_API_TOKEN` | *(Derived)* | Optional explicit Bearer token for headless API deployments |
+| `SECRET_KEY` | *(Auto-generated)* | Optional signing secret; defaults to persistent `DATA_DIR/secret_key` |
 | `SITE_TITLE` | `SiteFlow` | Gallery header title |
 | `SITE_DESCRIPTION` | Default tagline | Gallery subtitle |
 | `MAX_UPLOAD_MB` | `100` | Maximum upload payload size (MB) |
@@ -95,7 +144,7 @@ See [DESIGN.md](DESIGN.md) for architecture & security internals, and [deploy/RE
 | `MAX_ZIP_ENTRIES` | `5000` | Maximum file entries per ZIP archive |
 | `COOKIE_SECURE` | `true` | Keep `true` behind HTTPS; set `false` for local HTTP debugging |
 | `BASE_DOMAIN` | `""` | Optional wildcard subdomain root (e.g., `demo.example.com`) |
-| `DATA_DIR` | `/data` | Persistent directory for SQLite WAL DB, projects, and covers |
+| `DATA_DIR` | `/data` | Persistent directory for SQLite WAL DB, projects, covers & plugin packs |
 | `PROJECTS_SANDBOX` | `true` | Must remain `true` for same-origin opaque sandbox isolation |
 
 ### Nginx Reverse Proxy
@@ -119,6 +168,6 @@ server {
 
 </details>
 
-## 📄 License
+## License
 
 Released under the [MIT License](LICENSE).
