@@ -49,7 +49,11 @@ jobs:
       - run: uv run --extra dev ruff check .
       - run: uv run --extra dev ruff format --check .
       - run: uv run --extra dev mypy app tests
-      - run: node --check app/static/js/*.js
+      - name: JS syntax
+        run: |
+          for script in app/static/js/*.js; do
+            node --check "$script"
+          done
 
   publish:
     name: Publish image to GHCR

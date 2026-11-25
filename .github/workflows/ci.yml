@@ -37,7 +37,10 @@ jobs:
       - name: Type check
         run: uv run --extra dev mypy app tests
       - name: JS syntax
-        run: node --check app/static/js/*.js
+        run: |
+          for script in app/static/js/*.js; do
+            node --check "$script"
+          done
 
   docker:
     name: Docker (buildx + healthz smoke)
