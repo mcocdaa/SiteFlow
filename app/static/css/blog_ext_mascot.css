@@ -100,7 +100,10 @@
 .sf-mascot-bubble {
   position: absolute;
   bottom: calc(100% + 10px);
-  right: 0;
+  top: auto;
+  left: 50%;
+  right: auto;
+  box-sizing: border-box;
   pointer-events: auto;
   width: max-content;
   max-width: min(260px, calc(100vw - 28px));
@@ -114,7 +117,12 @@
   line-height: 1.5;
   word-break: break-word;
   z-index: 46;
-  animation: sfMascotPop .18s ease-out;
+  opacity: 1;
+  translate: 0 0;
+  visibility: visible;
+  transform: translateX(calc(-50% + var(--sf-bubble-shift, 0px)));
+  transition: opacity .28s ease, translate .28s ease, visibility 0s linear 0s, display .28s ease;
+  transition-behavior: allow-discrete;
 }
 
 .sf-mascot-bubble.is-rich {
@@ -123,52 +131,76 @@
   padding: 10px 13px;
 }
 
+.sf-mascot-bubble.bubble-below {
+  top: calc(100% + 10px);
+  bottom: auto;
+}
+
+@starting-style {
+  .sf-mascot-bubble {
+    opacity: 0;
+    translate: 0 6px;
+  }
+
+  .sf-mascot-bubble.bubble-below {
+    translate: 0 -6px;
+  }
+}
+
+.sf-mascot-bubble.is-faded {
+  opacity: 0;
+  translate: 0 6px;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity .38s ease, translate .38s ease, visibility 0s linear .38s;
+}
+
+.sf-mascot-bubble.is-faded::before {
+  pointer-events: none;
+}
+
+.sf-mascot-bubble.bubble-below.is-faded {
+  translate: 0 -6px;
+}
+
 .sf-mascot-bubble[hidden] {
   display: none;
+  opacity: 0;
+  translate: 0 6px;
+}
+
+.sf-mascot-bubble.bubble-below[hidden] {
+  translate: 0 -6px;
+}
+
+.sf-mascot-bubble::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -12px;
+  height: 12px;
+  pointer-events: auto;
+}
+
+.sf-mascot-bubble.bubble-below::before {
+  top: -12px;
+  bottom: auto;
 }
 
 .sf-mascot-bubble::after {
   content: "";
   position: absolute;
   bottom: -6px;
-  right: 41px;
+  left: var(--sf-bubble-arrow-x, 50%);
+  right: auto;
   width: 10px;
   height: 10px;
   background: var(--surface, #ffffff);
   border-right: 1px solid var(--border, #e2e8f0);
   border-bottom: 1px solid var(--border, #e2e8f0);
-  transform: rotate(45deg);
+  transform: translateX(-50%) rotate(45deg);
   pointer-events: none;
-  transition: right .24s ease, left .24s ease;
-}
-
-.sf-mascot.is-zoomed .sf-mascot-bubble::after {
-  right: 61px;
-}
-
-.sf-mascot-bubble.bubble-align-left {
-  left: 0;
-  right: auto;
-}
-
-.sf-mascot-bubble.bubble-align-left::after {
-  left: 41px;
-  right: auto;
-}
-
-.sf-mascot.is-zoomed .sf-mascot-bubble.bubble-align-left::after {
-  left: 61px;
-  right: auto;
-}
-
-.sf-mascot-bubble.bubble-align-right {
-  right: 0;
-  left: auto;
-}
-
-.sf-mascot-bubble.bubble-below {
-  top: calc(100% + 10px);
-  bottom: auto;
 }
 
 .sf-mascot-bubble.bubble-below::after {
@@ -448,9 +480,12 @@
 }
 
 .sf-mascot-tools {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
+  justify-content: center;
+  align-self: center;
+  margin-inline: auto;
+  gap: 6px;
   opacity: 0;
   transform: translateY(4px);
   transition: opacity .15s ease, transform .15s ease;
@@ -652,6 +687,11 @@
   transform: scale(1.05);
 }
 
+.sf-mascot.is-dragging .sf-mascot-bubble,
+.sf-mascot.is-dragging .sf-mascot-dock {
+  transition: none;
+}
+
 .sf-mascot-avatar:hover {
   transform: translateY(-3px);
 }
@@ -667,14 +707,16 @@
 .sf-mascot-dock {
   position: absolute;
   top: calc(100% + 6px);
-  right: 0;
+  left: 50%;
+  right: auto;
   margin-top: 0;
-  width: 224px;
+  box-sizing: border-box;
+  width: 148px;
   max-width: calc(100vw - 24px);
   display: flex;
   align-items: flex-end;
-  gap: 4px;
-  padding: 5px 5px 5px 10px;
+  gap: 3px;
+  padding: 4px 5px 4px 10px;
   border-radius: 14px;
   border: 1px solid var(--border, #e2e8f0);
   background: var(--surface, #ffffff);
@@ -682,9 +724,11 @@
   opacity: 0;
   visibility: hidden;
   pointer-events: none;
-  transform: translateY(-6px) scale(0.97);
-  transform-origin: top right;
-  transition: opacity .18s ease, transform .18s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .18s, width .2s cubic-bezier(.22, 1, .36, 1), border-color .15s ease, box-shadow .15s ease;
+  translate: 0 -6px;
+  scale: 0.97;
+  transform: translateX(calc(-50% + var(--sf-dock-shift, 0px)));
+  transform-origin: top center;
+  transition: opacity .18s ease, translate .18s cubic-bezier(.22, 1, .36, 1), scale .18s cubic-bezier(.22, 1, .36, 1), visibility 0s linear .18s, width .2s cubic-bezier(.22, 1, .36, 1), transform .2s cubic-bezier(.22, 1, .36, 1), border-color .15s ease, box-shadow .15s ease;
 }
 
 .sf-mascot-dock::before {
@@ -694,19 +738,6 @@
   right: 0;
   top: -12px;
   height: 12px;
-}
-
-.sf-mascot-left .sf-mascot-dock,
-.sf-mascot-dock.dock-align-left {
-  left: 0;
-  right: auto;
-  transform-origin: top left;
-}
-
-.sf-mascot-dock.dock-align-right {
-  right: 0;
-  left: auto;
-  transform-origin: top right;
 }
 
 .sf-mascot.is-dock-open .sf-mascot-dock,
@@ -719,12 +750,18 @@
   opacity: 1;
   visibility: visible;
   pointer-events: auto;
-  transform: translateY(0) scale(1);
+  translate: 0 0;
+  scale: 1;
   transition-delay: 0s;
 }
 
+.sf-mascot-dock:focus-within,
+.sf-mascot.is-dock-dirty .sf-mascot-dock,
+.sf-mascot.is-streaming .sf-mascot-dock {
+  width: min(268px, calc(100vw - 24px));
+}
+
 .sf-mascot-dock:focus-within {
-  width: min(280px, calc(100vw - 24px));
   border-color: var(--mascot-shell);
   box-shadow: 0 10px 26px -6px rgba(15, 23, 42, .18), 0 0 0 2px color-mix(in srgb, var(--mascot-shell) 18%, transparent);
 }
@@ -732,9 +769,9 @@
 .sf-mascot-dock-input {
   flex: 1 1 auto;
   min-width: 0;
-  min-height: 28px;
+  min-height: 26px;
   max-height: 88px;
-  padding: 4px 0;
+  padding: 3px 0;
   border: 0;
   background: transparent;
   color: var(--text, #0f172a);
@@ -753,11 +790,12 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 24px;
+  height: 24px;
+  margin-bottom: 1px;
   padding: 0;
   border: 0;
-  border-radius: 8px;
+  border-radius: 7px;
   background: transparent;
   color: var(--text-muted, #64748b);
   opacity: .55;
@@ -787,11 +825,11 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   padding: 0;
   border: 0;
-  border-radius: 9px;
+  border-radius: 8px;
   cursor: pointer;
   flex-shrink: 0;
   transition: opacity .15s ease, transform .15s ease;
@@ -1111,7 +1149,8 @@
     opacity: 1;
     visibility: visible;
     pointer-events: auto;
-    transform: none;
+    translate: 0 0;
+    scale: 1;
   }
 }
 
@@ -1211,11 +1250,6 @@
   100% { transform: translateY(0) scale(1); }
 }
 
-@keyframes sfMascotPop {
-  from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
 @keyframes sfMascotPulse {
   0%, 100% { opacity: .4; }
   50% { opacity: 1; }
@@ -1252,15 +1286,38 @@
   .sf-mascot.is-bouncing .sf-mascot-avatar,
   .sf-mascot-fx-think span,
   .sf-mascot-fx-speak span,
-  .sf-mascot-bubble,
   .sf-mascot-tool-inline,
   .sf-mascot-bubble-pending {
     animation: none;
   }
 
+  .sf-mascot-bubble,
+  .sf-mascot-bubble.is-faded,
+  .sf-mascot-bubble.bubble-below.is-faded,
+  .sf-mascot-bubble[hidden],
+  .sf-mascot-bubble.bubble-below[hidden] {
+    translate: none;
+  }
+
+  .sf-mascot-bubble {
+    transition: opacity .12s ease, visibility 0s linear 0s, display .12s ease;
+    transition-behavior: allow-discrete;
+  }
+
+  .sf-mascot-bubble.is-faded {
+    transition: opacity .12s ease, visibility 0s linear .12s;
+  }
+
+  @starting-style {
+    .sf-mascot-bubble,
+    .sf-mascot-bubble.bubble-below {
+      opacity: 0;
+      translate: none;
+    }
+  }
+
   .sf-mascot-dock,
   .sf-mascot-dock-reset,
-  .sf-mascot-bubble::after,
   .sf-mascot-thinking-chev,
   .sf-mascot-avatar .sf-mascot-svg,
   .sf-mascot-avatar .sf-mascot-custom-img,

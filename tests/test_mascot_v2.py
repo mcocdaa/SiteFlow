@@ -668,3 +668,76 @@ def test_icons_zero_emoji_and_css_checkmark_hygiene() -> None:
             if found:
                 emoji_hits.append((str(path.relative_to(APP_DIR)), lineno, "".join(found)))
     assert emoji_hits == []
+
+
+def test_mascot_ux_tools_centered_dock_clamping_and_ai_fade() -> None:
+    with TestClient(app) as client:
+        csrf = login(client)
+        blog = create_app(client, csrf, "blog", "看板娘交互体验博客").json()["project"]
+        pid, slug = blog["id"], blog["slug"]
+        assert (
+            client.post(
+                f"/api/admin/projects/{pid}/posts",
+                json={"title": "体验验证文章", "slug": "ux-post", "body": "正文内容"},
+                headers=auth_headers(csrf),
+            ).status_code
+            == 200
+        )
+        assert (
+            client.post(
+                f"/api/admin/projects/{pid}/extensions/mascot/install",
+                json={
+                    "enabled": True,
+                    "config": {
+                        "character": "dafeiyu",
+                        "draggable": True,
+                        "position": "right",
+                        "chat_access": "public",
+                        "api_key": "sk-ux-test-key",
+                    },
+                },
+                headers=auth_headers(csrf),
+            ).status_code
+            == 200
+        )
+
+        for url in (f"/projects/{slug}/", f"/projects/{slug}/posts/ux-post"):
+            page = client.get(url)
+            assert page.status_code == 200
+            assert "data-mascot-reset" not in page.text
+            assert "blog.ext.mascot.reset_pos" not in page.text
+            assert "bubble-align-" not in page.text
+            assert "data-mascot-zoom" in page.text
+            assert "data-mascot-top" in page.text
+            assert "data-mascot-toggle" in page.text
+
+    css_text = (APP_DIR / "static" / "css" / "blog_ext_mascot.css").read_text(encoding="utf-8")
+    assert "bubble-align-left" not in css_text
+    assert "bubble-align-right" not in css_text
+    assert "dock-align-left" not in css_text
+    assert "dock-align-right" not in css_text
+    assert "sfMascotPop" not in css_text
+    assert "--sf-bubble-shift" in css_text
+    assert "--sf-bubble-arrow-x" in css_text
+    assert "--sf-dock-shift" in css_text
+    assert "width: 148px;" in css_text
+    assert "width: min(268px, calc(100vw - 24px));" in css_text
+    assert "@starting-style" in css_text
+    assert "transition-behavior: allow-discrete;" in css_text
+    assert ".sf-mascot-bubble.is-faded" in css_text
+    assert ".sf-mascot-bubble::before" in css_text
+
+    js_text = (APP_DIR / "static" / "js" / "blog_ext_mascot.js").read_text(encoding="utf-8")
+    assert "data-mascot-reset" not in js_text
+    assert "clearCustomPosition" not in js_text
+    assert "bubble-align-" not in js_text
+    assert "dock-align-" not in js_text
+    assert "computeCenteredShift" in js_text
+    assert "positionDock" in js_text
+    assert "AI_READ_FADE_DELAY = 8000" in js_text
+    assert "AI_LEAVE_FADE_DELAY = 1600" in js_text
+    assert "revealAiBubble" in js_text
+    assert "ResizeObserver" in js_text
+
+    i18n_text = (APP_DIR / "static" / "js" / "i18n.js").read_text(encoding="utf-8")
+    assert "blog.ext.mascot.reset_pos" not in i18n_text

@@ -13,7 +13,6 @@
   var zoomInIcon = zoomBtn ? zoomBtn.querySelector(".sf-mascot-ico-zoom-in") : null;
   var zoomOutIcon = zoomBtn ? zoomBtn.querySelector(".sf-mascot-ico-zoom-out") : null;
   var topBtn = root.querySelector("[data-mascot-top]");
-  var resetBtn = root.querySelector("[data-mascot-reset]");
   var collapseBtn = root.querySelector("[data-mascot-toggle]");
   var expandBtn = root.querySelector("[data-mascot-expand]");
   var configNode = root.querySelector("[data-mascot-config]");
@@ -117,19 +116,27 @@
   var ZOOM_KEY = "sf_mascot_zoom_" + config.slug;
   var VIEWPORT_MARGIN = 12;
   var DRAG_THRESHOLD = 5;
+  var DOCK_COMPACT_WIDTH = 148;
+  var DOCK_EXPANDED_WIDTH = 268;
+  var AI_READ_FADE_DELAY = 8000;
+  var AI_LEAVE_FADE_DELAY = 1600;
   var MAX_HISTORY_ASSISTANT_CHARS = 6000;
   var TIP_TOKEN_RE = /\{(progress|heading|title|site|words|time)\}/g;
 
   var hideTimer = null;
+  var aiFadeTimer = null;
   var dockHideTimer = null;
+  var dockWidthTimer = null;
   var speakBurstTimer = null;
   var tapPoseTimer = null;
   var poseSwapTimer = null;
   var bounceTimer = null;
   var zoomClampTimer = null;
   var stageHovered = false;
+  var bubbleHovered = false;
   var dockHovered = false;
-  var tipHovered = false;
+  var aiBubbleFaded = false;
+  var pendingDockWidth = null;
   var bubbleMode = "none";
   var mascotMood = "idle";
   var mascotAction = "";
@@ -199,6 +206,108 @@
     chatResetBtn.setAttribute("aria-label", label);
   }
 
+  function isDockFocused() {
+    return Boolean(chatForm && document.activeElement && chatForm.contains(document.activeElement));
+  }
+
+  function isUserEngagedWithMascot(ignoreFocus) {
+    return stageHovered || bubbleHovered || dockHovered || (!ignoreFocus && isDockFocused()) || chatStreaming;
+  }
+
+  function cancelAiFadeTimer() {
+    if (aiFadeTimer) {
+      clearTimeout(aiFadeTimer);
+      aiFadeTimer = null;
+    }
+  }
+
+  function revealAiBubble() {
+    cancelAiFadeTimer();
+    if (!bubble || bubbleMode !== "ai" || bubble.hidden) return;
+    if (aiBubbleFaded || bubble.classList.contains("is-faded")) {
+      bubble.classList.remove("is-faded");
+      aiBubbleFaded = false;
+      positionBubble();
+    }
+  }
+
+  function fadeAiBubble() {
+    cancelAiFadeTimer();
+    if (!bubble || bubbleMode !== "ai" || bubble.hidden || isUserEngagedWithMascot()) return;
+    bubble.classList.add("is-faded");
+    aiBubbleFaded = true;
+  }
+
+  function scheduleAiFade(delay, ignoreFocus) {
+    cancelAiFadeTimer();
+    if (!bubble || bubbleMode !== "ai" || bubble.hidden || isUserEngagedWithMascot(ignoreFocus)) return;
+    var wait = typeof delay === "number" ? delay : AI_READ_FADE_DELAY;
+    aiFadeTimer = setTimeout(function () {
+      aiFadeTimer = null;
+      fadeAiBubble();
+    }, wait);
+  }
+
+  function clearPendingDockWidth() {
+    if (dockWidthTimer) {
+      clearTimeout(dockWidthTimer);
+      dockWidthTimer = null;
+    }
+    pendingDockWidth = null;
+  }
+
+  function dockExpectedWidth(forceExpanded) {
+    var expanded = typeof forceExpanded === "boolean"
+      ? forceExpanded
+      : (isDockFocused() || root.classList.contains("is-dock-dirty") || chatStreaming);
+    var base = expanded ? DOCK_EXPANDED_WIDTH : DOCK_COMPACT_WIDTH;
+    return Math.max(0, Math.min(base, window.innerWidth - 2 * VIEWPORT_MARGIN));
+  }
+
+  function computeCenteredShift(centerX, width) {
+    var vw = window.innerWidth;
+    var safeWidth = Math.max(0, width || 0);
+    var idealLeft = centerX - safeWidth / 2;
+    var clampedLeft;
+    if (safeWidth >= vw - 2 * VIEWPORT_MARGIN) {
+      clampedLeft = (vw - safeWidth) / 2;
+    } else {
+      var minLeft = VIEWPORT_MARGIN;
+      var maxLeft = vw - VIEWPORT_MARGIN - safeWidth;
+      clampedLeft = Math.min(maxLeft, Math.max(minLeft, idealLeft));
+    }
+    return {
+      offsetX: Math.round(clampedLeft - idealLeft),
+      clampedLeft: clampedLeft
+    };
+  }
+
+  function positionDock(targetWidthOverride) {
+    if (!chatForm || root.classList.contains("is-collapsed")) return;
+    var rect = root.getBoundingClientRect();
+    if (!rect.width && !rect.height) return;
+    var maxDockWidth = Math.max(0, window.innerWidth - 2 * VIEWPORT_MARGIN);
+    var dockWidth = 0;
+    if (typeof targetWidthOverride === "number" && isFinite(targetWidthOverride) && targetWidthOverride > 0) {
+      dockWidth = Math.min(targetWidthOverride, maxDockWidth);
+      clearPendingDockWidth();
+      pendingDockWidth = dockWidth;
+      dockWidthTimer = setTimeout(function () {
+        dockWidthTimer = null;
+        pendingDockWidth = null;
+        positionDock();
+      }, 240);
+    } else if (pendingDockWidth !== null) {
+      dockWidth = Math.min(pendingDockWidth, maxDockWidth);
+    } else {
+      dockWidth = chatForm.offsetWidth || dockExpectedWidth();
+    }
+    if (!dockWidth) return;
+    var centerX = rect.left + rect.width / 2;
+    var shifted = computeCenteredShift(centerX, dockWidth);
+    chatForm.style.setProperty("--sf-dock-shift", shifted.offsetX + "px");
+  }
+
   function cancelDockTimer() {
     if (dockHideTimer) {
       clearTimeout(dockHideTimer);
@@ -210,11 +319,19 @@
     if (!chatForm || root.classList.contains("is-collapsed")) return;
     cancelDockTimer();
     root.classList.add("is-dock-open");
+    positionDock();
   }
 
   function syncDockDirty() {
     if (!chatForm) return;
-    root.classList.toggle("is-dock-dirty", Boolean(chatInput && chatInput.value.trim()));
+    var dirty = Boolean(chatInput && chatInput.value.trim());
+    var wasDirty = root.classList.contains("is-dock-dirty");
+    root.classList.toggle("is-dock-dirty", dirty);
+    if (dirty !== wasDirty) {
+      positionDock(dockExpectedWidth());
+    } else {
+      positionDock();
+    }
   }
 
   function scheduleDockClose(delay) {
@@ -223,8 +340,7 @@
     var wait = typeof delay === "number" ? delay : 280;
     dockHideTimer = setTimeout(function () {
       dockHideTimer = null;
-      var focused = Boolean(document.activeElement && chatForm.contains(document.activeElement));
-      if (stageHovered || dockHovered || focused || chatStreaming) return;
+      if (stageHovered || dockHovered || isDockFocused() || chatStreaming) return;
       root.classList.remove("is-dock-open");
     }, wait);
   }
@@ -247,36 +363,14 @@
     root.classList.add("is-positioned");
     root.style.left = clamped.x + "px";
     root.style.top = clamped.y + "px";
-    if (resetBtn) resetBtn.hidden = false;
     positionBubble();
-  }
-
-  function clearCustomPosition() {
-    currentPos = null;
-    root.classList.remove("is-positioned");
-    root.style.left = "";
-    root.style.top = "";
-    if (resetBtn) resetBtn.hidden = true;
-    try {
-      localStorage.removeItem(POS_KEY);
-    } catch (e) {}
-    positionBubble();
+    positionDock();
   }
 
   function positionBubble() {
-    var rect = root.getBoundingClientRect();
-    var vw = window.innerWidth;
-    var vh = window.innerHeight;
-    var alignRight = (rect.left + rect.width / 2) >= vw / 2;
-    var alignLeft = !alignRight;
-    if (chatForm) {
-      chatForm.classList.toggle("dock-align-left", alignLeft);
-      chatForm.classList.toggle("dock-align-right", alignRight);
-    }
     if (!bubble) return;
-    bubble.classList.toggle("bubble-align-right", alignRight);
-    bubble.classList.toggle("bubble-align-left", alignLeft);
-
+    var rect = root.getBoundingClientRect();
+    var vh = window.innerHeight;
     var spaceAbove = rect.top - VIEWPORT_MARGIN;
     var spaceBelow = vh - rect.bottom - VIEWPORT_MARGIN;
     var showBelow = false;
@@ -297,19 +391,16 @@
     }
 
     bubble.classList.toggle("bubble-below", showBelow);
-    bubble.style.transform = "";
     if (bubble.hidden) return;
 
-    var bRect = bubble.getBoundingClientRect();
-    var shiftX = 0;
-    if (bRect.left < VIEWPORT_MARGIN) {
-      shiftX = VIEWPORT_MARGIN - bRect.left;
-    } else if (bRect.right > vw - VIEWPORT_MARGIN) {
-      shiftX = (vw - VIEWPORT_MARGIN) - bRect.right;
-    }
-    if (shiftX !== 0) {
-      bubble.style.transform = "translateX(" + Math.round(shiftX) + "px)";
-    }
+    var bubbleWidth = bubble.offsetWidth;
+    if (!bubbleWidth) return;
+    var centerX = rect.left + rect.width / 2;
+    var shifted = computeCenteredShift(centerX, bubbleWidth);
+    var arrowPad = Math.min(18, Math.floor(bubbleWidth / 2));
+    var arrowX = Math.max(arrowPad, Math.min(bubbleWidth - arrowPad, Math.round(centerX - shifted.clampedLeft)));
+    bubble.style.setProperty("--sf-bubble-shift", shifted.offsetX + "px");
+    bubble.style.setProperty("--sf-bubble-arrow-x", arrowX + "px");
   }
 
   function cancelTipTimer() {
@@ -321,10 +412,10 @@
 
   function scheduleTipHide(delay) {
     cancelTipTimer();
-    if (bubbleMode !== "tip" || tipHovered) return;
+    if (bubbleMode !== "tip" || bubbleHovered) return;
     hideTimer = setTimeout(function () {
       hideTimer = null;
-      if (bubbleMode === "tip" && !tipHovered && bubble) {
+      if (bubbleMode === "tip" && !bubbleHovered && bubble) {
         bubble.hidden = true;
         bubbleMode = "none";
       }
@@ -454,6 +545,7 @@
       } catch (e) {}
     }
     positionBubble();
+    positionDock();
     if (zoomClampTimer) {
       clearTimeout(zoomClampTimer);
       zoomClampTimer = null;
@@ -464,6 +556,7 @@
         applyCustomPosition(currentPos.x, currentPos.y);
       } else {
         positionBubble();
+        positionDock();
       }
     }, 320);
   }
@@ -473,6 +566,9 @@
     if (chatStreaming) return;
     var skipSpeak = opts === true || Boolean(opts && opts.skipSpeakBurst);
     cancelTipTimer();
+    cancelAiFadeTimer();
+    aiBubbleFaded = false;
+    bubble.classList.remove("is-faded");
     bubbleMode = "tip";
     bubble.classList.remove("is-rich");
     bubbleBody.textContent = "";
@@ -488,10 +584,13 @@
 
   function hideBubble() {
     cancelTipTimer();
+    cancelAiFadeTimer();
+    aiBubbleFaded = false;
     bubbleMode = "none";
     if (bubble) {
-      bubble.hidden = true;
+      bubble.classList.remove("is-faded");
       bubble.classList.remove("is-rich");
+      bubble.hidden = true;
     }
   }
 
@@ -501,7 +600,9 @@
     if (collapseBtn) collapseBtn.setAttribute("aria-expanded", collapsed ? "false" : "true");
     if (collapsed) {
       cancelDockTimer();
+      clearPendingDockWidth();
       stageHovered = false;
+      bubbleHovered = false;
       dockHovered = false;
       root.classList.remove("is-dock-open");
       if (!chatStreaming) {
@@ -516,6 +617,10 @@
       currentPos = clamped;
       root.style.left = clamped.x + "px";
       root.style.top = clamped.y + "px";
+    }
+    if (!collapsed) {
+      positionBubble();
+      positionDock();
     }
     try {
       localStorage.setItem(COLLAPSE_KEY, collapsed ? "1" : "0");
@@ -943,6 +1048,7 @@
     }
     if (chatStopBtn) chatStopBtn.hidden = !active;
     if (chatInput) chatInput.disabled = active;
+    positionDock(dockExpectedWidth(active ? true : undefined));
     if (!active) scheduleDockClose();
   }
 
@@ -999,6 +1105,9 @@
     syncDockDirty();
 
     cancelTipTimer();
+    cancelAiFadeTimer();
+    aiBubbleFaded = false;
+    bubble.classList.remove("is-faded");
     bubbleMode = "ai";
     bubble.classList.add("is-rich");
     bubbleBody.textContent = "";
@@ -1197,9 +1306,8 @@
       syncResetButton();
       if (!turn.resetAborted) {
         positionBubble();
-        if (chatInput && !root.classList.contains("is-collapsed")) {
-          chatInput.focus();
-        }
+        positionDock();
+        scheduleAiFade(AI_READ_FADE_DELAY);
       }
     });
   }
@@ -1248,6 +1356,26 @@
   syncResetButton();
   syncDockDirty();
   positionBubble();
+  positionDock();
+
+  if (typeof ResizeObserver === "function") {
+    var mascotResizeObserver = new ResizeObserver(function (entries) {
+      for (var idx = 0; idx < entries.length; idx += 1) {
+        var target = entries[idx].target;
+        if (target === bubble) {
+          positionBubble();
+        } else if (target === chatForm) {
+          positionDock();
+        } else if (target === root) {
+          positionBubble();
+          positionDock();
+        }
+      }
+    });
+    if (bubble) mascotResizeObserver.observe(bubble);
+    if (chatForm) mascotResizeObserver.observe(chatForm);
+    mascotResizeObserver.observe(root);
+  }
 
   if (!savedCollapsed && config.greeting) {
     var greeted = false;
@@ -1262,13 +1390,18 @@
 
   if (bubble) {
     bubble.addEventListener("mouseenter", function () {
-      tipHovered = true;
+      bubbleHovered = true;
       cancelTipTimer();
+      if (bubbleMode === "ai" && !bubble.hidden) {
+        revealAiBubble();
+      }
     });
     bubble.addEventListener("mouseleave", function () {
-      tipHovered = false;
+      bubbleHovered = false;
       if (bubbleMode === "tip" && !bubble.hidden) {
         scheduleTipHide(2600);
+      } else if (bubbleMode === "ai" && !bubble.hidden && !isUserEngagedWithMascot()) {
+        scheduleAiFade(AI_LEAVE_FADE_DELAY);
       }
     });
     bubble.addEventListener("keydown", function (e) {
@@ -1277,6 +1410,17 @@
         if (chatInput) chatInput.focus();
       }
     });
+  }
+
+  if (bubbleBody) {
+    bubbleBody.addEventListener("scroll", function () {
+      if (bubble && bubbleMode === "ai" && !bubble.hidden) {
+        revealAiBubble();
+        if (!isUserEngagedWithMascot()) {
+          scheduleAiFade(AI_READ_FADE_DELAY);
+        }
+      }
+    }, { passive: true });
   }
 
   if (config.draggable) {
@@ -1337,6 +1481,7 @@
           } catch (err) {}
         }
         positionBubble();
+        positionDock();
       }
     };
 
@@ -1353,6 +1498,7 @@
       applyCustomPosition(currentPos.x, currentPos.y);
     } else {
       positionBubble();
+      positionDock();
     }
   });
 
@@ -1389,12 +1535,6 @@
   if (topBtn) {
     topBtn.addEventListener("click", function () {
       window.scrollTo({ top: 0, behavior: "smooth" });
-    });
-  }
-
-  if (resetBtn) {
-    resetBtn.addEventListener("click", function () {
-      clearCustomPosition();
     });
   }
 
@@ -1444,14 +1584,20 @@
     });
   }
 
-  if (stage && chatForm) {
+  if (stage) {
     stage.addEventListener("mouseenter", function () {
       stageHovered = true;
-      openDock();
+      if (chatForm) openDock();
+      if (bubble && bubbleMode === "ai" && !bubble.hidden) {
+        revealAiBubble();
+      }
     });
     stage.addEventListener("mouseleave", function () {
       stageHovered = false;
-      scheduleDockClose();
+      if (chatForm) scheduleDockClose();
+      if (bubble && bubbleMode === "ai" && !bubble.hidden && !isUserEngagedWithMascot()) {
+        scheduleAiFade(AI_LEAVE_FADE_DELAY);
+      }
     });
   }
 
@@ -1459,17 +1605,39 @@
     chatForm.addEventListener("mouseenter", function () {
       dockHovered = true;
       openDock();
+      if (bubble && bubbleMode === "ai" && !bubble.hidden) {
+        revealAiBubble();
+      }
     });
     chatForm.addEventListener("mouseleave", function () {
       dockHovered = false;
       scheduleDockClose();
+      if (bubble && bubbleMode === "ai" && !bubble.hidden && !isUserEngagedWithMascot()) {
+        scheduleAiFade(AI_LEAVE_FADE_DELAY);
+      }
     });
     chatForm.addEventListener("focusin", function () {
       openDock();
+      positionDock(Math.min(DOCK_EXPANDED_WIDTH, window.innerWidth - 2 * VIEWPORT_MARGIN));
+      if (bubble && bubbleMode === "ai" && !bubble.hidden) {
+        revealAiBubble();
+      }
     });
     chatForm.addEventListener("focusout", function (e) {
       if (e.relatedTarget && chatForm.contains(e.relatedTarget)) return;
       scheduleDockClose(stageHovered || dockHovered ? 280 : 0);
+      if (!chatStreaming && !root.classList.contains("is-dock-dirty")) {
+        positionDock(Math.min(DOCK_COMPACT_WIDTH, window.innerWidth - 2 * VIEWPORT_MARGIN));
+      }
+      if (bubble && bubbleMode === "ai" && !bubble.hidden && !isUserEngagedWithMascot(true)) {
+        scheduleAiFade(AI_LEAVE_FADE_DELAY, true);
+      }
+    });
+    chatForm.addEventListener("transitionend", function (e) {
+      if (e.target === chatForm && e.propertyName === "width" && pendingDockWidth !== null) {
+        clearPendingDockWidth();
+        positionDock();
+      }
     });
     chatForm.addEventListener("submit", function (e) {
       e.preventDefault();

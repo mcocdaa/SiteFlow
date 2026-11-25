@@ -1,18 +1,13 @@
 {% import "_mascot_skins.html" as mascot_skins %}
 {% import "icons.html" as icons %}
 <aside class="sf-mascot sf-mascot-{{ ext_ctx.position }} sf-mascot-theme-{{ ext_ctx.theme }}{% if not ext_ctx.show_on_mobile %} sf-mascot-hide-mobile{% endif %}{% if ext_ctx.draggable %} sf-mascot-draggable{% endif %}{% if ext_ctx.chat_enabled %} has-chat-dock{% endif %}" data-sf-mascot data-mascot-root data-mascot-character="{{ ext_ctx.character }}" data-mascot-kind="{{ ext_ctx.character_kind }}" role="complementary" aria-label="看板娘" data-i18n-aria-label="blog.ext.mascot.name">
-  <div class="sf-mascot-bubble bubble-align-{{ ext_ctx.position }}" data-mascot-bubble role="status" aria-live="polite" hidden>
+  <div class="sf-mascot-bubble" data-mascot-bubble role="status" aria-live="polite" hidden>
     <div class="sf-mascot-bubble-body" data-mascot-bubble-body>
       <span data-mascot-text>{{ ext_ctx.greeting }}</span>
     </div>
   </div>
   <div class="sf-mascot-stage" data-mascot-stage>
     <div class="sf-mascot-tools">
-      {% if ext_ctx.draggable %}
-      <button type="button" class="sf-mascot-act" data-mascot-reset title="重置位置" data-i18n-title="blog.ext.mascot.reset_pos" aria-label="重置位置" data-i18n-aria-label="blog.ext.mascot.reset_pos" hidden>
-        {{ icons.icon("rotate-ccw", 14) }}
-      </button>
-      {% endif %}
       <button type="button" class="sf-mascot-act" data-mascot-zoom title="放大看板娘" data-i18n-title="blog.ext.mascot.zoom_in" aria-label="放大看板娘" data-i18n-aria-label="blog.ext.mascot.zoom_in" aria-pressed="false">
         <span class="sf-mascot-ico-zoom-in">{{ icons.icon("maximize", 13) }}</span>
         <span class="sf-mascot-ico-zoom-out" hidden>{{ icons.icon("minimize", 13) }}</span>
