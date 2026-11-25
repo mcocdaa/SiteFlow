@@ -25,6 +25,7 @@ def generate_svg_cover(slug: str, title: str, project_type: str = "html", extra_
         "space": "WORKSPACE",
         "resume": "RESUME",
         "blog": "PUBLICATION",
+        "bottle": "DRIFT BOTTLE",
     }.get(project_type.lower(), project_type.upper())
 
     type_label = html.escape(raw_type_label, quote=True)

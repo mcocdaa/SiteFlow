@@ -16,9 +16,11 @@ def clean_data():
     from app.extensions.mascot_chat import reset_chat_rate_limits
     from app.extensions.packs import invalidate_pack_cache
     from app.main import app
+    from app.submissions import reset_submission_rate_limits
 
     auth._failed.clear()
     reset_chat_rate_limits()
+    reset_submission_rate_limits()
     invalidate_pack_cache()
 
     data = Path(os.environ["DATA_DIR"])
@@ -30,4 +32,5 @@ def clean_data():
     store.init(app.state.config)
     yield
     reset_chat_rate_limits()
+    reset_submission_rate_limits()
     invalidate_pack_cache()

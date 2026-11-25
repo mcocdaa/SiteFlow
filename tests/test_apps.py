@@ -146,6 +146,7 @@ def test_admin_pages_use_registered_app_list() -> None:
         assert "新建空间" in root.text
         assert "新建简历" in root.text
         assert "新建博客" in root.text
+        assert "新建漂流瓶" in root.text
         assert "上传静态站点" not in root.text
         assert 'id="app-type"' not in root.text
 
@@ -216,9 +217,10 @@ def test_space_is_registered_in_app_list() -> None:
     from app.plugins import registry
 
     types = [plugin.type for plugin in registry.all_apps()]
-    assert types == ["space", "resume", "blog"]
+    assert types == ["space", "resume", "blog", "bottle"]
     assert registry.get("space") is not None
     assert registry.get("resume") is not None
+    assert registry.get("bottle") is not None
     assert registry.get("podcast") is None
 
 

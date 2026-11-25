@@ -55,6 +55,30 @@ def _migrate(engine: Engine) -> None:
                 value TEXT NOT NULL
             )
         """)
+        conn.exec_driver_sql("""
+            CREATE TABLE IF NOT EXISTS visitor_submissions (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL,
+                plugin_id TEXT NOT NULL,
+                payload TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                ip_hash TEXT NOT NULL,
+                author_token TEXT NOT NULL DEFAULT '',
+                created_at TEXT NOT NULL
+            )
+        """)
+        conn.exec_driver_sql("""
+            CREATE INDEX IF NOT EXISTS ix_visitor_submissions_lookup
+            ON visitor_submissions (project_id, plugin_id, status, created_at)
+        """)
+        conn.exec_driver_sql("""
+            CREATE TABLE IF NOT EXISTS visitor_ip_bans (
+                project_id INTEGER NOT NULL,
+                ip_hash TEXT NOT NULL,
+                created_at TEXT NOT NULL,
+                PRIMARY KEY (project_id, ip_hash)
+            )
+        """)
         conn.commit()
 
 

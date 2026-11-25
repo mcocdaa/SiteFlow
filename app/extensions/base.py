@@ -13,7 +13,7 @@ from app.surface import Capability
 from app.templating import templates
 
 TargetType = Literal["blog", "space", "resume"]
-PageKind = Literal["list", "post", "space", "resume"]
+PageKind = Literal["list", "post", "space", "resume", "bottle"]
 SlotKind = Literal["start", "main_start", "end"]
 StructuredSlotKind = Literal["header", "aside", "overlay", "footer", "title_deco", "icons"]
 

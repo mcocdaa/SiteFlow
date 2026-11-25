@@ -1,5 +1,5 @@
 {% import "icons.html" as icons %}
-{% set app_icons = {"space": "layers", "link": "external-link", "resume": "file-text", "blog": "book-open"} %}
+{% set app_icons = {"space": "layers", "link": "external-link", "resume": "file-text", "blog": "book-open", "bottle": "bottle"} %}
 {% macro cards(projects, hue, icon_overrides=None, layout="") -%}
 {% set link_icon_name = "external-link" if (not icon_overrides or "external-link" in icon_overrides or "link" not in icon_overrides) else "link" %}
 <div class="grid"{% if layout %} data-space-layout="{{ layout }}"{% endif %}>

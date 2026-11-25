@@ -447,7 +447,7 @@ def build_render_bundle(
     )
 
     for ext, cfg in ext_pairs:
-        if isinstance(ext, PackExtension) and page not in ext.pages:
+        if isinstance(ext, PackExtension) and not ext.matches_page(page):
             continue
         for href in ext.static_css:
             versioned_href = _resolve_asset_url(href)

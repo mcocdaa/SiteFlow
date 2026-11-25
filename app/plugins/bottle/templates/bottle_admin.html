@@ -1,0 +1,172 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{ project.title }} - 漂流瓶管理 - {{ site_title }}</title>
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
+  <link rel="stylesheet" href="{{ static_url('css/bottle.css') }}">
+  <script src="{{ static_url('js/theme-init.js') }}"></script>
+  <meta name="csrf" content="{{ csrf }}">
+</head>
+<body data-plugin-id="{{ project.id }}" data-preview-url="/projects/{{ project.slug }}/">
+  {% import "icons.html" as icons %}
+  <header class="site-header">
+    <div class="wrap row-between">
+      <div>
+        <p class="crumbs"><a href="/admin" data-i18n="admin.crumb_admin">管理</a>{% if parent %} <span class="muted">/</span> <a href="/admin/projects/{{ parent.id }}" data-i18n-auto>{{ parent.title }}</a>{% endif %} <span class="muted">/</span> <span data-i18n-auto>{{ project.title }}</span></p>
+        <p class="brand" data-i18n-auto>{{ project.title }}</p>
+      </div>
+      <div class="header-actions">
+        <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}<span data-i18n="resume.preview">预览</span></a>
+        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
+        <button type="button" class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap bottle-admin-main">
+    {% if stats %}
+    <section class="admin-stats-card">
+      <div class="stats-col">
+        <span class="stats-label" data-i18n="admin.stats_today">今日访问</span>
+        <div class="stats-val"><strong>{{ stats.today_pv }}</strong> <span class="muted">PV</span> · <strong>{{ stats.today_uv }}</strong> <span class="muted">UV</span></div>
+      </div>
+      <div class="stats-col">
+        <span class="stats-label" data-i18n="admin.stats_7d">近 7 天</span>
+        <div class="stats-val"><strong>{{ stats.total_pv_7d }}</strong> <span class="muted">PV</span> · <strong>{{ stats.total_uv_7d }}</strong> <span class="muted">UV</span></div>
+      </div>
+      <div class="stats-col stats-chart" title="过去 7 天 PV 趋势" data-i18n-title="admin.stats_trend_tip">
+        <span class="stats-label" data-i18n="admin.stats_trend">访问趋势</span>
+        {{ stats.sparkline_svg | safe }}
+      </div>
+    </section>
+    {% endif %}
+
+    <section class="plugin-block bottle-admin-queue" aria-labelledby="bottle-queue-title">
+      <div class="block-head">
+        <div>
+          <h2 id="bottle-queue-title" data-i18n="bottle.admin_queue_title">漂流瓶审核队列</h2>
+          <p class="muted bottle-admin-sub" data-i18n="bottle.admin_queue_desc">审核访客投递的漂流瓶，支持通过、拒绝、删除、封禁 IP 或一键清空。</p>
+        </div>
+        <div class="bottle-queue-actions">
+          <button type="button" class="btn ghost" id="refresh-submissions-btn">{{ icons.icon("refresh-cw", 15) }}<span data-i18n="bottle.admin_refresh">刷新</span></button>
+          <button type="button" class="btn danger" id="clear-submissions-btn">{{ icons.icon("trash", 15) }}<span data-i18n="bottle.admin_clear_btn">一键清空</span></button>
+        </div>
+      </div>
+
+      <div class="bottle-tabs" role="tablist" aria-label="审核状态筛选" data-i18n-aria-label="bottle.admin_tabs_label">
+        <button type="button" class="bottle-tab is-active" role="tab" aria-selected="true" aria-controls="submission-panel" id="tab-pending" data-tab="pending">
+          <span data-i18n="bottle.tab_pending">待审核</span>
+          <span class="bottle-tab-count" id="count-pending">{{ submission_counts.pending if submission_counts is defined else 0 }}</span>
+        </button>
+        <button type="button" class="bottle-tab" role="tab" aria-selected="false" aria-controls="submission-panel" id="tab-approved" data-tab="approved">
+          <span data-i18n="bottle.tab_approved">已通过</span>
+          <span class="bottle-tab-count" id="count-approved">{{ submission_counts.approved if submission_counts is defined else 0 }}</span>
+        </button>
+        <button type="button" class="bottle-tab" role="tab" aria-selected="false" aria-controls="submission-panel" id="tab-rejected" data-tab="rejected">
+          <span data-i18n="bottle.tab_rejected">已拒绝</span>
+          <span class="bottle-tab-count" id="count-rejected">{{ submission_counts.rejected if submission_counts is defined else 0 }}</span>
+        </button>
+        <button type="button" class="bottle-tab" role="tab" aria-selected="false" aria-controls="banned-panel" id="tab-banned" data-tab="banned">
+          <span data-i18n="bottle.tab_banned">已封禁 IP</span>
+          <span class="bottle-tab-count" id="count-banned">0</span>
+        </button>
+      </div>
+
+      <div id="mod-status" class="bottle-feedback" role="status" aria-live="polite" hidden></div>
+
+      <div id="submission-panel" role="tabpanel" aria-labelledby="tab-pending">
+        <div id="submission-list" class="bottle-sub-list"></div>
+      </div>
+
+      <div id="banned-panel" role="tabpanel" aria-labelledby="tab-banned" hidden>
+        <div id="banned-list" class="bottle-ban-list"></div>
+      </div>
+    </section>
+
+    <section class="plugin-block" aria-labelledby="bottle-settings-title">
+      <h2 id="bottle-settings-title" data-i18n="bottle.settings_title">漂流瓶规则配置</h2>
+      <form id="bottle-settings-form" aria-labelledby="bottle-settings-title" novalidate>
+        <fieldset class="bottle-fieldset">
+          <legend data-i18n="bottle.group_copy">海滩文案</legend>
+          <div class="editor-grid">
+            <label class="full" for="f-intro">
+              <span data-i18n="bottle.cfg_intro">海滩欢迎语</span>
+              <textarea id="f-intro" name="intro" rows="3" maxlength="500">{{ content.intro }}</textarea>
+            </label>
+            <label class="full" for="f-placeholder">
+              <span data-i18n="bottle.cfg_placeholder">输入框提示语</span>
+              <input type="text" id="f-placeholder" name="placeholder" maxlength="200" value="{{ content.placeholder }}">
+            </label>
+          </div>
+        </fieldset>
+
+        <fieldset class="bottle-fieldset">
+          <legend data-i18n="bottle.group_rules">审核与防刷策略</legend>
+          <div class="editor-grid bottle-num-grid">
+            <label for="f-max-length">
+              <span data-i18n="bottle.cfg_max_length">单条字数上限（50–1000）</span>
+              <input type="number" id="f-max-length" name="max_length" min="50" max="1000" required value="{{ content.max_length }}">
+            </label>
+            <label for="f-throw-limit">
+              <span data-i18n="bottle.cfg_throw_limit">单 IP 每小时投递上限（1–20）</span>
+              <input type="number" id="f-throw-limit" name="throw_limit_per_hour" min="1" max="20" required value="{{ content.throw_limit_per_hour }}">
+            </label>
+            <label for="f-pick-limit">
+              <span data-i18n="bottle.cfg_pick_limit">单 IP 每小时捞取上限（1–100）</span>
+              <input type="number" id="f-pick-limit" name="pick_limit_per_hour" min="1" max="100" required value="{{ content.pick_limit_per_hour }}">
+            </label>
+          </div>
+
+          <div class="bottle-checks">
+            <div class="bottle-check-row">
+              <input type="checkbox" id="f-require-approval" name="require_approval" {% if content.require_approval %}checked{% endif %}>
+              <label for="f-require-approval" data-i18n="bottle.cfg_require_approval">先审后发（访客投递后需站长审核通过才可被他人捞取）</label>
+            </div>
+            <div class="bottle-check-row">
+              <input type="checkbox" id="f-throw-to-pick" name="throw_to_pick" {% if content.throw_to_pick %}checked{% endif %}>
+              <label for="f-throw-to-pick" data-i18n="bottle.cfg_throw_to_pick">投一捞一（访客须先投出一个漂流瓶，才能捞取他人瓶子）</label>
+            </div>
+            <div class="bottle-check-row">
+              <input type="checkbox" id="f-allow-links" name="allow_links" {% if content.allow_links %}checked{% endif %}>
+              <label for="f-allow-links" data-i18n="bottle.cfg_allow_links">允许包含网址或链接（默认关闭，开启可能引入垃圾外链）</label>
+            </div>
+          </div>
+        </fieldset>
+
+        <div class="bottle-settings-actions">
+          <button type="submit" class="btn primary" id="save-bottle-settings" data-i18n="bottle.save_settings">保存配置</button>
+          <span id="settings-save-state" class="muted" role="status" aria-live="polite"></span>
+        </div>
+      </form>
+    </section>
+
+    {% if ext_catalog is defined %}
+    {% set ext_section_id = "bottle-extensions" %}
+    {% set ext_section_title_key = "ext.bottle_section_title" %}
+    {% set ext_section_title_default = "漂流瓶插件" %}
+    {% include "_extensions_panel.html" %}
+    {% endif %}
+  </main>
+
+  <dialog id="clear-confirm-dialog" class="bottle-dialog" aria-labelledby="clear-dialog-title">
+    <h1 id="clear-dialog-title" data-i18n="bottle.clear_dialog_title">确认清空漂流瓶</h1>
+    <p class="muted" data-i18n="bottle.clear_dialog_desc">清空操作不可撤销，请选择需要清空的记录范围。</p>
+    <form method="dialog" class="bottle-dialog-actions">
+      <button value="cancel" class="btn ghost" autofocus data-i18n="ext.cancel">取消</button>
+      <button value="current" class="btn" id="clear-current-btn" data-i18n="bottle.clear_current">仅清空当前状态</button>
+      <button value="all" class="btn danger" data-i18n="bottle.clear_all">清空全部记录</button>
+    </form>
+  </dialog>
+
+  <script id="plugin-data" type="application/json">{{ content | tojson }}</script>
+  <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  <script src="{{ static_url('js/admin.js') }}" defer></script>
+  <script src="{{ static_url('js/bottle_admin.js') }}" defer></script>
+  {% if ext_catalog is defined %}
+  <script src="{{ static_url('js/extensions_admin.js') }}" defer></script>
+  {% endif %}
+</body>
+</html>

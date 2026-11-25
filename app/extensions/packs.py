@@ -77,7 +77,7 @@ ALLOWED_SLOTS = frozenset(
         "none",
     }
 )
-ALLOWED_PAGES: tuple[PageKind, ...] = ("list", "post", "space", "resume")
+ALLOWED_PAGES: tuple[PageKind, ...] = ("list", "post", "space", "resume", "bottle")
 MAX_THEME_TOKENS = 30
 MAX_ICON_OVERRIDES = 30
 
@@ -225,6 +225,15 @@ class PackExtension(BaseExtension):
                 )
         return out
 
+    def matches_page(self, page: PageKind) -> bool:
+        if page in self.pages:
+            return True
+        return (
+            not self.requires
+            and not self.excludes
+            and {"space", "list", "post", "resume"}.issubset(self.pages)
+        )
+
     def render_page_context(
         self,
         *,
@@ -236,7 +245,7 @@ class PackExtension(BaseExtension):
         post: dict[str, Any] | None = None,
         is_admin: bool = False,
     ) -> dict[str, Any]:
-        if page not in self.pages:
+        if not self.matches_page(page):
             return {"active": False}
         return {
             "active": True,
@@ -257,7 +266,7 @@ class PackExtension(BaseExtension):
         page: PageKind,
         config: dict[str, Any],
     ) -> dict[str, str]:
-        if page not in self.pages or not self._tokens:
+        if not self.matches_page(page) or not self._tokens:
             return {}
         return dict(self._tokens)
 
@@ -266,7 +275,7 @@ class PackExtension(BaseExtension):
         page: PageKind,
         config: dict[str, Any],
     ) -> dict[str, str]:
-        if page not in self.pages or not self._icon_overrides:
+        if not self.matches_page(page) or not self._icon_overrides:
             return {}
         return dict(self._icon_overrides)
 
