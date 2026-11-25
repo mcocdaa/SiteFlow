@@ -159,11 +159,9 @@
   <template data-ext-icon-tpl="{{ icon_name }}">{{ icons.icon(icon_name, icon_size) }}</template>
   {% endfor %}
 
-  {% if project.type in ("blog", "space") %}
   {% for char_id in mascot_characters | default([]) %}
   <template data-mascot-skin-tpl="{{ char_id }}">{{ mascot_skins.render_skin(char_id, 52) }}</template>
   {% endfor %}
-  {% endif %}
 
   <div class="ext-drawer-backdrop" data-ext-drawer-backdrop hidden></div>
   <aside class="ext-drawer" data-ext-drawer role="dialog" aria-modal="true" aria-labelledby="ext-drawer-title" hidden tabindex="-1">

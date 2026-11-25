@@ -190,10 +190,8 @@ def unlock_project(request: Request, slug: str, db: DbSession, password: str = F
     extra_paths: list[str] = []
     if project.type == "blog":
         extra_paths.extend([f"/media/blog/{slug}", f"/api/projects/{slug}"])
-    elif project.type == "space":
+    elif registry.get(project.type) is not None:
         extra_paths.extend([f"/media/ext/{slug}", f"/api/projects/{slug}"])
-    elif project.type == "resume":
-        extra_paths.append(f"/media/ext/{slug}")
     for cookie_path in extra_paths:
         response.set_cookie(
             project_cookie_name(slug),

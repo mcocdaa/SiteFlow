@@ -52,7 +52,7 @@
       var parsed = JSON.parse(configNode.textContent || "{}");
       if (parsed && typeof parsed === "object") {
         if (typeof parsed.slug === "string" && parsed.slug.trim()) config.slug = parsed.slug.trim();
-        if (parsed.page === "post" || parsed.page === "space" || parsed.page === "list") config.page = parsed.page;
+        if (typeof parsed.page === "string" && parsed.page.trim()) config.page = parsed.page.trim();
         if (typeof parsed.post_slug === "string") config.post_slug = parsed.post_slug;
         if (typeof parsed.project_title === "string") config.project_title = parsed.project_title.trim();
         if (typeof parsed.post_title === "string") config.post_title = parsed.post_title.trim();
@@ -649,7 +649,7 @@
       var tocTxt = (tocActive.textContent || "").trim();
       if (tocTxt) return tocTxt;
     }
-    var postBody = document.querySelector(".post-body");
+    var postBody = document.querySelector(".post-body, main.resume");
     if (!postBody) return null;
     var headings = postBody.querySelectorAll("h1, h2, h3");
     if (!headings.length) return null;

@@ -15,12 +15,15 @@ from app.extensions.registry import (
 from app.models import Project
 from app.plugins.base import InvalidContent
 from app.plugins.blog.markdown import BLOG_CSP, render_inline_math, render_markdown
-from app.surface import StaticSurface, SurfaceItem, project_meta
+from app.surface import Capability, StaticSurface, SurfaceItem, project_meta
 from app.templating import templates
 
 MAX_POSTS = 200
 MAX_BODY = 200_000
 MAX_AI_BODY = 1500
+BLOG_CAPABILITIES: frozenset[Capability] = frozenset(
+    {"has_content", "has_posts", "has_items", "supports_layout"}
+)
 
 
 def _text(value: object, limit: int) -> str:
@@ -94,7 +97,7 @@ def normalize(
         parsed.get("extensions"),
         strict=strict,
         project_slug=project_slug,
-        target="blog",
+        capabilities=BLOG_CAPABILITIES,
         config=config,
     )
     result: dict[str, Any] = {
@@ -131,6 +134,7 @@ class BlogApp:
     leaf: bool = True
     content_editable: bool = True
     admin_template: str | None = "blog_admin.html"
+    capabilities: frozenset[Capability] = BLOG_CAPABILITIES
 
     def default_content(self) -> dict:
         return default_content()
@@ -185,7 +189,7 @@ class BlogApp:
                 description=blog["description"],
                 url=f"{base}posts/{current['slug']}" if current else base,
             ),
-            capabilities=frozenset({"has_content", "has_posts", "has_items", "supports_layout"}),
+            capabilities=self.capabilities,
             contexts={"visitor": visitor, "ai": ai, "admin": admin},
             item_list=items,
         )
@@ -217,7 +221,7 @@ class BlogApp:
             project,
             content,
             post=post,
-            target="blog",
+            capabilities=self.capabilities,
             config=config,
             is_admin=is_admin,
         )
@@ -259,7 +263,7 @@ class BlogApp:
             project,
             content,
             posts=content["posts"],
-            target="blog",
+            capabilities=self.capabilities,
             config=config,
             is_admin=is_admin,
         )

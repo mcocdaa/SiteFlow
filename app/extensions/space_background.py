@@ -15,6 +15,7 @@ from app.extensions.base import (
 )
 from app.models import Project
 from app.plugins.base import InvalidContent
+from app.surface import Capability
 
 PRESETS = ("none", "dots", "grid", "aurora", "mesh")
 OPACITY_MIN = 0.05
@@ -30,6 +31,7 @@ def _opacity_step_label(value: float) -> str:
 
 class SpaceBackgroundExtension(BaseExtension):
     id = "space_background"
+    requires: frozenset[Capability] = frozenset({"has_children"})
     targets: tuple[TargetType, ...] = ("space",)
     name = "空间背景"
     name_key = "ext.space_background.name"

@@ -530,6 +530,24 @@ main.wrap { padding: 28px 24px 72px; }
 .plugin-block h2 { margin: 0 0 14px; font-size: 17px; }
 .block-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
 .block-head h2 { margin: 0; }
+.block-head-actions { display: inline-flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.ai-vis-group {
+  margin: 16px 0 0;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-btn);
+  background: var(--bg);
+}
+.ai-vis-group legend {
+  padding: 0 6px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+}
+.ai-vis-hint { margin: 0 0 10px; font-size: 12px; }
+.ai-vis-row { display: flex; flex-wrap: wrap; gap: 12px 24px; align-items: center; }
+.ai-vis-toggle { font-size: 12.5px; color: var(--text-muted); min-height: 28px; }
+.ai-vis-toggle:has(input:checked) { color: var(--text); }
 .editor-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px; }
 .editor-grid label, .stack { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--text-muted); min-width: 0; }
 .editor-grid label.full { grid-column: 1 / -1; }
@@ -2201,6 +2219,7 @@ textarea.mono {
 .ext-drawer .ext-toggle input[type="checkbox"] {
   appearance: none;
   -webkit-appearance: none;
+  accent-color: var(--accent);
   position: relative;
   width: 34px;
   height: 19px;
@@ -2211,6 +2230,12 @@ textarea.mono {
   cursor: pointer;
   transition: background .15s ease;
   flex-shrink: 0;
+}
+.ext-toggle input[type="checkbox"]:focus-visible,
+.plugin-block .ext-toggle input[type="checkbox"]:focus-visible,
+.ext-drawer .ext-toggle input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 .ext-toggle input[type="checkbox"]::after,
 .plugin-block .ext-toggle input[type="checkbox"]::after,

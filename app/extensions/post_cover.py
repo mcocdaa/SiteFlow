@@ -13,6 +13,7 @@ from app.extensions.base import (
 )
 from app.models import Project
 from app.plugins.base import InvalidContent
+from app.surface import Capability
 
 ASPECT_RATIOS: dict[str, str] = {
     "16/9": "ratio-16-9",
@@ -24,6 +25,7 @@ ASPECT_RATIOS: dict[str, str] = {
 
 class PostCoverExtension(BaseExtension):
     id = "post_cover"
+    requires: frozenset[Capability] = frozenset({"has_posts"})
     targets: tuple[TargetType, ...] = ("blog",)
     name = "文章封面"
     name_key = "blog.ext.post_cover.name"

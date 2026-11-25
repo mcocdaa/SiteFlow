@@ -58,18 +58,21 @@ def test_target_isolation_across_blog_space_resume_and_non_extensible(
             "space_background",
             "space_layout",
         ]
-        assert [item["id"] for item in resume_cat] == ["resume_style"]
+        assert [item["id"] for item in resume_cat] == ["mascot", "resume_style"]
 
         cross_pairs = [
             (blog["id"], "space_banner"),
             (blog["id"], "space_background"),
+            (blog["id"], "space_layout"),
             (blog["id"], "resume_style"),
             (space["id"], "post_cover"),
             (space["id"], "post_background"),
             (space["id"], "resume_style"),
             (resume["id"], "post_cover"),
-            (resume["id"], "mascot"),
+            (resume["id"], "post_background"),
             (resume["id"], "space_banner"),
+            (resume["id"], "space_background"),
+            (resume["id"], "space_layout"),
         ]
         for pid, ext_id in cross_pairs:
             assert (

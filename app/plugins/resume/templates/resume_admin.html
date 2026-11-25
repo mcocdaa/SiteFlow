@@ -39,12 +39,32 @@
       </div>
       <label class="stack"><span data-i18n="resume.field_summary">简介</span> <textarea id="f-summary" rows="3" data-i18n-auto-val></textarea></label>
       <label class="stack"><span data-i18n="resume.field_links">链接（每行一条：名称|https://...）</span><textarea id="f-links" rows="3" placeholder="GitHub|https://github.com/me"></textarea></label>
+      <fieldset class="ai-vis-group">
+        <legend data-i18n="resume.ai_privacy_title">AI 隐私控制</legend>
+        <p class="muted small ai-vis-hint" data-i18n="resume.ai_privacy_hint">仅控制看板娘 AI 对话可读取的内容，不影响简历公开展示。</p>
+        <div class="ai-vis-row">
+          <label class="ext-toggle ai-vis-toggle" for="f-ai-contact">
+            <input type="checkbox" switch role="switch" id="f-ai-contact" data-ai-vis="contact">
+            <span data-i18n="resume.ai_vis_contact">联系方式对 AI 可见（邮箱 / 电话）</span>
+          </label>
+          <label class="ext-toggle ai-vis-toggle" for="f-ai-location">
+            <input type="checkbox" switch role="switch" id="f-ai-location" data-ai-vis="location">
+            <span data-i18n="resume.ai_vis_location">所在地对 AI 可见</span>
+          </label>
+        </div>
+      </fieldset>
     </section>
     {% for section_key, section_title in [("work", "工作经历"), ("education", "教育经历"), ("projects", "项目"), ("skills", "技能")] %}
     <section class="plugin-block" data-section="{{ section_key }}">
       <div class="block-head">
         <h2 data-i18n="resume.sec_{{ section_key }}">{{ section_title }}</h2>
-        <button type="button" class="btn ghost" data-add-entry>{{ icons.icon("plus") }}<span data-i18n="resume.add_entry">添加</span></button>
+        <div class="block-head-actions">
+          <label class="ext-toggle ai-vis-toggle" for="f-ai-{{ section_key }}">
+            <input type="checkbox" switch role="switch" id="f-ai-{{ section_key }}" data-ai-vis="{{ section_key }}" checked>
+            <span data-i18n="resume.ai_visible">对 AI 可见</span>
+          </label>
+          <button type="button" class="btn ghost" data-add-entry>{{ icons.icon("plus") }}<span data-i18n="resume.add_entry">添加</span></button>
+        </div>
       </div>
       <div class="entry-list"></div>
     </section>
@@ -235,8 +255,38 @@
     });
     return rows;
   }
+  var AI_VIS_DEFAULTS = {
+    contact: false,
+    location: false,
+    work: true,
+    education: true,
+    projects: true,
+    skills: true
+  };
+  function loadAiVisibility() {
+    var vis = (state && typeof state.ai_visibility === "object" && state.ai_visibility) || {};
+    document.querySelectorAll("[data-ai-vis]").forEach(function (input) {
+      var key = input.getAttribute("data-ai-vis");
+      input.checked = typeof vis[key] === "boolean" ? vis[key] : Boolean(AI_VIS_DEFAULTS[key]);
+    });
+  }
+  function collectAiVisibility() {
+    var vis = {};
+    Object.keys(AI_VIS_DEFAULTS).forEach(function (key) {
+      var input = document.querySelector('[data-ai-vis="' + key + '"]');
+      vis[key] = input ? Boolean(input.checked) : Boolean(AI_VIS_DEFAULTS[key]);
+    });
+    return vis;
+  }
   function collect() {
-    var content = { basics: collectBasics(), work: [], education: [], projects: [], skills: [] };
+    var content = {
+      basics: collectBasics(),
+      work: [],
+      education: [],
+      projects: [],
+      skills: [],
+      ai_visibility: collectAiVisibility()
+    };
     Object.keys(SECTION_FIELDS).forEach(function (section) { content[section] = collectSection(section); });
     return content;
   }
@@ -301,15 +351,21 @@
     });
   }
   loadBasics();
+  loadAiVisibility();
   Object.keys(SECTION_FIELDS).forEach(renderSection);
   lastSaved = JSON.stringify(collect());
   document.querySelector("main.wrap").addEventListener("input", function (event) {
     if (event.target.closest("#resume-extensions")) return;
+    if (event.target.matches("[data-ai-vis]")) return;
     if (markDirty()) scheduleSave(800);
+  });
+  document.querySelector("main.wrap").addEventListener("change", function (event) {
+    if (event.target.closest("#resume-extensions")) return;
+    if (event.target.matches("[data-ai-vis]") && markDirty()) save();
   });
   document.querySelector("main.wrap").addEventListener("focusout", function (event) {
     if (event.target.closest("#resume-extensions")) return;
-    if (event.target.matches("input, textarea") && markDirty()) save();
+    if (event.target.matches('input:not([type="checkbox"]), textarea') && markDirty()) save();
   });
   window.addEventListener("beforeunload", function (event) {
     if (!dirty && !inFlight) return;

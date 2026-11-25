@@ -9,13 +9,23 @@ from app.auth import read_session
 from app.extensions.registry import build_render_bundle, normalize_extensions
 from app.models import Project
 from app.plugins.base import InvalidContent
-from app.surface import StaticSurface, SurfaceItem, project_meta
+from app.surface import Capability, StaticSurface, SurfaceItem, project_meta
 from app.templating import templates
 
 BASICS_TEXT_FIELDS = ("name", "label", "email", "phone", "summary")
 LIMITS = {"text": 2000, "short": 200, "url": 500, "list": 20}
 PRIVATE_BASICS = frozenset({"email", "phone"})
 SECTIONS = ("work", "education", "projects", "skills")
+AI_VISIBILITY_KEYS = ("contact", "location", "work", "education", "projects", "skills")
+DEFAULT_AI_VISIBILITY: dict[str, bool] = {
+    "contact": False,
+    "location": False,
+    "work": True,
+    "education": True,
+    "projects": True,
+    "skills": True,
+}
+RESUME_CAPABILITIES: frozenset[Capability] = frozenset({"has_content", "is_personal_profile", "has_items"})
 SECTION_TEXT_FIELDS = {
     "work": ("name", "position", "startDate", "endDate", "summary"),
     "education": ("institution", "area", "studyType", "startDate", "endDate"),
@@ -50,6 +60,25 @@ def _string_list(value: object) -> list[str]:
     return [_text(item, LIMITS["short"]) for item in value[: LIMITS["list"]] if _text(item, LIMITS["short"])]
 
 
+def _normalize_ai_visibility(raw: object, *, strict: bool = False) -> dict[str, bool]:
+    out = dict(DEFAULT_AI_VISIBILITY)
+    if raw is None:
+        return out
+    if not isinstance(raw, dict):
+        if strict:
+            raise InvalidContent("AI 可见性配置必须是对象")
+        return out
+    for key in AI_VISIBILITY_KEYS:
+        if key not in raw:
+            continue
+        value = raw[key]
+        if isinstance(value, bool):
+            out[key] = value
+        elif strict:
+            raise InvalidContent("AI 可见性选项必须是布尔值")
+    return out
+
+
 def default_content() -> dict:
     return {
         "basics": {
@@ -67,6 +96,7 @@ def default_content() -> dict:
         "education": [],
         "projects": [],
         "skills": [],
+        "ai_visibility": dict(DEFAULT_AI_VISIBILITY),
     }
 
 
@@ -115,11 +145,12 @@ def normalize(
                 item[field] = _string_list(row.get(field))
             normalized_rows.append(item)
         content[section] = normalized_rows
+    content["ai_visibility"] = _normalize_ai_visibility(parsed.get("ai_visibility"), strict=strict)
     extensions = normalize_extensions(
         parsed.get("extensions"),
         strict=strict,
         project_slug=project_slug,
-        target="resume",
+        capabilities=RESUME_CAPABILITIES,
         config=config,
     )
     if extensions:
@@ -149,6 +180,7 @@ class ResumeApp:
     leaf: bool = True
     content_editable: bool = True
     admin_template: str | None = "resume_admin.html"
+    capabilities: frozenset[Capability] = RESUME_CAPABILITIES
 
     def default_content(self) -> dict[str, Any]:
         return default_content()
@@ -169,10 +201,19 @@ class ResumeApp:
     def surface(self, request: Request, project: Project, db: Session, *, sub: str = "") -> StaticSurface:
         config = request.app.state.config
         resume = validate_content(project.content, project_slug=project.slug, config=config)
-        public = {key: value for key, value in resume.items() if key != "extensions"}
+        visibility = _normalize_ai_visibility(resume.get("ai_visibility"), strict=False)
+        public = {key: value for key, value in resume.items() if key not in ("extensions", "ai_visibility")}
         basics = dict(public.get("basics") or {})
-        ai_basics = {key: value for key, value in basics.items() if key not in PRIVATE_BASICS}
-        ai = {**public, "basics": ai_basics}
+        ai_basics = dict(basics)
+        if not visibility["contact"]:
+            for field in PRIVATE_BASICS:
+                ai_basics.pop(field, None)
+        if not visibility["location"]:
+            ai_basics.pop("location", None)
+        ai: dict[str, Any] = {"basics": ai_basics}
+        for section in SECTIONS:
+            if visibility[section]:
+                ai[section] = public.get(section, [])
         items = tuple(
             SurfaceItem(
                 key=f"{section}-{index}",
@@ -187,7 +228,7 @@ class ResumeApp:
         )
         return StaticSurface(
             meta=project_meta(db, project, title=str(basics.get("name") or "")),
-            capabilities=frozenset({"has_content", "is_personal_profile", "has_items"}),
+            capabilities=self.capabilities,
             contexts={"visitor": public, "ai": ai, "admin": resume},
             item_list=items,
         )
@@ -201,7 +242,7 @@ class ResumeApp:
             "resume",
             project,
             resume,
-            target="resume",
+            capabilities=self.capabilities,
             config=config,
             is_admin=is_admin,
         )

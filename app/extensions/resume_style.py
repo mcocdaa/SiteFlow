@@ -10,6 +10,7 @@ from app.extensions.base import (
     sanitize_choice,
 )
 from app.plugins.base import InvalidContent
+from app.surface import Capability
 
 ACCENTS = ("slate", "indigo", "emerald", "amber", "rose")
 PAPERS = ("clean", "warm", "tint")
@@ -19,6 +20,7 @@ FONT_STYLES = ("sans", "serif")
 
 class ResumeStyleExtension(BaseExtension):
     id = "resume_style"
+    requires: frozenset[Capability] = frozenset({"is_personal_profile"})
     targets: tuple[TargetType, ...] = ("resume",)
     name = "简历样式美化"
     name_key = "ext.resume_style.name"
