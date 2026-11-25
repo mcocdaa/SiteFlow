@@ -16,11 +16,11 @@
         <p class="crumbs"><a href="/admin" data-i18n="admin.crumb_admin">管理</a>{% if parent %} <span class="muted">/</span> <a href="/admin/projects/{{ parent.id }}" data-i18n-auto>{{ parent.title }}</a>{% endif %} <span class="muted">/</span> <span data-i18n-auto>{{ project.title }}</span></p>
         <p class="brand" data-i18n-auto>{{ project.title }}</p>
       </div>
-      <div class="row-actions header-actions">
+      <div class="header-actions">
         <span class="save-state muted" id="save-state" role="status" aria-live="polite" data-testid="resume-save-state" data-state="idle"><span data-save-text data-i18n="resume.autosave_hint">修改会自动保存</span> <button type="button" class="btn ghost save-retry" data-action="save-retry" hidden data-i18n="resume.retry">重试</button></span>
-        <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}<span data-i18n="resume.preview">预览</span></a>
-        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
-        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
+        <a class="header-icon-btn" href="/projects/{{ project.slug }}/" target="_blank" data-hover-tip="预览" data-i18n-hover-tip="resume.preview" aria-label="预览" data-i18n-aria-label="resume.preview">{{ icons.icon("external-link", 16) }}</a>
+        <button type="button" class="header-icon-btn lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" data-hover-tip="切换为英文" data-i18n-hover-tip="common.lang_tip" aria-label="切换为英文" data-i18n-aria-label="common.lang_tip">{{ icons.icon("globe", 16) }}</button>
+        <button type="button" class="header-icon-btn" data-action="logout" data-hover-tip="退出登录" data-i18n-hover-tip="admin.logout" aria-label="退出登录" data-i18n-aria-label="admin.logout">{{ icons.icon("log-out", 16) }}</button>
       </div>
     </div>
   </header>

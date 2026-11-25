@@ -16,18 +16,15 @@
     <div class="wrap row-between">
       <a class="brand" href="/">{{ icons.icon("arrow-left") }}<span data-i18n-auto>{{ site_title }}</span></a>
       <div class="header-actions">
-        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索" data-i18n-tip="common.search" aria-label="搜索" data-i18n-aria-label="common.search">
-          {{ icons.icon("search", 16) }}
-        </button>
+        <button type="button" class="header-icon-btn search-trigger" id="cmd-k-trigger" data-hover-tip="搜索" data-i18n-hover-tip="common.search" aria-label="搜索" data-i18n-aria-label="common.search">{{ icons.icon("search", 16) }}</button>
         {% if site_ext_catalog is defined %}
-        <button type="button" class="btn ghost site-ext-trigger" id="site-ext-open-btn" data-action="open-site-extensions" aria-haspopup="dialog" aria-controls="site-ext-dialog">
+        <button type="button" class="header-icon-btn site-ext-trigger" id="site-ext-open-btn" data-action="open-site-extensions" aria-haspopup="dialog" aria-controls="site-ext-dialog" data-hover-tip="全站默认插件" data-i18n-hover-tip="admin.site_extensions" aria-label="全站默认插件" data-i18n-aria-label="admin.site_extensions">
           {{ icons.icon("puzzle", 16) }}
-          <span data-i18n="admin.site_extensions">全站默认插件</span>
           <span class="ext-header-badge" data-site-ext-active-count{% if not site_active_count %} hidden{% endif %}>{{ site_active_count }}</span>
         </button>
         {% endif %}
-        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
-        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
+        <button type="button" class="header-icon-btn lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" data-hover-tip="切换为英文" data-i18n-hover-tip="common.lang_tip" aria-label="切换为英文" data-i18n-aria-label="common.lang_tip">{{ icons.icon("globe", 16) }}</button>
+        <button type="button" class="header-icon-btn" data-action="logout" data-hover-tip="退出登录" data-i18n-hover-tip="admin.logout" aria-label="退出登录" data-i18n-aria-label="admin.logout">{{ icons.icon("log-out", 16) }}</button>
       </div>
     </div>
   </header>

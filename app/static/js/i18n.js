@@ -360,7 +360,7 @@
 
       "common.search": "搜索",
       "common.admin_entry": "管理入口",
-      "common.lang_tip": "切换为英文 / Switch to English",
+      "common.lang_tip": "切换为英文",
       "common.back": "返回",
       "gallery.empty_title": "还没有作品",
       "gallery.empty_desc": "这里将展示你的 HTML、静态网站、外链作品与个人应用。",
@@ -990,7 +990,7 @@
 
       "common.search": "Search (⌘K)",
       "common.admin_entry": "Admin",
-      "common.lang_tip": "Switch to Chinese / 切换为中文",
+      "common.lang_tip": "Switch to Chinese",
       "common.back": "Back",
       "gallery.empty_title": "No Projects Yet",
       "gallery.empty_desc": "Your static sites, HTML artifacts, external links, and apps will appear here.",
@@ -1717,13 +1717,18 @@
       document.title = origDocTitle;
     }
 
-    // 10. Update language toggle button(s)
     document.querySelectorAll("#lang-toggle-btn, [data-action='toggle-lang'], [data-testid='locale-toggle']").forEach(function (btn) {
+      var tip = (DICT[lang] && DICT[lang]["common.lang_tip"]) || t("common.lang_tip");
       var label = btn.querySelector(".lang-label");
       if (label) label.textContent = lang === "zh" ? "EN" : "中文";
-      btn.removeAttribute("data-tip");
-      btn.setAttribute("title", t("common.lang_tip"));
-      btn.setAttribute("aria-label", t("common.lang_tip"));
+      btn.removeAttribute("title");
+      if (btn.hasAttribute("data-hover-tip") || btn.hasAttribute("data-i18n-hover-tip")) {
+        btn.setAttribute("data-hover-tip", tip);
+        btn.removeAttribute("data-tip");
+      } else {
+        btn.setAttribute("data-tip", tip);
+      }
+      btn.setAttribute("aria-label", tip);
     });
   }
 

@@ -29,8 +29,8 @@
     <a class="btn ghost blog-back-btn" href="/projects/{{ project.slug }}/">{{ icons.icon("arrow-left", 16, icon_overrides) }}<span data-i18n="blog.back_to_list">文章列表</span></a>
     <span class="actions-right">
       {% for frag in ext_slots.icons | default([]) %}{{ frag }}{% endfor %}
-      <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe", 16, icon_overrides) }}<span class="lang-label">EN</span></button>
-      <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings", 16, icon_overrides) }}</a>
+      <button type="button" class="header-icon-btn lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" data-tip="切换为英文" data-i18n-tip="common.lang_tip" aria-label="切换为英文" data-i18n-aria-label="common.lang_tip">{{ icons.icon("globe", 16, icon_overrides) }}</button>
+      <a class="header-icon-btn admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings", 16, icon_overrides) }}</a>
     </span>
   </div>
   {% if ext_slots.header %}

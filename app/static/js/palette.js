@@ -80,6 +80,9 @@
   } catch (e) {}
 
   function openPalette() {
+    if (window.SiteFlowTooltip && window.SiteFlowTooltip.hide) {
+      window.SiteFlowTooltip.hide();
+    }
     overlay.hidden = false;
     overlay.setAttribute("aria-hidden", "false");
     document.body.style.overflow = "hidden";

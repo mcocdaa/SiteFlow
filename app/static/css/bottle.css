@@ -98,26 +98,7 @@
 .bottle-actions .actions-right {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-}
-
-.bottle-actions [data-tip]::after {
-  bottom: auto;
-  top: calc(100% + 8px);
-  left: auto;
-  right: 0;
-  transform: none;
-}
-
-.bottle-actions [data-tip]::before {
-  bottom: auto;
-  top: calc(100% + 3px);
-  left: auto;
-  right: 10px;
-  transform: none;
-  border-top-color: transparent;
-  border-bottom: 5px solid var(--text);
-  border-top: 0;
+  gap: 8px;
 }
 
 .bottle-main {
