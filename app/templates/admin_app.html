@@ -18,13 +18,11 @@
         <p class="brand" data-i18n-auto>{{ project.title }}</p>
         {% if project.description %}<p class="tagline" data-i18n-auto>{{ project.description }}</p>{% endif %}
       </div>
-      <div class="row-actions header-actions">
-        <button type="button" class="search-trigger" id="cmd-k-trigger" data-tip="搜索" data-i18n-tip="common.search" aria-label="搜索" data-i18n-aria-label="common.search">
-          {{ icons.icon("search", 16) }}
-        </button>
-        <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}<span data-i18n="row.view">查看</span></a>
-        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
-        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
+      <div class="header-actions">
+        <button type="button" class="header-icon-btn search-trigger" id="cmd-k-trigger" data-hover-tip="搜索" data-i18n-hover-tip="common.search" aria-label="搜索" data-i18n-aria-label="common.search">{{ icons.icon("search", 16) }}</button>
+        <a class="header-icon-btn" href="/projects/{{ project.slug }}/" target="_blank" data-hover-tip="查看" data-i18n-hover-tip="row.view" aria-label="查看" data-i18n-aria-label="row.view">{{ icons.icon("external-link", 16) }}</a>
+        <button type="button" class="header-icon-btn lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" data-hover-tip="切换为英文" data-i18n-hover-tip="common.lang_tip" aria-label="切换为英文" data-i18n-aria-label="common.lang_tip">{{ icons.icon("globe", 16) }}</button>
+        <button type="button" class="header-icon-btn" data-action="logout" data-hover-tip="退出登录" data-i18n-hover-tip="admin.logout" aria-label="退出登录" data-i18n-aria-label="admin.logout">{{ icons.icon("log-out", 16) }}</button>
       </div>
     </div>
   </header>

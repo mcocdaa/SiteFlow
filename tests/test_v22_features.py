@@ -450,7 +450,8 @@ def test_bilingual_i18n_assets_and_toggle_controls() -> None:
         resume_pub = client.get(f"/projects/{resume_proj['slug']}/").text
         assert "/static/js/i18n.js" in resume_pub
         assert 'id="lang-toggle-btn"' in resume_pub
-        assert 'data-i18n="resume.print_pdf"' in resume_pub
+        assert 'data-i18n-tip="resume.print_pdf"' in resume_pub
+        assert 'data-i18n-aria-label="resume.print_pdf"' in resume_pub
 
         resume_adm = client.get(f"/admin/projects/{resume_proj['id']}").text
         assert "/static/js/i18n.js" in resume_adm
@@ -500,3 +501,92 @@ def test_bilingual_i18n_assets_and_toggle_controls() -> None:
         assert "postMessage" in preview_js
         assert "siteflow:lang" in preview_js
         assert "siteflow:lang" in i18n_js.text
+
+
+def test_unified_header_icon_buttons_across_pages() -> None:
+    with TestClient(app) as client:
+        csrf = login(client)
+        space = client.post(
+            "/api/admin/projects/app",
+            json={"type": "space", "title": "顶栏空间"},
+            headers=auth_headers(csrf),
+        ).json()["project"]
+        blog = client.post(
+            "/api/admin/projects/app",
+            json={"type": "blog", "title": "顶栏博客"},
+            headers=auth_headers(csrf),
+        ).json()["project"]
+        client.patch(
+            f"/api/admin/projects/{blog['id']}",
+            json={"content": '{"posts":[{"slug":"p1","title":"文一","body":"内容"}]}'},
+            headers=auth_headers(csrf),
+        )
+        resume = client.post(
+            "/api/admin/projects/app",
+            json={"type": "resume", "title": "顶栏简历"},
+            headers=auth_headers(csrf),
+        ).json()["project"]
+        bottle = client.post(
+            "/api/admin/projects/app",
+            json={"type": "bottle", "title": "顶栏漂流瓶"},
+            headers=auth_headers(csrf),
+        ).json()["project"]
+        locked = client.post(
+            "/api/admin/projects/link",
+            json={"url": "https://example.com"},
+            headers=auth_headers(csrf),
+        ).json()["project"]
+        client.patch(
+            f"/api/admin/projects/{locked['id']}",
+            json={"password": "secret"},
+            headers=auth_headers(csrf),
+        )
+
+        admin_pages = [
+            client.get("/admin").text,
+            client.get(f"/admin/projects/{space['id']}").text,
+            client.get(f"/admin/projects/{blog['id']}").text,
+            client.get(f"/admin/projects/{blog['id']}/posts/new").text,
+            client.get(f"/admin/projects/{resume['id']}").text,
+            client.get(f"/admin/projects/{bottle['id']}").text,
+        ]
+        for html in admin_pages:
+            assert "lang-label" not in html
+            assert 'class="header-icon-btn lang-toggle-btn"' in html
+            assert 'data-hover-tip="切换为英文"' in html
+            assert 'data-hover-tip="退出登录"' in html
+            assert 'aria-label="退出登录"' in html
+            assert 'title="切换为英文' not in html
+            assert '<span data-i18n="admin.logout">' not in html
+
+        assert 'data-hover-tip="全站默认插件"' in admin_pages[0]
+        assert 'data-i18n-hover-tip="admin.site_extensions"' in admin_pages[0]
+        assert '<span data-i18n="admin.site_extensions">' not in admin_pages[0]
+        assert "data-site-ext-active-count" in admin_pages[0]
+
+        public_pages = [
+            client.get("/").text,
+            client.get(f"/projects/{space['slug']}/").text,
+            client.get(f"/projects/{blog['slug']}/").text,
+            client.get(f"/projects/{blog['slug']}/posts/p1").text,
+            client.get(f"/projects/{resume['slug']}/").text,
+            client.get(f"/projects/{bottle['slug']}/").text,
+            client.get("/login").text,
+        ]
+        for html in public_pages:
+            assert "lang-label" not in html
+            assert 'class="header-icon-btn lang-toggle-btn"' in html
+            assert 'data-tip="切换为英文"' in html
+            assert 'data-i18n-tip="common.lang_tip"' in html
+            assert 'title="切换为英文' not in html
+
+        with TestClient(app) as guest:
+            gate_html = guest.get(f"/projects/{locked['slug']}/").text
+            assert "lang-label" not in gate_html
+            assert 'class="header-icon-btn lang-toggle-btn"' in gate_html
+            assert 'data-tip="切换为英文"' in gate_html
+            assert 'title="切换为英文' not in gate_html
+
+        i18n_js = client.get("/static/js/i18n.js").text
+        assert '"common.lang_tip": "切换为英文"' in i18n_js
+        assert '"common.lang_tip": "Switch to Chinese"' in i18n_js

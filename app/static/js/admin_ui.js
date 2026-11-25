@@ -428,9 +428,17 @@
     var vw = window.innerWidth;
     var vh = window.innerHeight;
 
-    var placement = "top";
-    var top = triggerRect.top - tipRect.height - gap;
-    if (top < pad) {
+    var preferBottom =
+      trigger.getAttribute("data-hover-placement") === "bottom" ||
+      Boolean(trigger.closest(".site-header, .preview-header, .palette-header, .floating-top-actions"));
+    var placement = preferBottom ? "bottom" : "top";
+    var top = preferBottom
+      ? triggerRect.bottom + gap
+      : triggerRect.top - tipRect.height - gap;
+    if (preferBottom && top + tipRect.height > vh - pad && triggerRect.top - tipRect.height - gap >= pad) {
+      placement = "top";
+      top = triggerRect.top - tipRect.height - gap;
+    } else if (!preferBottom && top < pad) {
       var below = triggerRect.bottom + gap;
       if (below + tipRect.height <= vh - pad || vh - triggerRect.bottom >= triggerRect.top) {
         placement = "bottom";
@@ -524,6 +532,7 @@
     var trigger = target.closest("[data-hover-tip]");
     if (!trigger) return;
     if (trigger === activeTrigger) {
+      if (trigger.matches && trigger.matches(":hover")) return;
       scheduleTooltipHide(60);
     }
   });
@@ -545,6 +554,7 @@
   );
   window.addEventListener("resize", function () {
     if (activeTrigger && tooltipEl && isPopoverOpen(tooltipEl)) {
+      clearTimeout(hideTimer);
       positionTooltip(activeTrigger);
     }
   });
@@ -563,6 +573,7 @@
       if (closeBtn) closeBtn.setAttribute("aria-label", t("common.close", null, "关闭"));
     });
     if (activeTrigger && tooltipEl && isPopoverOpen(tooltipEl)) {
+      clearTimeout(hideTimer);
       positionTooltip(activeTrigger);
     }
   });

@@ -4,8 +4,8 @@
     <div class="palette-header">
       <span class="palette-search-icon">{{ icons.icon("search", 18) }}</span>
       <input id="palette-input" type="text" placeholder="搜索项目、空间或快捷命令..." data-i18n-placeholder="palette.placeholder" autocomplete="off" spellcheck="false" autofocus>
-      <button type="button" class="btn btn-sm lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
-      <button type="button" class="palette-close-btn" id="palette-close" aria-label="关闭搜索" data-i18n-aria-label="palette.close">{{ icons.icon("x", 16) }}</button>
+      <button type="button" class="header-icon-btn lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" data-tip="切换为英文" data-i18n-tip="common.lang_tip" aria-label="切换为英文" data-i18n-aria-label="common.lang_tip">{{ icons.icon("globe", 16) }}</button>
+      <button type="button" class="palette-close-btn" id="palette-close" data-tip="关闭搜索" data-i18n-tip="palette.close" aria-label="关闭搜索" data-i18n-aria-label="palette.close">{{ icons.icon("x", 16) }}</button>
     </div>
     <div class="palette-body" id="palette-results" role="listbox">
       <!-- Dynamically filled by palette.js -->

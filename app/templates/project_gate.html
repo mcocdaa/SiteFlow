@@ -10,7 +10,7 @@
 <body class="login-body">
   {% import "icons.html" as icons %}
   <div class="floating-top-actions">
-    <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
+    <button type="button" class="header-icon-btn lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" data-tip="切换为英文" data-i18n-tip="common.lang_tip" aria-label="切换为英文" data-i18n-aria-label="common.lang_tip">{{ icons.icon("globe", 16) }}</button>
   </div>
   <div class="login-card gate-card">
     <div class="gate-icon-wrapper">

@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from app.models import Project
 
-Audience = Literal["visitor", "ai", "admin"]
+Audience = Literal["visitor", "plugin", "ai", "admin"]
 SlotName = Literal["header", "aside", "overlay", "footer", "title_deco", "icons"]
 Capability = Literal[
     "has_content",
@@ -18,7 +18,7 @@ Capability = Literal[
     "is_personal_profile",
     "supports_layout",
 ]
-AUDIENCES: tuple[Audience, ...] = ("visitor", "ai", "admin")
+AUDIENCES: tuple[Audience, ...] = ("visitor", "plugin", "ai", "admin")
 CAPABILITIES: frozenset[str] = frozenset(Capability.__args__)  # type: ignore[attr-defined]
 
 
@@ -70,7 +70,13 @@ class StaticSurface:
     token_map: Mapping[str, str] = field(default_factory=dict)
 
     def context(self, audience: Audience) -> Mapping[str, Any]:
-        return self.contexts.get(audience, self.contexts.get("visitor", {}))
+        if audience in self.contexts:
+            return self.contexts[audience]
+        if audience == "plugin" and "ai" in self.contexts:
+            return self.contexts["ai"]
+        if audience == "ai" and "plugin" in self.contexts:
+            return self.contexts["plugin"]
+        return self.contexts.get("visitor", {})
 
     def items(self, audience: Audience) -> Sequence[SurfaceItem]:
         return self.item_list

@@ -122,7 +122,7 @@ def _normalize_ai_visibility(raw: object, *, strict: bool = False) -> dict[str, 
         return out
     if not isinstance(raw, dict):
         if strict:
-            raise InvalidContent("AI 可见性配置必须是对象")
+            raise InvalidContent("插件可见性配置必须是对象")
         return out
     for key in AI_VISIBILITY_KEYS:
         if key not in raw:
@@ -131,7 +131,7 @@ def _normalize_ai_visibility(raw: object, *, strict: bool = False) -> dict[str, 
         if isinstance(value, bool):
             out[key] = value
         elif strict:
-            raise InvalidContent("AI 可见性选项必须是布尔值")
+            raise InvalidContent("插件可见性选项必须是布尔值")
     return out
 
 
@@ -290,16 +290,16 @@ class ResumeApp:
         visibility = _normalize_ai_visibility(resume.get("ai_visibility"), strict=False)
         public = {key: value for key, value in resume.items() if key not in ("extensions", "ai_visibility")}
         basics = dict(public.get("basics") or {})
-        ai_basics = dict(basics)
+        plugin_basics = dict(basics)
         if not visibility["contact"]:
             for field in PRIVATE_BASICS:
-                ai_basics.pop(field, None)
+                plugin_basics.pop(field, None)
         if not visibility["location"]:
-            ai_basics.pop("location", None)
-        ai: dict[str, Any] = {"basics": ai_basics}
+            plugin_basics.pop("location", None)
+        plugin_ctx: dict[str, Any] = {"basics": plugin_basics}
         for section in SECTIONS:
             if visibility[section]:
-                ai[section] = public.get(section, [])
+                plugin_ctx[section] = public.get(section, [])
         items = tuple(
             SurfaceItem(
                 key=f"{section}-{index}",
@@ -315,7 +315,7 @@ class ResumeApp:
         return StaticSurface(
             meta=project_meta(db, project, title=str(basics.get("name") or "")),
             capabilities=self.capabilities,
-            contexts={"visitor": public, "ai": ai, "admin": resume},
+            contexts={"visitor": public, "plugin": plugin_ctx, "ai": plugin_ctx, "admin": resume},
             item_list=items,
         )
 

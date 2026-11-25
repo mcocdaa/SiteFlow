@@ -25,13 +25,19 @@ async function main() {
     async function checkLocaleButtons() {
       const state = await page.locator('[data-testid="locale-toggle"]').evaluateAll(buttons => buttons.map(button => ({
         svg: button.querySelectorAll('svg.icon').length,
-        label: button.querySelector('.lang-label')?.textContent,
+        text: button.textContent.trim(),
+        tip: button.getAttribute('data-hover-tip') || button.getAttribute('data-tip') || '',
+        ariaLabel: button.getAttribute('aria-label') || '',
+        hasTitle: button.hasAttribute('title'),
         emoji: button.textContent.includes('🌐')
       })));
       assert(state.length > 0, '页面必须有语言切换按钮');
       state.forEach(button => {
         assert.equal(button.svg, 1, '语言切换使用一个 SVG 图标');
-        assert(['EN', '中文'].includes(button.label), '语言按钮文案必须正确');
+        assert.equal(button.text, '', '语言按钮为纯图标按钮，无内嵌文字');
+        assert(['切换为英文', 'Switch to Chinese'].includes(button.tip), '语言按钮悬浮提示必须正确');
+        assert.equal(button.ariaLabel, button.tip, '语言按钮无障碍标签需与悬浮提示一致');
+        assert.equal(button.hasTitle, false, '语言按钮不应保留原生 title');
         assert.equal(button.emoji, false, '语言按钮不能使用表情图标');
       });
     }

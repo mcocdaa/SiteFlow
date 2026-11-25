@@ -16,11 +16,11 @@
         <p class="crumbs"><a href="/admin" data-i18n="admin.crumb_admin">管理</a>{% if parent %} <span class="muted">/</span> <a href="/admin/projects/{{ parent.id }}" data-i18n-auto>{{ parent.title }}</a>{% endif %} <span class="muted">/</span> <span data-i18n-auto>{{ project.title }}</span></p>
         <p class="brand" data-i18n-auto>{{ project.title }}</p>
       </div>
-      <div class="row-actions header-actions">
+      <div class="header-actions">
         <span class="save-state muted" id="save-state" role="status" aria-live="polite" data-testid="resume-save-state" data-state="idle"><span data-save-text data-i18n="resume.autosave_hint">修改会自动保存</span> <button type="button" class="btn ghost save-retry" data-action="save-retry" hidden data-i18n="resume.retry">重试</button></span>
-        <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}<span data-i18n="resume.preview">预览</span></a>
-        <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
-        <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
+        <a class="header-icon-btn" href="/projects/{{ project.slug }}/" target="_blank" data-hover-tip="预览" data-i18n-hover-tip="resume.preview" aria-label="预览" data-i18n-aria-label="resume.preview">{{ icons.icon("external-link", 16) }}</a>
+        <button type="button" class="header-icon-btn lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" data-hover-tip="切换为英文" data-i18n-hover-tip="common.lang_tip" aria-label="切换为英文" data-i18n-aria-label="common.lang_tip">{{ icons.icon("globe", 16) }}</button>
+        <button type="button" class="header-icon-btn" data-action="logout" data-hover-tip="退出登录" data-i18n-hover-tip="admin.logout" aria-label="退出登录" data-i18n-aria-label="admin.logout">{{ icons.icon("log-out", 16) }}</button>
       </div>
     </div>
   </header>
@@ -40,15 +40,15 @@
       <label class="stack"><span data-i18n="resume.field_summary">简介</span> <textarea id="f-summary" rows="3" maxlength="2000" data-i18n-auto-val></textarea></label>
       <label class="stack"><span class="sf-tip-label" data-hover-tip="每行一条，格式为：名称|https://..." data-i18n-hover-tip="resume.field_links_help"><span data-i18n="resume.field_links">链接</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></span><textarea id="f-links" rows="3" placeholder="GitHub|https://github.com/me"></textarea></label>
       <fieldset class="ai-vis-group">
-        <legend class="sf-tip-title" tabindex="0" data-hover-tip="仅控制看板娘 AI 对话可读取的内容，不影响简历公开展示。" data-i18n-hover-tip="resume.ai_privacy_hint"><span data-i18n="resume.ai_privacy_title">AI 隐私控制</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></legend>
+        <legend class="sf-tip-title" tabindex="0" data-hover-tip="控制通过统一接口提供给扩展插件与外部服务读取的内容，不影响简历页面公开展示。" data-i18n-hover-tip="resume.ai_privacy_hint"><span data-i18n="resume.ai_privacy_title">插件隐私控制</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></legend>
         <div class="ai-vis-row">
           <label class="ext-toggle ai-vis-toggle" for="f-ai-contact">
             <input type="checkbox" switch role="switch" id="f-ai-contact" data-ai-vis="contact">
-            <span class="sf-tip-label" data-hover-tip="开启后看板娘 AI 对话可读取简历中的邮箱与电话。" data-i18n-hover-tip="resume.ai_vis_contact_help"><span data-i18n="resume.ai_vis_contact">联系方式对 AI 可见</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></span>
+            <span class="sf-tip-label" data-hover-tip="包含邮箱与电话；默认关闭，不向扩展插件或外部服务暴露个人联系方式。" data-i18n-hover-tip="resume.ai_vis_contact_help"><span data-i18n="resume.ai_vis_contact">联系方式对插件可见</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></span>
           </label>
           <label class="ext-toggle ai-vis-toggle" for="f-ai-location">
             <input type="checkbox" switch role="switch" id="f-ai-location" data-ai-vis="location">
-            <span data-i18n="resume.ai_vis_location">所在地对 AI 可见</span>
+            <span data-i18n="resume.ai_vis_location">所在地对插件可见</span>
           </label>
         </div>
       </fieldset>
@@ -60,7 +60,7 @@
         <div class="block-head-actions">
           <label class="ext-toggle ai-vis-toggle" for="f-ai-{{ section_key }}">
             <input type="checkbox" switch role="switch" id="f-ai-{{ section_key }}" data-ai-vis="{{ section_key }}" checked>
-            <span data-i18n="resume.ai_visible">对 AI 可见</span>
+            <span data-i18n="resume.ai_visible">对插件可见</span>
           </label>
           <button type="button" class="btn ghost" data-add-entry>{{ icons.icon("plus") }}<span data-i18n="resume.add_entry">添加</span></button>
         </div>

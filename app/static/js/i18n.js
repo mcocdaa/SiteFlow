@@ -360,7 +360,7 @@
 
       "common.search": "搜索",
       "common.admin_entry": "管理入口",
-      "common.lang_tip": "切换为英文 / Switch to English",
+      "common.lang_tip": "切换为英文",
       "common.back": "返回",
       "gallery.empty_title": "还没有作品",
       "gallery.empty_desc": "这里将展示你的 HTML、静态网站、外链作品与个人应用。",
@@ -536,12 +536,12 @@
       "resume.col_keywords": "关键词",
       "resume.col_keywords_help": "多个关键词请用逗号分隔。",
       "resume.col_skill_name": "技能",
-      "resume.ai_privacy_title": "AI 隐私控制",
-      "resume.ai_privacy_hint": "仅控制看板娘 AI 对话可读取的内容，不影响简历公开展示。",
-      "resume.ai_visible": "对 AI 可见",
-      "resume.ai_vis_contact": "联系方式对 AI 可见",
-      "resume.ai_vis_contact_help": "开启后看板娘 AI 对话可读取简历中的邮箱与电话。",
-      "resume.ai_vis_location": "所在地对 AI 可见",
+      "resume.ai_privacy_title": "插件隐私控制",
+      "resume.ai_privacy_hint": "控制通过统一接口提供给扩展插件与外部服务读取的内容，不影响简历页面公开展示。",
+      "resume.ai_visible": "对插件可见",
+      "resume.ai_vis_contact": "联系方式对插件可见",
+      "resume.ai_vis_contact_help": "包含邮箱与电话；默认关闭，不向扩展插件或外部服务暴露个人联系方式。",
+      "resume.ai_vis_location": "所在地对插件可见",
       "blog.chars_unit": "字",
       "blog.read_more": "阅读全文",
       "blog.empty": "还没有文章。",
@@ -990,7 +990,7 @@
 
       "common.search": "Search (⌘K)",
       "common.admin_entry": "Admin",
-      "common.lang_tip": "Switch to Chinese / 切换为中文",
+      "common.lang_tip": "Switch to Chinese",
       "common.back": "Back",
       "gallery.empty_title": "No Projects Yet",
       "gallery.empty_desc": "Your static sites, HTML artifacts, external links, and apps will appear here.",
@@ -1166,12 +1166,12 @@
       "resume.col_keywords": "Keywords",
       "resume.col_keywords_help": "Separate multiple keywords with commas.",
       "resume.col_skill_name": "Skill Category",
-      "resume.ai_privacy_title": "AI Privacy",
-      "resume.ai_privacy_hint": "Controls what the AI mascot can read; public resume display is unaffected.",
-      "resume.ai_visible": "Visible to AI",
-      "resume.ai_vis_contact": "Contact info visible to AI",
-      "resume.ai_vis_contact_help": "Allows the AI mascot to read your email and phone number.",
-      "resume.ai_vis_location": "Location visible to AI",
+      "resume.ai_privacy_title": "Plugin Privacy",
+      "resume.ai_privacy_hint": "Controls which fields are exposed to plugins and external services via the unified page interface; public resume display is unaffected.",
+      "resume.ai_visible": "Visible to plugins",
+      "resume.ai_vis_contact": "Contact info visible to plugins",
+      "resume.ai_vis_contact_help": "Includes email and phone; off by default so personal contact details are not exposed to plugins or external services.",
+      "resume.ai_vis_location": "Location visible to plugins",
       "blog.chars_unit": "chars",
       "blog.read_more": "Read Article",
       "blog.empty": "No posts published yet.",
@@ -1391,8 +1391,8 @@
     "无法读取封面图片": "Unable to read cover image",
     "简历内容不是合法 JSON": "Resume content is not valid JSON",
     "简历内容必须是 JSON 对象": "Resume content must be a JSON object",
-    "AI 可见性配置必须是对象": "AI visibility settings must be an object",
-    "AI 可见性选项必须是布尔值": "AI visibility options must be booleans",
+    "插件可见性配置必须是对象": "Plugin visibility settings must be an object",
+    "插件可见性选项必须是布尔值": "Plugin visibility options must be booleans",
     "博客内容不是合法 JSON": "Blog content is not valid JSON",
     "博客内容必须是 JSON 对象": "Blog content must be a JSON object",
     "插件不存在": "Extension not found",
@@ -1717,13 +1717,18 @@
       document.title = origDocTitle;
     }
 
-    // 10. Update language toggle button(s)
     document.querySelectorAll("#lang-toggle-btn, [data-action='toggle-lang'], [data-testid='locale-toggle']").forEach(function (btn) {
+      var tip = (DICT[lang] && DICT[lang]["common.lang_tip"]) || t("common.lang_tip");
       var label = btn.querySelector(".lang-label");
       if (label) label.textContent = lang === "zh" ? "EN" : "中文";
-      btn.removeAttribute("data-tip");
-      btn.setAttribute("title", t("common.lang_tip"));
-      btn.setAttribute("aria-label", t("common.lang_tip"));
+      btn.removeAttribute("title");
+      if (btn.hasAttribute("data-hover-tip") || btn.hasAttribute("data-i18n-hover-tip")) {
+        btn.setAttribute("data-hover-tip", tip);
+        btn.removeAttribute("data-tip");
+      } else {
+        btn.setAttribute("data-tip", tip);
+      }
+      btn.setAttribute("aria-label", tip);
     });
   }
 

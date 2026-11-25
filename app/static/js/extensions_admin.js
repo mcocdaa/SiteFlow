@@ -80,6 +80,7 @@
   if (siteDialogEl) {
     if (siteOpenBtn) {
       siteOpenBtn.addEventListener("click", function () {
+        hideTooltip();
         if (!siteDialogEl.open) siteDialogEl.showModal();
       });
     }
