@@ -28,6 +28,7 @@ from app.extensions.base import (
     SlotKind,
     StructuredSlotKind,
     TargetType,
+    infer_capabilities_from_targets,
     sanitize_bool,
     sanitize_choice,
     sanitize_float,
@@ -38,6 +39,7 @@ from app.extensions.base import (
 from app.models import Project
 from app.og import fetch_archive, validate_public_host
 from app.plugins.base import InvalidContent
+from app.surface import Capability
 from app.uploads import (
     InvalidUpload,
     delete_project_media_url,
@@ -122,12 +124,21 @@ class PackExtension(BaseExtension):
         int_fields: set[str],
         tokens: dict[str, str] | None = None,
         icon_overrides: dict[str, str] | None = None,
+        requires: frozenset[Capability] | None = None,
+        excludes: frozenset[Capability] | None = None,
     ) -> None:
         self.id = f"{pack_id}.{local_id}"
         self.pack_id = pack_id
         self.pack_name = pack_name
         self.local_id = local_id
         self.targets = targets
+        if requires is None and excludes is None:
+            inferred_req, inferred_exc = infer_capabilities_from_targets(targets)
+            self.requires = inferred_req
+            self.excludes = inferred_exc
+        else:
+            self.requires = requires if requires is not None else frozenset()
+            self.excludes = excludes if excludes is not None else frozenset()
         self.pages = pages
         self.slot = slot
         self.mount = mount

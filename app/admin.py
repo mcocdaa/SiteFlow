@@ -14,7 +14,7 @@ from starlette.concurrency import run_in_threadpool
 from app import stats, store
 from app.auth import csrf_for, hash_project_password, read_session
 from app.deps import AdminConfig, DbSession, api_error, get_config
-from app.extensions.base import EXTENSIBLE_TARGETS, TargetType
+from app.extensions.base import TargetType, capabilities_for_target
 from app.extensions.mascot import MASCOT_CHARACTERS
 from app.extensions.packs import (
     PackError,
@@ -40,6 +40,7 @@ from app.plugins.base import InvalidContent
 from app.plugins.blog.plugin import validate_content as blog_content
 from app.plugins.resume.plugin import validate_content as resume_content
 from app.plugins.space import validate_space_content
+from app.surface import Capability
 from app.templating import templates
 from app.uploads import (
     InvalidUpload,
@@ -111,6 +112,17 @@ def _target_of(project: Project) -> TargetType | None:
     return None
 
 
+def _capabilities_of(project: Project) -> frozenset[Capability] | None:
+    plugin = registry.get(project.type)
+    if plugin is None:
+        return None
+    caps = getattr(plugin, "capabilities", None)
+    if isinstance(caps, frozenset):
+        return caps
+    target = _target_of(project)
+    return capabilities_for_target(target) if target is not None else None
+
+
 def _parse_project_content(project: Project, config, *, strict: bool = False) -> dict[str, Any]:
     if project.type == "blog":
         return blog_content(project.content, strict=strict, project_slug=project.slug, config=config)
@@ -128,7 +140,8 @@ def _parse_project_content(project: Project, config, *, strict: bool = False) ->
 
 def _project_dict_redacted(project: Project, config) -> dict[str, Any]:
     data = project.as_dict()
-    if project.type not in EXTENSIBLE_TARGETS or not project.content:
+    caps = _capabilities_of(project)
+    if caps is None or not project.content:
         return data
     try:
         parsed = json.loads(project.content)
@@ -136,7 +149,7 @@ def _project_dict_redacted(project: Project, config) -> dict[str, Any]:
         return data
     if not isinstance(parsed, dict) or "extensions" not in parsed:
         return data
-    redacted = redact_content_extensions(parsed, target=project.type, config=config)
+    redacted = redact_content_extensions(parsed, capabilities=caps, config=config)
     data["content"] = json.dumps(redacted, ensure_ascii=False)
     return data
 
@@ -145,7 +158,7 @@ def _get_extensible_project(db, project_id: int):
     project = store.by_id(db, project_id)
     if project is None:
         return None, api_error("作品不存在", 404)
-    if project.type not in EXTENSIBLE_TARGETS:
+    if _capabilities_of(project) is None:
         return None, api_error("该类型不支持插件", 400)
     return project, None
 
@@ -157,7 +170,8 @@ def _get_project_and_extension(db, config, project_id: int, ext_id: str):
     ext = get_extension(ext_id, config=config)
     if ext is None:
         return None, None, api_error("插件不存在", 404)
-    if project.type not in ext.targets:
+    caps = _capabilities_of(project)
+    if caps is None or not ext.matches_capabilities(caps):
         return None, None, api_error("该插件不适用于当前应用类型", 400)
     return project, ext, None
 
@@ -272,10 +286,11 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
         "plugin_types": plugin_types(),
         "stats": stats.get_7day_stats(db, project_id=project.id),
     }
-    if project.type in EXTENSIBLE_TARGETS:
+    caps = _capabilities_of(project)
+    if caps is not None:
         content = _parse_project_content(project, config)
-        context["content"] = redact_content_extensions(content, target=project.type, config=config)
-        context["ext_catalog"] = build_admin_catalog(content, target=project.type, config=config)
+        context["content"] = redact_content_extensions(content, capabilities=caps, config=config)
+        context["ext_catalog"] = build_admin_catalog(content, capabilities=caps, config=config)
         context["ext_packs"] = list_packs(config)
         context["mascot_characters"] = list(MASCOT_CHARACTERS)
     elif plugin.admin_template:
@@ -398,8 +413,9 @@ def list_project_extensions(project_id: int, config: AdminConfig, db: DbSession)
     project, error = _get_extensible_project(db, project_id)
     if error is not None or project is None:
         return error
+    caps = _capabilities_of(project)
     content = _parse_project_content(project, config)
-    return {"ok": True, "extensions": build_admin_catalog(content, target=project.type, config=config)}
+    return {"ok": True, "extensions": build_admin_catalog(content, capabilities=caps, config=config)}
 
 
 @router.post("/api/admin/projects/{project_id}/extensions/{ext_id}/install")
@@ -413,8 +429,9 @@ def install_project_extension(
     project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
     if error is not None or project is None or ext is None:
         return error
+    caps = _capabilities_of(project)
     content = _parse_project_content(project, config)
-    old_media = referenced_media_urls(content, target=project.type, config=config)
+    old_media = referenced_media_urls(content, capabilities=caps, config=config)
     ext_map = dict(content.get("extensions") or {})
     existing_state = ext_map.get(ext.id)
     raw_existing_cfg = existing_state.get("config") if isinstance(existing_state, dict) else None
@@ -437,7 +454,7 @@ def install_project_extension(
         config,
         project.slug,
         old_media,
-        referenced_media_urls(content, target=project.type, config=config),
+        referenced_media_urls(content, capabilities=caps, config=config),
     )
     return {"ok": True, "extension": extension_catalog_item(ext, content)}
 
@@ -453,12 +470,13 @@ def update_project_extension(
     project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
     if error is not None or project is None or ext is None:
         return error
+    caps = _capabilities_of(project)
     content = _parse_project_content(project, config)
     ext_map = dict(content.get("extensions") or {})
     state = ext_map.get(ext.id)
     if not isinstance(state, dict) or state.get("installed") is not True:
         return api_error("请先安装该插件", 400)
-    old_media = referenced_media_urls(content, target=project.type, config=config)
+    old_media = referenced_media_urls(content, capabilities=caps, config=config)
     enabled = state.get("enabled") is True if payload.enabled is None else payload.enabled
     raw_existing_cfg = state.get("config")
     existing_cfg: dict[str, Any] = raw_existing_cfg if isinstance(raw_existing_cfg, dict) else {}
@@ -479,7 +497,7 @@ def update_project_extension(
         config,
         project.slug,
         old_media,
-        referenced_media_urls(content, target=project.type, config=config),
+        referenced_media_urls(content, capabilities=caps, config=config),
     )
     return {"ok": True, "extension": extension_catalog_item(ext, content)}
 
@@ -494,8 +512,9 @@ def uninstall_project_extension(
     project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
     if error is not None or project is None or ext is None:
         return error
+    caps = _capabilities_of(project)
     content = _parse_project_content(project, config)
-    old_media = referenced_media_urls(content, target=project.type, config=config)
+    old_media = referenced_media_urls(content, capabilities=caps, config=config)
     ext_map = dict(content.get("extensions") or {})
     ext_map.pop(ext.id, None)
     if ext_map:
@@ -509,7 +528,7 @@ def uninstall_project_extension(
         config,
         project.slug,
         old_media,
-        referenced_media_urls(content, target=project.type, config=config),
+        referenced_media_urls(content, capabilities=caps, config=config),
     )
     return {"ok": True, "extension": extension_catalog_item(ext, content)}
 
@@ -883,6 +902,7 @@ def patch_project(
         return api_error("链接必须以 http:// 或 https:// 开头")
     old_ext_media: set[str] | None = None
     ext_target = _target_of(project)
+    ext_caps = _capabilities_of(project)
     content = updates.pop("content", None)
     if content is not None:
         plugin = registry.get(project.type)
@@ -893,7 +913,7 @@ def patch_project(
                 existing_parsed = _parse_project_content(project, config)
                 old_ext_media = referenced_media_urls(
                     existing_parsed,
-                    target=ext_target,
+                    capabilities=ext_caps,
                     config=config,
                 )
                 try:
@@ -911,7 +931,7 @@ def patch_project(
                     incoming_parsed = merge_content_extension_secrets(
                         existing_parsed,
                         incoming_parsed,
-                        target=ext_target,
+                        capabilities=ext_caps,
                         config=config,
                     )
                 merged_raw = json.dumps(incoming_parsed, ensure_ascii=False)
@@ -969,10 +989,10 @@ def patch_project(
         setattr(project, field, value)
     touch(project)
     db.commit()
-    if old_ext_media is not None and ext_target is not None:
+    if old_ext_media is not None and ext_caps is not None:
         new_ext_media = referenced_media_urls(
             _parse_project_content(project, config),
-            target=ext_target,
+            capabilities=ext_caps,
             config=config,
         )
         _cleanup_unreferenced_media(config, project.slug, old_ext_media, new_ext_media)

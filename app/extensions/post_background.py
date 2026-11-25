@@ -15,6 +15,7 @@ from app.extensions.base import (
 )
 from app.models import Project
 from app.plugins.base import InvalidContent
+from app.surface import Capability
 
 PRESETS = ("none", "dots", "grid", "aurora", "paper")
 APPLY_TO = ("all", "list", "post")
@@ -31,6 +32,7 @@ def _opacity_step_label(value: float) -> str:
 
 class PostBackgroundExtension(BaseExtension):
     id = "post_background"
+    requires: frozenset[Capability] = frozenset({"has_posts"})
     targets: tuple[TargetType, ...] = ("blog",)
     name = "文章与博客背景"
     name_key = "blog.ext.post_background.name"

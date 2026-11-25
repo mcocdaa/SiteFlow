@@ -3,9 +3,9 @@ import math
 import re
 import time
 from collections import defaultdict, deque
-from collections.abc import AsyncIterator
+from collections.abc import AsyncIterator, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Literal
+from typing import Any, Literal, cast
 from urllib.parse import urlparse
 
 import httpx
@@ -31,9 +31,12 @@ from app.extensions.mascot import (
     DEFAULT_MODEL,
     DEFAULT_SYSTEM_PROMPT,
     MascotExtension,
+    resolve_effective_config,
 )
 from app.models import Project
 from app.og import validate_public_host
+from app.plugins import registry as plugins_registry
+from app.surface import PageSurface
 
 router = APIRouter()
 
@@ -43,12 +46,50 @@ _MAX_MESSAGES = 10
 _MAX_MESSAGE_CHARS = 2000
 _MAX_ASSISTANT_MESSAGE_CHARS = 8000
 _MAX_POST_SLUG = 120
-_MAX_CONTEXT_BODY_CHARS = 1500
-_MAX_SPACE_CHILDREN = 15
+_MAX_PAGE_CONTEXT_CHARS = 3000
+_MAX_CONTEXT_SCALAR_CHARS = 1500
+_MAX_CONTEXT_LIST_ITEMS = 20
+_MAX_CONTEXT_DEPTH = 4
 _MAX_REPLY_CHARS = 16_000
 _MAX_THINKING_CHARS = 16_000
 _MAX_CHAT_KEYS = 10_000
 _RATE_WINDOW_SECONDS = 60.0
+
+_FIELD_LABELS: dict[str, str] = {
+    "title": "标题",
+    "description": "简介",
+    "summary": "摘要",
+    "name": "名称",
+    "label": "头衔",
+    "position": "职位",
+    "institution": "学校",
+    "area": "专业",
+    "studyType": "学历",
+    "startDate": "开始时间",
+    "endDate": "结束时间",
+    "date": "日期",
+    "tags": "标签",
+    "keywords": "关键词",
+    "highlights": "要点",
+    "body": "正文节选",
+    "children": "可见子项",
+    "work": "工作经历",
+    "education": "教育经历",
+    "projects": "项目经历",
+    "skills": "技能",
+    "basics": "基本信息",
+    "post": "当前条目",
+    "location": "所在地",
+    "city": "城市",
+    "region": "地区",
+    "countryCode": "国家",
+    "profiles": "社交链接",
+    "network": "平台",
+    "username": "用户名",
+    "url": "链接",
+    "email": "邮箱",
+    "phone": "电话",
+}
 
 _chat_buckets: dict[tuple[str, str], deque[float]] = defaultdict(deque)
 
@@ -123,7 +164,7 @@ class MascotChatRequest(BaseModel):
 class _LoadedProject:
     project: Project
     raw_content: dict[str, object]
-    child_titles: tuple[str, ...]
+    surface: PageSurface
 
 
 @dataclass(frozen=True)
@@ -154,10 +195,15 @@ def _load_project_sync(
     config: Config,
     request: Request,
     slug: str,
+    post_slug: str,
     is_admin: bool,
 ) -> tuple[_LoadedProject | None, int, str]:
     project = store.by_slug(db, slug)
-    if project is None or project.type not in ("blog", "space"):
+    if project is None:
+        return None, 404, "项目不存在"
+    plugin = plugins_registry.get(project.type)
+    surface_fn = getattr(plugin, "surface", None)
+    if plugin is None or not callable(surface_fn):
         return None, 404, "项目不存在"
     if not is_admin:
         if not store.is_visible(db, project):
@@ -170,63 +216,123 @@ def _load_project_sync(
         parsed = {}
     if not isinstance(parsed, dict):
         parsed = {}
-    child_titles: tuple[str, ...] = ()
-    if project.type == "space":
-        children = store.visible_projects(db, project.id)[:_MAX_SPACE_CHILDREN]
-        child_titles = tuple(child.title.strip() for child in children if child.title.strip())
-    return _LoadedProject(project=project, raw_content=parsed, child_titles=child_titles), 200, ""
+    surface = cast(PageSurface, surface_fn(request, project, db, sub=post_slug))
+    return _LoadedProject(project=project, raw_content=parsed, surface=surface), 200, ""
 
 
-def _build_page_context(loaded: _LoadedProject, post_slug: str) -> str:
-    project = loaded.project
-    content = loaded.raw_content
+def _format_scalar(value: object) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bool):
+        return "是" if value else "否"
+    if isinstance(value, (int, float)):
+        return str(value)
+    if isinstance(value, str):
+        return value.strip()[:_MAX_CONTEXT_SCALAR_CHARS]
+    return ""
+
+
+def _is_container(value: object) -> bool:
+    return isinstance(value, Mapping) or (
+        isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray))
+    )
+
+
+def _serialize_sequence(items: Sequence[Any], *, indent: int, depth: int) -> list[str]:
+    if depth > _MAX_CONTEXT_DEPTH:
+        return []
+    trimmed = list(items)[:_MAX_CONTEXT_LIST_ITEMS]
+    if not trimmed:
+        return []
+    if all(not _is_container(item) for item in trimmed):
+        vals = [scalar for item in trimmed if (scalar := _format_scalar(item))]
+        if not vals:
+            return []
+        if len(vals) <= 12 and all(len(v) <= 24 and "\n" not in v for v in vals):
+            return ["、".join(vals)]
+        prefix = "  " * indent
+        return [f"{prefix}- {v}" for v in vals]
+    prefix = "  " * indent
+    out: list[str] = []
+    for item in trimmed:
+        if isinstance(item, Mapping):
+            item_lines: list[str] = []
+            _serialize_mapping(item, indent=indent + 1, depth=depth + 1, lines=item_lines)
+            if item_lines:
+                out.append(f"{prefix}- {item_lines[0].lstrip()}")
+                out.extend(item_lines[1:])
+        elif isinstance(item, Sequence) and not isinstance(item, (str, bytes, bytearray)):
+            out.extend(_serialize_sequence(item, indent=indent + 1, depth=depth + 1))
+        else:
+            scalar = _format_scalar(item)
+            if scalar:
+                out.append(f"{prefix}- {scalar}")
+    return out
+
+
+def _serialize_mapping(
+    data: Mapping[str, Any],
+    *,
+    indent: int,
+    depth: int,
+    lines: list[str],
+    skip_exact: Mapping[str, str] | None = None,
+) -> None:
+    if depth > _MAX_CONTEXT_DEPTH:
+        return
+    prefix = "  " * indent
+    for raw_key, value in data.items():
+        key = str(raw_key).strip()
+        if not key or value is None:
+            continue
+        label = _FIELD_LABELS.get(key, key)
+        if isinstance(value, Mapping):
+            sub_lines: list[str] = []
+            _serialize_mapping(value, indent=indent + 1, depth=depth + 1, lines=sub_lines)
+            if sub_lines:
+                lines.append(f"{prefix}{label}：")
+                lines.extend(sub_lines)
+        elif isinstance(value, Sequence) and not isinstance(value, (str, bytes, bytearray)):
+            sub_lines = _serialize_sequence(value, indent=indent + 1, depth=depth + 1)
+            if sub_lines:
+                if len(sub_lines) == 1 and not sub_lines[0].startswith((" ", "-")):
+                    lines.append(f"{prefix}{label}：{sub_lines[0]}")
+                else:
+                    lines.append(f"{prefix}{label}：")
+                    lines.extend(sub_lines)
+        else:
+            scalar = _format_scalar(value)
+            if not scalar:
+                continue
+            if skip_exact and skip_exact.get(key) == scalar:
+                continue
+            if "\n" in scalar:
+                lines.append(f"{prefix}{label}：\n{scalar}")
+            else:
+                lines.append(f"{prefix}{label}：{scalar}")
+
+
+def _build_page_context(surface: PageSurface) -> str:
     lines: list[str] = []
-    if project.type == "blog":
-        title = str(content.get("title") or project.title or "").strip()
-        desc = str(content.get("description") or project.description or "").strip()
-        if title:
-            lines.append(f"当前博客标题：{title}")
-        if desc:
-            lines.append(f"博客简介：{desc}")
-        posts = content.get("posts")
-        if post_slug and isinstance(posts, list):
-            for entry in posts:
-                if isinstance(entry, dict) and str(entry.get("slug", "")).strip() == post_slug:
-                    post_title = str(entry.get("title", "")).strip()
-                    post_date = str(entry.get("date", "")).strip()
-                    raw_tags = entry.get("tags")
-                    tags = (
-                        [str(t).strip() for t in raw_tags if isinstance(t, str) and t.strip()]
-                        if isinstance(raw_tags, list)
-                        else []
-                    )
-                    summary = str(entry.get("summary", "")).strip()
-                    body = str(entry.get("body", "")).strip()[:_MAX_CONTEXT_BODY_CHARS]
-                    if post_title:
-                        lines.append(f"当前文章标题：{post_title}")
-                    if post_date:
-                        lines.append(f"发布日期：{post_date}")
-                    if tags:
-                        lines.append(f"标签：{', '.join(tags)}")
-                    if summary:
-                        lines.append(f"摘要：{summary}")
-                    if body:
-                        lines.append(f"正文节选：\n{body}")
-                    break
-    elif project.type == "space":
-        title = (project.title or "").strip()
-        desc = (project.description or "").strip()
-        if title:
-            lines.append(f"当前空间名称：{title}")
-        if desc:
-            lines.append(f"空间简介：{desc}")
-        if loaded.child_titles:
-            lines.append("空间内可见作品：")
-            lines.extend(f"- {child_title}" for child_title in loaded.child_titles)
-    return "\n".join(lines)
+    meta_title = surface.meta.title.strip()[:200]
+    meta_desc = surface.meta.description.strip()[:500]
+    skip_exact: dict[str, str] = {}
+    if meta_title:
+        lines.append(f"标题：{meta_title}")
+        skip_exact["title"] = meta_title
+    if meta_desc:
+        lines.append(f"简介：{meta_desc}")
+        skip_exact["description"] = meta_desc
+    ai_ctx = surface.context("ai")
+    if isinstance(ai_ctx, Mapping):
+        _serialize_mapping(ai_ctx, indent=0, depth=0, lines=lines, skip_exact=skip_exact)
+    text = "\n".join(lines).strip()
+    if len(text) > _MAX_PAGE_CONTEXT_CHARS:
+        return text[: _MAX_PAGE_CONTEXT_CHARS - 1].rstrip() + "…"
+    return text
 
 
-def _prepare_chat(loaded: _LoadedProject, post_slug: str) -> _PreparedChat | None:
+def _prepare_chat(loaded: _LoadedProject) -> _PreparedChat | None:
     raw_ext = loaded.raw_content.get("extensions")
     if not isinstance(raw_ext, dict):
         return None
@@ -256,9 +362,10 @@ def _prepare_chat(loaded: _LoadedProject, post_slug: str) -> _PreparedChat | Non
         api_protocol = "openai"
     else:
         api_protocol = str(normalized.get("api_protocol", DEFAULT_API_PROTOCOL))
-    base_prompt = str(normalized.get("system_prompt") or "").strip() or DEFAULT_SYSTEM_PROMPT
+    effective = resolve_effective_config(loaded.surface.meta.type, normalized)
+    base_prompt = str(effective.get("system_prompt") or "").strip() or DEFAULT_SYSTEM_PROMPT
     if bool(normalized.get("include_page_context", True)):
-        page_context = _build_page_context(loaded, post_slug)
+        page_context = _build_page_context(loaded.surface)
         if page_context:
             full_prompt = f"{base_prompt}\n\n[当前页面上下文]\n{page_context}"
         else:
@@ -549,12 +656,12 @@ async def mascot_chat(
     session = read_session(config, request)
     is_admin = bool(session and session.get("admin") is True)
     loaded, status_code, error_msg = await run_in_threadpool(
-        _load_project_sync, db, config, request, slug, is_admin
+        _load_project_sync, db, config, request, slug, payload.post_slug or "", is_admin
     )
     if loaded is None:
         return api_error(error_msg, status_code)
     require_same_origin(request)
-    prepared = _prepare_chat(loaded, payload.post_slug or "")
+    prepared = _prepare_chat(loaded)
     if prepared is None:
         return api_error("看板娘插件未启用", 404)
     if prepared.chat_access == "off":

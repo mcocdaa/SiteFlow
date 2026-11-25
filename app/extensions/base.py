@@ -9,6 +9,7 @@ from markupsafe import Markup
 
 from app.models import Project
 from app.plugins.base import InvalidContent
+from app.surface import Capability
 from app.templating import templates
 
 TargetType = Literal["blog", "space", "resume"]
@@ -25,8 +26,39 @@ STRUCTURED_SLOTS: tuple[StructuredSlotKind, ...] = (
     "title_deco",
     "icons",
 )
+TARGET_CAPABILITIES: dict[TargetType, frozenset[Capability]] = {
+    "blog": frozenset({"has_content", "has_posts", "has_items", "supports_layout"}),
+    "space": frozenset({"has_children", "has_items", "supports_layout"}),
+    "resume": frozenset({"has_content", "is_personal_profile", "has_items"}),
+}
 OFFICIAL_PACK_ID = "official"
 OFFICIAL_PACK_NAME = "SiteFlow 官方插件包"
+
+
+def capabilities_for_target(target: TargetType) -> frozenset[Capability]:
+    return TARGET_CAPABILITIES.get(target, frozenset())
+
+
+def infer_capabilities_from_targets(
+    targets: Collection[TargetType],
+) -> tuple[frozenset[Capability], frozenset[Capability]]:
+    target_set = frozenset(t for t in targets if t in TARGET_CAPABILITIES)
+    if not target_set or target_set == frozenset(EXTENSIBLE_TARGETS):
+        return frozenset(), frozenset()
+    if target_set == frozenset({"blog"}):
+        return frozenset({"has_posts"}), frozenset()
+    if target_set == frozenset({"space"}):
+        return frozenset({"has_children"}), frozenset()
+    if target_set == frozenset({"resume"}):
+        return frozenset({"is_personal_profile"}), frozenset()
+    if target_set == frozenset({"blog", "space"}):
+        return frozenset({"supports_layout"}), frozenset()
+    if target_set == frozenset({"blog", "resume"}):
+        return frozenset({"has_content"}), frozenset()
+    if target_set == frozenset({"space", "resume"}):
+        return frozenset(), frozenset({"has_posts"})
+    return frozenset(), frozenset()
+
 
 PACK_ID_RE = re.compile(r"^[a-z][a-z0-9-]{1,31}$")
 EXT_ID_RE = re.compile(r"^[a-z][a-z0-9_]{1,31}$")
@@ -560,6 +592,10 @@ class Extension(Protocol):
     @property
     def targets(self) -> tuple[TargetType, ...]: ...
     @property
+    def requires(self) -> frozenset[Capability]: ...
+    @property
+    def excludes(self) -> frozenset[Capability]: ...
+    @property
     def pack_id(self) -> str: ...
     @property
     def pack_name(self) -> str: ...
@@ -599,6 +635,8 @@ class Extension(Protocol):
     def editor_fields_template(self) -> str | None: ...
 
     def secret_fields(self) -> set[str]: ...
+
+    def matches_capabilities(self, caps: frozenset[Capability]) -> bool: ...
 
     def merge_config(
         self,
@@ -740,6 +778,8 @@ class Extension(Protocol):
 class BaseExtension:
     id: str = ""
     targets: tuple[TargetType, ...] = ("blog",)
+    requires: frozenset[Capability] = frozenset()
+    excludes: frozenset[Capability] = frozenset()
     pack_id: str = OFFICIAL_PACK_ID
     pack_name: str = OFFICIAL_PACK_NAME
     name: str = ""
@@ -760,6 +800,26 @@ class BaseExtension:
     body_end_template: str | None = None
     editor_fields_template: str | None = None
     slot_templates: ClassVar[dict[str, str]] = {}
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        super().__init_subclass__(**kwargs)
+        if "requires" not in cls.__dict__ and "excludes" not in cls.__dict__ and "targets" in cls.__dict__:
+            cls.requires, cls.excludes = infer_capabilities_from_targets(cls.targets)
+
+    def matches_capabilities(self, caps: frozenset[Capability]) -> bool:
+        req = self.requires
+        exc = self.excludes
+        no_inst_caps = "requires" not in self.__dict__ and "excludes" not in self.__dict__
+        if no_inst_caps and (
+            type(self) is BaseExtension
+            or (
+                "targets" in self.__dict__
+                and "requires" not in type(self).__dict__
+                and "excludes" not in type(self).__dict__
+            )
+        ):
+            req, exc = infer_capabilities_from_targets(self.targets)
+        return req.issubset(caps) and exc.isdisjoint(caps)
 
     def secret_fields(self) -> set[str]:
         return {field.key for field in self.config_schema if field.kind == "secret"}

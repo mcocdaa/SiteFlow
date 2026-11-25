@@ -24,6 +24,7 @@ class SpaceLayoutExtension(BaseExtension):
     id = "space_layout"
     targets: tuple[TargetType, ...] = ("space",)
     requires: frozenset[Capability] = frozenset({"has_items", "supports_layout"})
+    excludes: frozenset[Capability] = frozenset({"has_posts"})
     name = "空间排布模式"
     name_key = "ext.space_layout.name"
     description = "切换空间作品画廊排布风格：标准网格、瀑布流、拍立得相片或可自由拖拽的拼贴桌面。"

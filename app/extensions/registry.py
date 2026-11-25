@@ -10,6 +10,7 @@ from app.extensions.base import (
     Extension,
     PageKind,
     TargetType,
+    capabilities_for_target,
     sanitize_bool,
     sanitize_icon_overrides,
     sanitize_theme_tokens,
@@ -24,9 +25,23 @@ from app.extensions.space_banner import SpaceBannerExtension
 from app.extensions.space_layout import SpaceLayoutExtension
 from app.models import Project
 from app.plugins.base import InvalidContent
+from app.surface import Capability
 from app.templating import static_url
 
 _builtins: dict[str, Extension] = {}
+
+
+def _matches_scope(
+    ext: Extension,
+    *,
+    target: TargetType | None = None,
+    capabilities: frozenset[Capability] | None = None,
+) -> bool:
+    if capabilities is not None:
+        return ext.matches_capabilities(capabilities)
+    if target is not None:
+        return ext.matches_capabilities(capabilities_for_target(target))
+    return True
 
 
 def register(extension: Extension) -> None:
@@ -35,21 +50,28 @@ def register(extension: Extension) -> None:
     _builtins[extension.id] = extension
 
 
-def builtin_extensions(*, target: TargetType | None = None) -> list[Extension]:
-    if target is None:
+def builtin_extensions(
+    *,
+    target: TargetType | None = None,
+    capabilities: frozenset[Capability] | None = None,
+) -> list[Extension]:
+    if target is None and capabilities is None:
         return list(_builtins.values())
-    return [ext for ext in _builtins.values() if target in ext.targets]
+    return [
+        ext for ext in _builtins.values() if _matches_scope(ext, target=target, capabilities=capabilities)
+    ]
 
 
 def all_extensions(
     *,
     target: TargetType | None = None,
+    capabilities: frozenset[Capability] | None = None,
     config: Config | None = None,
 ) -> list[Extension]:
-    items = builtin_extensions(target=target)
+    items = builtin_extensions(target=target, capabilities=capabilities)
     if config is not None:
         for ext in load_pack_extensions(config):
-            if target is None or target in ext.targets:
+            if _matches_scope(ext, target=target, capabilities=capabilities):
                 items.append(ext)
     return items
 
@@ -71,6 +93,7 @@ def normalize_extensions(
     strict: bool = False,
     project_slug: str | None = None,
     target: TargetType | None = None,
+    capabilities: frozenset[Capability] | None = None,
     config: Config | None = None,
 ) -> dict[str, dict[str, Any]]:
     if raw is None:
@@ -86,7 +109,7 @@ def normalize_extensions(
             if strict:
                 raise InvalidContent(f"不支持的插件：{ext_id}")
             continue
-        if target is not None and target not in ext.targets:
+        if not _matches_scope(ext, target=target, capabilities=capabilities):
             if strict:
                 raise InvalidContent(f"插件 {ext.id} 不适用于当前空间类型")
             continue
@@ -133,13 +156,14 @@ def active_extensions(
     content: dict[str, Any],
     *,
     target: TargetType | None = None,
+    capabilities: frozenset[Capability] | None = None,
     config: Config | None = None,
 ) -> list[tuple[Extension, dict[str, Any]]]:
     raw_map = content.get("extensions")
     if not isinstance(raw_map, dict):
         return []
     active: list[tuple[Extension, dict[str, Any]]] = []
-    for ext in all_extensions(target=target, config=config):
+    for ext in all_extensions(target=target, capabilities=capabilities, config=config):
         state = raw_map.get(ext.id)
         if not isinstance(state, dict):
             continue
@@ -162,6 +186,8 @@ def extension_catalog_item(ext: Extension, content: dict[str, Any]) -> dict[str,
         "pack_id": ext.pack_id,
         "pack_name": ext.pack_name,
         "targets": list(ext.targets),
+        "requires": sorted(ext.requires),
+        "excludes": sorted(ext.excludes),
         "name": ext.name,
         "name_key": ext.name_key,
         "description": ext.description,
@@ -188,9 +214,13 @@ def build_admin_catalog(
     content: dict[str, Any],
     *,
     target: TargetType | None = None,
+    capabilities: frozenset[Capability] | None = None,
     config: Config | None = None,
 ) -> list[dict[str, Any]]:
-    return [extension_catalog_item(ext, content) for ext in all_extensions(target=target, config=config)]
+    return [
+        extension_catalog_item(ext, content)
+        for ext in all_extensions(target=target, capabilities=capabilities, config=config)
+    ]
 
 
 def _resolve_asset_url(url: str) -> str:
@@ -207,18 +237,18 @@ def build_render_bundle(
     post: dict[str, Any] | None = None,
     *,
     target: TargetType | None = None,
+    capabilities: frozenset[Capability] | None = None,
     config: Config | None = None,
     is_admin: bool = False,
 ) -> dict[str, Any]:
-    resolved_target: TargetType
-    if target is not None:
-        resolved_target = target
-    elif page == "space":
-        resolved_target = "space"
-    elif page == "resume":
-        resolved_target = "resume"
-    else:
-        resolved_target = "blog"
+    resolved_target: TargetType | None = target
+    if capabilities is None and resolved_target is None:
+        if page == "space":
+            resolved_target = "space"
+        elif page == "resume":
+            resolved_target = "resume"
+        else:
+            resolved_target = "blog"
 
     css_files: list[str] = []
     js_files: list[str] = []
@@ -234,7 +264,12 @@ def build_render_bundle(
     post_header_templates: list[tuple[str, str]] = []
     contexts: dict[str, dict[str, Any]] = {}
 
-    for ext, cfg in active_extensions(content, target=resolved_target, config=config):
+    for ext, cfg in active_extensions(
+        content,
+        target=resolved_target,
+        capabilities=capabilities,
+        config=config,
+    ):
         if isinstance(ext, PackExtension) and page not in ext.pages:
             continue
         for href in ext.static_css:
@@ -361,6 +396,7 @@ def referenced_media_urls(
     content: dict[str, Any],
     *,
     target: TargetType | None = None,
+    capabilities: frozenset[Capability] | None = None,
     config: Config | None = None,
 ) -> set[str]:
     urls: set[str] = set()
@@ -374,7 +410,7 @@ def referenced_media_urls(
                         urls.add(value)
     raw_ext = content.get("extensions")
     if isinstance(raw_ext, dict):
-        for ext in all_extensions(target=target, config=config):
+        for ext in all_extensions(target=target, capabilities=capabilities, config=config):
             state = raw_ext.get(ext.id)
             if isinstance(state, dict) and state.get("installed") is True:
                 cfg = ext.normalize_config(state.get("config"))
@@ -388,6 +424,7 @@ def redact_content_extensions(
     content: dict[str, Any],
     *,
     target: TargetType | None = None,
+    capabilities: frozenset[Capability] | None = None,
     config: Config | None = None,
 ) -> dict[str, Any]:
     if not isinstance(content, dict):
@@ -402,7 +439,7 @@ def redact_content_extensions(
             redacted_map[ext_id] = state
             continue
         ext = get(str(ext_id), config=config)
-        if ext is None or (target is not None and target not in ext.targets):
+        if ext is None or not _matches_scope(ext, target=target, capabilities=capabilities):
             redacted_map[ext_id] = dict(state)
             continue
         raw_cfg = state.get("config")
@@ -420,6 +457,7 @@ def merge_content_extension_secrets(
     incoming_content: dict[str, Any],
     *,
     target: TargetType | None = None,
+    capabilities: frozenset[Capability] | None = None,
     config: Config | None = None,
 ) -> dict[str, Any]:
     if not isinstance(incoming_content, dict):
@@ -436,7 +474,11 @@ def merge_content_extension_secrets(
             merged_map[ext_id] = state
             continue
         ext = get(str(ext_id), config=config)
-        if ext is None or (target is not None and target not in ext.targets) or not ext.secret_fields():
+        if (
+            ext is None
+            or not _matches_scope(ext, target=target, capabilities=capabilities)
+            or not ext.secret_fields()
+        ):
             merged_map[ext_id] = dict(state)
             continue
         prev_state = existing_map.get(ext_id)

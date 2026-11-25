@@ -17,12 +17,14 @@ from app.extensions.base import (
 )
 from app.models import Project
 from app.plugins.base import InvalidContent
+from app.surface import Capability
 
 TONES = ("info", "accent", "success", "warm")
 
 
 class SpaceBannerExtension(BaseExtension):
     id = "space_banner"
+    requires: frozenset[Capability] = frozenset({"has_children"})
     targets: tuple[TargetType, ...] = ("space",)
     name = "空间公告栏"
     name_key = "ext.space_banner.name"

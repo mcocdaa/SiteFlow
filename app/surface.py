@@ -44,8 +44,11 @@ class SurfaceItem:
 
 
 class PageSurface(Protocol):
-    meta: SurfaceMeta
-    capabilities: frozenset[Capability]
+    @property
+    def meta(self) -> SurfaceMeta: ...
+
+    @property
+    def capabilities(self) -> frozenset[Capability]: ...
 
     def context(self, audience: Audience) -> Mapping[str, Any]: ...
 

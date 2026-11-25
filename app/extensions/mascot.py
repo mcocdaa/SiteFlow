@@ -1,5 +1,6 @@
 import ipaddress
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any, ClassVar, Literal
 from urllib.parse import urlparse
@@ -21,6 +22,7 @@ from app.extensions.base import (
 )
 from app.models import Project
 from app.plugins.base import InvalidContent
+from app.surface import Capability
 from app.templating import static_url
 
 
@@ -128,11 +130,90 @@ LEGACY_DEFAULT_SYSTEM_PROMPTS = frozenset(
     }
 )
 
+_RESUME_GREETING = "你好！欢迎查看这份简历，想了解经历、项目或技能可以直接问我～"
+_RESUME_TIPS: tuple[str, ...] = (
+    "# 每行一条点击提示语；以 # 开头的行为注释，不会展示给访客",
+    "# 可用变量：{progress} 浏览进度(%)，{heading} 当前板块，{title} 标题，{site} 站点名，{time} 时段问候",
+    "想快速了解候选人的核心项目与技术栈？直接问我就好～",
+    "正在浏览「{heading}」，可以让我帮忙总结亮点哦～",
+    "已浏览 {progress}%，点击右上角支持一键打印或导出 PDF～",
+    "{time}好！有任何关于工作经历或技能匹配的问题都可以问我",
+)
+_RESUME_SYSTEM_PROMPT = (
+    "你是这份在线简历的看板娘助手，请使用友好、专业、简洁且与访客一致的语言，"
+    "基于提供的简历上下文介绍候选人的工作经历、项目成果、教育背景与核心技能。"
+    "请严格以页面提供的信息为准，绝不编造未提及的经历、数据或联系方式；"
+    "若访客询问未提供或已对 AI 隐藏的联系方式、地区等隐私信息，请礼貌说明暂未向 AI 公开，建议通过简历页面公开信息联系。"
+)
+_PAGE_TYPE_DEFAULTS: dict[str, dict[str, Any]] = {
+    "resume": {
+        "greeting": _RESUME_GREETING,
+        "tips": list(_RESUME_TIPS),
+        "system_prompt": _RESUME_SYSTEM_PROMPT,
+        "chat_access": "admin",
+    },
+}
+_DEFAULT_TIP_VARIANTS: tuple[list[str], ...] = (
+    DEFAULT_TIPS,
+    LEGACY_DEFAULT_TIPS,
+    _LEGACY_V3_DEFAULT_TIPS,
+    _LEGACY_V4_DEFAULT_TIPS,
+)
+
+
+def resolve_effective_defaults(page_type: str) -> dict[str, Any]:
+    base: dict[str, Any] = {
+        "greeting": DEFAULT_GREETING,
+        "tips": list(DEFAULT_TIPS),
+        "system_prompt": DEFAULT_SYSTEM_PROMPT,
+        "chat_access": "admin",
+    }
+    override = _PAGE_TYPE_DEFAULTS.get(page_type)
+    if override is not None:
+        return {
+            "greeting": str(override.get("greeting", base["greeting"])),
+            "tips": list(override.get("tips", base["tips"])),
+            "system_prompt": str(override.get("system_prompt", base["system_prompt"])),
+            "chat_access": str(override.get("chat_access", base["chat_access"])),
+        }
+    return base
+
+
+def _visible_tips(raw_tips: object) -> list[str]:
+    if not isinstance(raw_tips, list):
+        return []
+    return [text for item in raw_tips if (text := str(item).strip()) and not text.startswith("#")]
+
+
+def resolve_effective_config(page_type: str, config: Mapping[str, Any]) -> dict[str, Any]:
+    defaults = resolve_effective_defaults(page_type)
+    resolved = dict(config)
+    raw_greeting = config.get("greeting")
+    greeting = raw_greeting.strip() if isinstance(raw_greeting, str) else ""
+    if not greeting or greeting == DEFAULT_GREETING:
+        resolved["greeting"] = defaults["greeting"]
+    else:
+        resolved["greeting"] = greeting
+
+    raw_tips = config.get("tips")
+    if not isinstance(raw_tips, list) or not _visible_tips(raw_tips) or raw_tips in _DEFAULT_TIP_VARIANTS:
+        resolved["tips"] = list(defaults["tips"])
+    else:
+        resolved["tips"] = list(raw_tips)
+
+    raw_prompt = config.get("system_prompt")
+    prompt = raw_prompt.strip() if isinstance(raw_prompt, str) else ""
+    if not prompt or prompt == DEFAULT_SYSTEM_PROMPT or prompt in LEGACY_DEFAULT_SYSTEM_PROMPTS:
+        resolved["system_prompt"] = defaults["system_prompt"]
+    else:
+        resolved["system_prompt"] = prompt
+    return resolved
+
+
 _CONTROL_CHAR_RE = re.compile(r"[\x00-\x20\x7f]")
 _SECRET_CTRL_RE = re.compile(r"[\x00-\x1f\x7f]")
 _MODEL_RE = re.compile(r"^[A-Za-z0-9._:/-]{1,80}$")
 _LOCAL_SUFFIXES = (".localhost", ".local", ".internal")
-_ACTIVE_PAGES = ("list", "post", "space")
 
 
 def _sanitize_api_base_url(value: object, *, strict: bool = False) -> str:
@@ -221,7 +302,9 @@ def _sanitize_model(value: object, *, strict: bool = False) -> str:
 
 class MascotExtension(BaseExtension):
     id = "mascot"
-    targets: tuple[TargetType, ...] = ("blog", "space")
+    requires: frozenset[Capability] = frozenset()
+    excludes: frozenset[Capability] = frozenset()
+    targets: tuple[TargetType, ...] = ("blog", "space", "resume")
     name = "看板娘"
     name_key = "blog.ext.mascot.name"
     description = "纯本地多角色 SVG 看板娘，支持自由拖拽、自定义头像与 DeepSeek AI 流式对话（零外链 CDN）。"
@@ -627,7 +710,7 @@ class MascotExtension(BaseExtension):
         page: PageKind,
         config: dict[str, Any],
     ) -> list[str]:
-        if page not in _ACTIVE_PAGES:
+        if not page:
             return []
         pos = str(config.get("position", "right"))
         classes = ["has-mascot", f"mascot-{pos}"]
@@ -652,13 +735,9 @@ class MascotExtension(BaseExtension):
         custom_avatar = str(config.get("custom_avatar", ""))
         character_kind = "custom" if custom_avatar else spec.kind
         resolved_poses = {} if custom_avatar else {k: static_url(v) for k, v in spec.poses}
-        greeting = str(config.get("greeting", ""))
-        raw_tips = config.get("tips")
-        tips = (
-            [text for item in raw_tips if (text := str(item).strip()) and not text.startswith("#")]
-            if isinstance(raw_tips, list)
-            else []
-        )
+        effective = resolve_effective_config(project.type, config)
+        greeting = str(effective.get("greeting", ""))
+        tips = _visible_tips(effective.get("tips"))
         show_on_mobile = bool(config.get("show_on_mobile", False))
         draggable = bool(config.get("draggable", True))
         chat_access = str(config.get("chat_access", "admin"))
@@ -711,7 +790,7 @@ class MascotExtension(BaseExtension):
         post: dict[str, Any] | None = None,
         is_admin: bool = False,
     ) -> dict[str, Any]:
-        if page not in _ACTIVE_PAGES:
+        if not page:
             return {}
         return self._build_context(
             page=page,
@@ -751,6 +830,15 @@ class MascotExtension(BaseExtension):
     ) -> dict[str, Any]:
         return self._build_context(page="space", project=project, config=config, content=content)
 
+    def render_resume_context(
+        self,
+        *,
+        project: Project,
+        content: dict[str, Any],
+        config: dict[str, Any],
+    ) -> dict[str, Any]:
+        return self._build_context(page="resume", project=project, config=config, content=content)
+
     def inject_body_html(
         self,
         *,
@@ -760,7 +848,7 @@ class MascotExtension(BaseExtension):
         config: dict[str, Any],
         context: dict[str, Any],
     ) -> Markup:
-        if slot != "end" or page not in _ACTIVE_PAGES:
+        if slot != "end" or not page:
             return Markup("")
         return super().inject_body_html(
             slot=slot,
@@ -780,7 +868,7 @@ class MascotExtension(BaseExtension):
         config: dict[str, Any],
         context: dict[str, Any],
     ) -> Markup:
-        if slot != "end" or page not in _ACTIVE_PAGES:
+        if slot != "end" or not page:
             return Markup("")
         return self.inject_body_html(
             slot="end",

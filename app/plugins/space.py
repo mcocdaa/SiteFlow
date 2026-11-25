@@ -10,11 +10,12 @@ from app import store
 from app.auth import read_session
 from app.extensions.registry import build_render_bundle, normalize_extensions
 from app.models import Project
-from app.surface import StaticSurface, SurfaceItem, project_meta
+from app.surface import Capability, StaticSurface, SurfaceItem, project_meta
 from app.templating import placeholder_hue, templates
 
 VALID_FONTS = {"sans", "serif", "mono"}
 VALID_RADII = {"0px", "6px", "10px", "14px", "20px", "24px"}
+SPACE_CAPABILITIES: frozenset[Capability] = frozenset({"has_children", "has_items", "supports_layout"})
 
 
 def default_space_content() -> dict[str, Any]:
@@ -59,7 +60,7 @@ def validate_space_content(
         parsed.get("extensions"),
         strict=strict,
         project_slug=project_slug,
-        target="space",
+        capabilities=SPACE_CAPABILITIES,
         config=config,
     )
     if extensions:
@@ -75,6 +76,7 @@ class SpaceApp:
     leaf: bool = False
     content_editable: bool = False
     admin_template: str | None = None
+    capabilities: frozenset[Capability] = SPACE_CAPABILITIES
 
     def default_content(self) -> dict[str, Any]:
         return default_space_content()
@@ -121,7 +123,7 @@ class SpaceApp:
         }
         return StaticSurface(
             meta=project_meta(db, project),
-            capabilities=frozenset({"has_children", "has_items", "supports_layout"}),
+            capabilities=self.capabilities,
             contexts={"visitor": visitor, "ai": visitor, "admin": {**visitor, "theme": content}},
             item_list=items,
             token_map=tokens,
@@ -136,7 +138,7 @@ class SpaceApp:
             "space",
             project,
             content,
-            target="space",
+            capabilities=self.capabilities,
             config=config,
             is_admin=is_admin,
         )
