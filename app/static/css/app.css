@@ -3050,3 +3050,246 @@ textarea.mono {
 .ext-lp-mode-desk .ext-lp-lc-2 { left: 48%; top: 10%; transform: rotate(calc(3.5deg * var(--lp-tilt))); }
 .ext-lp-mode-desk .ext-lp-lc-3 { left: 16%; top: 46%; transform: rotate(calc(2.5deg * var(--lp-tilt))); }
 .ext-lp-mode-desk .ext-lp-lc-4 { left: 54%; top: 48%; transform: rotate(calc(-3deg * var(--lp-tilt))); }
+
+.site-ext-trigger {
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ext-header-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 99px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ext-header-badge[hidden] {
+  display: none;
+}
+
+.site-ext-dialog {
+  margin: 0 0 0 auto;
+  padding: 0;
+  border: none;
+  border-left: 1px solid var(--border);
+  width: min(880px, 100vw);
+  max-width: 100vw;
+  height: 100dvh;
+  max-height: 100dvh;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow-modal);
+}
+.site-ext-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+.site-ext-dialog:modal {
+  overscroll-behavior: contain;
+}
+.site-ext-dialog::backdrop {
+  background: var(--overlay-bg);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+.site-ext-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 24px 16px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.site-ext-dialog-title-wrap {
+  min-width: 0;
+  flex: 1;
+}
+.site-ext-dialog-title-wrap h1 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+.site-ext-dialog-sub {
+  margin: 4px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.site-ext-dialog-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 20px 24px 28px;
+}
+.site-ext-dialog .ext-panel.is-site-scope {
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
+}
+
+.ext-card-subpills {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+.ext-target-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text-muted);
+  font-size: 10.5px;
+  font-weight: 500;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.ext-card.is-inherited {
+  border-color: color-mix(in srgb, var(--accent) 32%, var(--border));
+}
+.ext-card.is-blocked {
+  border-color: var(--border);
+}
+.ext-badge {
+  max-width: 152px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ext-badge.is-inherited {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+.ext-badge.is-override {
+  color: #059669;
+  background: rgba(16, 185, 129, 0.12);
+}
+.ext-badge.is-blocked {
+  color: #dc2626;
+  background: rgba(239, 68, 68, 0.11);
+}
+@media (prefers-color-scheme: dark) {
+  .ext-badge.is-override { color: #34d399; }
+  .ext-badge.is-blocked { color: #f87171; }
+}
+:root[data-theme="dark"] .ext-badge.is-override { color: #34d399; }
+:root[data-theme="dark"] .ext-badge.is-blocked { color: #f87171; }
+:root[data-theme="light"] .ext-badge.is-override { color: #059669; }
+:root[data-theme="light"] .ext-badge.is-blocked { color: #dc2626; }
+
+.ext-mode-group {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 2px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface);
+}
+.ext-mode-btn {
+  appearance: none;
+  min-height: 28px;
+  padding: 4px 6px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  transition: background .15s ease, color .15s ease, box-shadow .15s ease;
+}
+.ext-mode-btn:hover:not(.is-active) {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+.ext-mode-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.ext-mode-btn.is-active {
+  background: var(--bg);
+  color: var(--text);
+  font-weight: 600;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
+}
+.ext-mode-btn.is-active[data-ext-mode="override"] {
+  color: #059669;
+}
+.ext-mode-btn.is-active[data-ext-mode="disabled"] {
+  color: #dc2626;
+}
+@media (prefers-color-scheme: dark) {
+  .ext-mode-btn.is-active[data-ext-mode="override"] { color: #34d399; }
+  .ext-mode-btn.is-active[data-ext-mode="disabled"] { color: #f87171; }
+}
+:root[data-theme="dark"] .ext-mode-btn.is-active[data-ext-mode="override"] { color: #34d399; }
+:root[data-theme="dark"] .ext-mode-btn.is-active[data-ext-mode="disabled"] { color: #f87171; }
+:root[data-theme="light"] .ext-mode-btn.is-active[data-ext-mode="override"] { color: #059669; }
+:root[data-theme="light"] .ext-mode-btn.is-active[data-ext-mode="disabled"] { color: #dc2626; }
+
+.ext-card-foot-meta {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  align-items: center;
+}
+.ext-inherit-note {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ext-cascade-toggle {
+  font-size: 12px;
+  min-width: 0;
+}
+.ext-cascade-toggle span {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.ext-toggle input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.ext-drawer-context {
+  padding: 10px 20px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--accent) 8%, var(--bg));
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.45;
+  flex-shrink: 0;
+}
+.ext-secret-pill.is-inherited {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+@media (max-width: 600px) {
+  .site-ext-dialog-head { padding: 16px; }
+  .site-ext-dialog-body { padding: 16px; }
+}

@@ -245,6 +245,7 @@ class ResumeApp:
             capabilities=self.capabilities,
             config=config,
             is_admin=is_admin,
+            db=db,
         )
         return templates.TemplateResponse(
             request,

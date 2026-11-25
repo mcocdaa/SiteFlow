@@ -1,5 +1,7 @@
 from typing import Any
 
+from sqlalchemy.orm import Session
+
 from app.config import Config
 from app.extensions import registry as _registry
 from app.extensions.base import Extension, PageKind, TargetType
@@ -65,6 +67,7 @@ def build_render_bundle(
     target: TargetType | None = "blog",
     config: Config | None = None,
     is_admin: bool = False,
+    db: Session | None = None,
 ) -> dict[str, Any]:
     return _registry.build_render_bundle(
         page,
@@ -75,6 +78,7 @@ def build_render_bundle(
         target=target,
         config=config,
         is_admin=is_admin,
+        db=db,
     )
 
 

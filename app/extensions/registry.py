@@ -1,6 +1,7 @@
 from typing import Any
 
 from markupsafe import Markup
+from sqlalchemy.orm import Session
 
 from app.config import Config
 from app.extensions.base import (
@@ -14,6 +15,14 @@ from app.extensions.base import (
     sanitize_bool,
     sanitize_icon_overrides,
     sanitize_theme_tokens,
+)
+from app.extensions.inheritance import (
+    SITE_SOURCE_TITLE,
+    ResolvedExtension,
+    load_site_extensions,
+    normalize_sparse_config,
+    parse_layer_state,
+    resolve_project_extensions,
 )
 from app.extensions.mascot import MascotExtension
 from app.extensions.packs import PackExtension, load_pack_extensions
@@ -117,6 +126,22 @@ def normalize_extensions(
             if strict:
                 raise InvalidContent("插件状态格式不正确")
             continue
+        if "mode" in state:
+            parsed = parse_layer_state(state, is_site=False, strict=strict)
+            if parsed.mode == "inherit":
+                continue
+            sparse_cfg = normalize_sparse_config(
+                ext,
+                state.get("config"),
+                strict=strict,
+                project_slug=project_slug,
+            )
+            out[ext.id] = {
+                "mode": parsed.mode,
+                "cascade": parsed.cascade,
+                "config": sparse_cfg,
+            }
+            continue
         installed = sanitize_bool(state.get("installed", True), True, strict=strict)
         if not installed:
             continue
@@ -167,20 +192,33 @@ def active_extensions(
         state = raw_map.get(ext.id)
         if not isinstance(state, dict):
             continue
-        if state.get("installed") is True and state.get("enabled") is True:
-            active.append((ext, ext.normalize_config(state.get("config"))))
+        parsed = parse_layer_state(state, is_site=False)
+        if parsed.mode == "override":
+            active.append((ext, ext.normalize_config(parsed.config)))
     return active
 
 
-def extension_catalog_item(ext: Extension, content: dict[str, Any]) -> dict[str, Any]:
-    raw_map = content.get("extensions") if isinstance(content.get("extensions"), dict) else {}
-    state = raw_map.get(ext.id) if isinstance(raw_map, dict) else None
-    installed = isinstance(state, dict) and state.get("installed") is True
-    enabled = installed and isinstance(state, dict) and state.get("enabled") is True
-    raw_cfg = ext.normalize_config(state.get("config") if isinstance(state, dict) else None)
-    raw_default = ext.normalize_config(None)
-    redacted_cfg, secrets_set = ext.redact_config(raw_cfg)
-    redacted_default, _ = ext.redact_config(raw_default)
+def active_extensions_for_project(
+    db: Session,
+    project: Project,
+    *,
+    target: TargetType | None = None,
+    capabilities: frozenset[Capability] | None = None,
+    config: Config | None = None,
+    content: dict[str, Any] | None = None,
+) -> list[tuple[Extension, dict[str, Any]]]:
+    resolved = resolve_project_extensions(
+        db,
+        project,
+        target=target,
+        capabilities=capabilities,
+        config=config,
+        content=content,
+    )
+    return [(item.extension, item.effective_config) for item in resolved.values() if item.effective_enabled]
+
+
+def _base_catalog_meta(ext: Extension) -> dict[str, Any]:
     item: dict[str, Any] = {
         "id": ext.id,
         "pack_id": ext.pack_id,
@@ -194,11 +232,6 @@ def extension_catalog_item(ext: Extension, content: dict[str, Any]) -> dict[str,
         "description_key": ext.description_key,
         "version": ext.version,
         "icon": ext.icon,
-        "installed": installed,
-        "enabled": enabled,
-        "config": redacted_cfg,
-        "default_config": redacted_default,
-        "secrets_set": secrets_set,
         "config_schema": [field.as_dict() for field in ext.config_schema],
     }
     name_en = getattr(ext, "name_en", "")
@@ -208,6 +241,107 @@ def extension_catalog_item(ext: Extension, content: dict[str, Any]) -> dict[str,
     if description_en:
         item["description_en"] = description_en
     return item
+
+
+def extension_catalog_item(ext: Extension, content: dict[str, Any]) -> dict[str, Any]:
+    raw_map = content.get("extensions") if isinstance(content.get("extensions"), dict) else {}
+    state = raw_map.get(ext.id) if isinstance(raw_map, dict) else None
+    parsed = parse_layer_state(state, is_site=False)
+    installed = parsed.mode != "inherit"
+    enabled = parsed.mode == "override"
+    raw_cfg = ext.normalize_config(parsed.config if installed else None)
+    raw_default = ext.normalize_config(None)
+    redacted_cfg, secrets_set = ext.redact_config(raw_cfg)
+    redacted_default, _ = ext.redact_config(raw_default)
+    redacted_local, local_secrets = ext.redact_config(parsed.config)
+    secret_inherited = {key: False for key in sorted(ext.secret_fields())}
+    return {
+        **_base_catalog_meta(ext),
+        "installed": installed,
+        "enabled": enabled,
+        "effective_enabled": enabled,
+        "config": redacted_cfg,
+        "effective_config": redacted_cfg,
+        "local_config": redacted_local if installed else {},
+        "inherited_config": redacted_default,
+        "default_config": redacted_default,
+        "secrets_set": secrets_set,
+        "secret_inherited": secret_inherited,
+        "local_secrets_set": local_secrets if installed else {k: False for k in sorted(ext.secret_fields())},
+        "source": "local" if installed else "none",
+        "source_slug": "",
+        "source_title": "",
+        "local_mode": parsed.mode,
+        "cascade": parsed.cascade,
+        "inherited_enabled": False,
+        "inherited_source": "none",
+        "inherited_source_title": "",
+    }
+
+
+def resolved_catalog_item(res: ResolvedExtension) -> dict[str, Any]:
+    ext = res.extension
+    redacted_effective, _ = ext.redact_config(res.effective_config)
+    redacted_default, _ = ext.redact_config(ext.normalize_config(None))
+    redacted_inherited, _ = ext.redact_config(res.inherited_config)
+    redacted_local_full, _ = ext.redact_config(res.local_config)
+    redacted_local = {k: redacted_local_full[k] for k in res.local_config if k in redacted_local_full}
+    installed = res.local_mode != "inherit"
+    return {
+        **_base_catalog_meta(ext),
+        "installed": installed,
+        "enabled": res.effective_enabled,
+        "effective_enabled": res.effective_enabled,
+        "config": redacted_effective,
+        "effective_config": redacted_effective,
+        "local_config": redacted_local,
+        "inherited_config": redacted_inherited,
+        "default_config": redacted_default,
+        "secrets_set": dict(res.secrets_set),
+        "secret_inherited": dict(res.secret_inherited),
+        "local_secrets_set": dict(res.local_secrets_set),
+        "source": res.source,
+        "source_slug": res.source_slug,
+        "source_title": res.source_title,
+        "local_mode": res.local_mode,
+        "cascade": res.cascade,
+        "inherited_enabled": res.inherited_enabled,
+        "inherited_source": res.inherited_source,
+        "inherited_source_title": res.inherited_source_title,
+    }
+
+
+def site_catalog_item(ext: Extension, site_map: dict[str, dict[str, Any]]) -> dict[str, Any]:
+    raw_state = site_map.get(ext.id)
+    configured = isinstance(raw_state, dict)
+    parsed = parse_layer_state(raw_state, is_site=True)
+    enabled = parsed.mode == "override"
+    raw_cfg = ext.normalize_config(parsed.config if configured else None, strict=False, project_slug=None)
+    raw_default = ext.normalize_config(None)
+    redacted_cfg, secrets_set = ext.redact_config(raw_cfg)
+    redacted_default, _ = ext.redact_config(raw_default)
+    secret_inherited = {key: False for key in sorted(ext.secret_fields())}
+    return {
+        **_base_catalog_meta(ext),
+        "configured": configured,
+        "installed": configured,
+        "enabled": enabled,
+        "effective_enabled": enabled,
+        "config": redacted_cfg,
+        "effective_config": redacted_cfg,
+        "default_config": redacted_default,
+        "secrets_set": secrets_set,
+        "secret_inherited": secret_inherited,
+        "local_secrets_set": dict(secrets_set),
+        "source": "site" if enabled else "none",
+        "source_slug": "",
+        "source_title": SITE_SOURCE_TITLE if enabled else "",
+        "local_mode": parsed.mode,
+        "cascade": parsed.cascade,
+        "inherited_enabled": False,
+        "inherited_source": "none",
+        "inherited_source_title": "",
+    }
 
 
 def build_admin_catalog(
@@ -221,6 +355,35 @@ def build_admin_catalog(
         extension_catalog_item(ext, content)
         for ext in all_extensions(target=target, capabilities=capabilities, config=config)
     ]
+
+
+def build_project_admin_catalog(
+    db: Session,
+    project: Project,
+    *,
+    target: TargetType | None = None,
+    capabilities: frozenset[Capability] | None = None,
+    config: Config | None = None,
+    content: dict[str, Any] | None = None,
+) -> list[dict[str, Any]]:
+    resolved = resolve_project_extensions(
+        db,
+        project,
+        target=target,
+        capabilities=capabilities,
+        config=config,
+        content=content,
+    )
+    return [resolved_catalog_item(item) for item in resolved.values()]
+
+
+def build_site_admin_catalog(
+    db: Session,
+    *,
+    config: Config | None = None,
+) -> list[dict[str, Any]]:
+    site_map = load_site_extensions(db)
+    return [site_catalog_item(ext, site_map) for ext in all_extensions(target=None, config=config)]
 
 
 def _resolve_asset_url(url: str) -> str:
@@ -240,6 +403,7 @@ def build_render_bundle(
     capabilities: frozenset[Capability] | None = None,
     config: Config | None = None,
     is_admin: bool = False,
+    db: Session | None = None,
 ) -> dict[str, Any]:
     resolved_target: TargetType | None = target
     if capabilities is None and resolved_target is None:
@@ -264,12 +428,25 @@ def build_render_bundle(
     post_header_templates: list[tuple[str, str]] = []
     contexts: dict[str, dict[str, Any]] = {}
 
-    for ext, cfg in active_extensions(
-        content,
-        target=resolved_target,
-        capabilities=capabilities,
-        config=config,
-    ):
+    ext_pairs = (
+        active_extensions_for_project(
+            db,
+            project,
+            target=resolved_target,
+            capabilities=capabilities,
+            config=config,
+            content=content,
+        )
+        if db is not None
+        else active_extensions(
+            content,
+            target=resolved_target,
+            capabilities=capabilities,
+            config=config,
+        )
+    )
+
+    for ext, cfg in ext_pairs:
         if isinstance(ext, PackExtension) and page not in ext.pages:
             continue
         for href in ext.static_css:
@@ -376,9 +553,15 @@ def build_editor_bundle(
     post: dict[str, Any] | None = None,
     *,
     config: Config | None = None,
+    db: Session | None = None,
 ) -> dict[str, Any]:
     fields: list[dict[str, Any]] = []
-    for ext, cfg in active_extensions(blog, target="blog", config=config):
+    ext_pairs = (
+        active_extensions_for_project(db, project, target="blog", config=config, content=blog)
+        if db is not None
+        else active_extensions(blog, target="blog", config=config)
+    )
+    for ext, cfg in ext_pairs:
         if not ext.editor_fields_template:
             continue
         fields.append(
@@ -412,11 +595,13 @@ def referenced_media_urls(
     if isinstance(raw_ext, dict):
         for ext in all_extensions(target=target, capabilities=capabilities, config=config):
             state = raw_ext.get(ext.id)
-            if isinstance(state, dict) and state.get("installed") is True:
-                cfg = ext.normalize_config(state.get("config"))
-                for url in ext.local_media_urls(cfg):
-                    if url.startswith(("/media/blog/", "/media/ext/")):
-                        urls.add(url)
+            if isinstance(state, dict):
+                parsed = parse_layer_state(state, is_site=False)
+                if parsed.mode != "inherit":
+                    cfg = ext.normalize_config(parsed.config)
+                    for url in ext.local_media_urls(cfg):
+                        if url.startswith(("/media/blog/", "/media/ext/")):
+                            urls.add(url)
     return urls
 
 

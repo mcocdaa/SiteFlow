@@ -25,12 +25,12 @@ from app.auth import (
 )
 from app.config import Config
 from app.deps import DbSession, api_error, get_config
+from app.extensions.inheritance import ResolvedExtension, resolve_project_extension
 from app.extensions.mascot import (
     DEFAULT_API_BASE_URL,
     DEFAULT_API_PROTOCOL,
     DEFAULT_MODEL,
     DEFAULT_SYSTEM_PROMPT,
-    MascotExtension,
     resolve_effective_config,
 )
 from app.models import Project
@@ -165,6 +165,7 @@ class _LoadedProject:
     project: Project
     raw_content: dict[str, object]
     surface: PageSurface
+    mascot_resolved: ResolvedExtension | None = None
 
 
 @dataclass(frozen=True)
@@ -217,7 +218,24 @@ def _load_project_sync(
     if not isinstance(parsed, dict):
         parsed = {}
     surface = cast(PageSurface, surface_fn(request, project, db, sub=post_slug))
-    return _LoadedProject(project=project, raw_content=parsed, surface=surface), 200, ""
+    mascot_resolved = resolve_project_extension(
+        db,
+        project,
+        "mascot",
+        capabilities=surface.capabilities,
+        config=config,
+        content=parsed,
+    )
+    return (
+        _LoadedProject(
+            project=project,
+            raw_content=parsed,
+            surface=surface,
+            mascot_resolved=mascot_resolved,
+        ),
+        200,
+        "",
+    )
 
 
 def _format_scalar(value: object) -> str:
@@ -333,21 +351,11 @@ def _build_page_context(surface: PageSurface) -> str:
 
 
 def _prepare_chat(loaded: _LoadedProject) -> _PreparedChat | None:
-    raw_ext = loaded.raw_content.get("extensions")
-    if not isinstance(raw_ext, dict):
+    resolved = loaded.mascot_resolved
+    if resolved is None or not resolved.effective_enabled:
         return None
-    state = raw_ext.get("mascot")
-    if not isinstance(state, dict):
-        return None
-    if state.get("installed") is not True or state.get("enabled") is not True:
-        return None
-    raw_cfg = state.get("config")
-    raw_cfg_dict = raw_cfg if isinstance(raw_cfg, dict) else {}
-    normalized = MascotExtension().normalize_config(
-        raw_cfg_dict,
-        strict=False,
-        project_slug=loaded.project.slug,
-    )
+    raw_cfg_dict = resolved.raw_merged_config
+    normalized = resolved.effective_config
     explicit_base = raw_cfg_dict.get("api_base_url")
     if isinstance(explicit_base, str) and explicit_base.strip():
         raw_api_base_url = explicit_base.strip()

@@ -224,6 +224,7 @@ class BlogApp:
             capabilities=self.capabilities,
             config=config,
             is_admin=is_admin,
+            db=db,
         )
         response = templates.TemplateResponse(
             request,
@@ -266,6 +267,7 @@ class BlogApp:
             capabilities=self.capabilities,
             config=config,
             is_admin=is_admin,
+            db=db,
         )
         response = templates.TemplateResponse(
             request,

@@ -15,6 +15,14 @@ from app import stats, store
 from app.auth import csrf_for, hash_project_password, read_session
 from app.deps import AdminConfig, DbSession, api_error, get_config
 from app.extensions.base import TargetType, capabilities_for_target
+from app.extensions.inheritance import (
+    VALID_MODES,
+    load_site_extensions,
+    merge_layer_config,
+    parse_layer_state,
+    resolve_project_extension,
+    save_site_extensions,
+)
 from app.extensions.mascot import MASCOT_CHARACTERS
 from app.extensions.packs import (
     PackError,
@@ -25,12 +33,14 @@ from app.extensions.packs import (
     sync_pack,
 )
 from app.extensions.registry import (
-    build_admin_catalog,
     build_editor_bundle,
-    extension_catalog_item,
+    build_project_admin_catalog,
+    build_site_admin_catalog,
     merge_content_extension_secrets,
     redact_content_extensions,
     referenced_media_urls,
+    resolved_catalog_item,
+    site_catalog_item,
 )
 from app.extensions.registry import get as get_extension
 from app.models import Project
@@ -90,11 +100,22 @@ class AppPayload(BaseModel):
 
 class ExtensionInstallPayload(BaseModel):
     enabled: bool = True
+    mode: str | None = None
+    cascade: bool | None = None
     config: dict[str, Any] | None = None
 
 
 class ExtensionPatchPayload(BaseModel):
     enabled: bool | None = None
+    mode: str | None = None
+    cascade: bool | None = None
+    config: dict[str, Any] | None = None
+
+
+class SiteExtensionPutPayload(BaseModel):
+    enabled: bool | None = None
+    mode: str | None = None
+    cascade: bool | None = None
     config: dict[str, Any] | None = None
 
 
@@ -258,6 +279,9 @@ def admin_page(request: Request, db: DbSession):
             "app_choices": app_choices(),
             "plugin_types": plugin_types(),
             "stats": stats.get_7day_stats(db, project_id=None),
+            "site_ext_catalog": build_site_admin_catalog(db, config=config),
+            "ext_packs": list_packs(config),
+            "mascot_characters": list(MASCOT_CHARACTERS),
         },
     )
 
@@ -290,7 +314,9 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
     if caps is not None:
         content = _parse_project_content(project, config)
         context["content"] = redact_content_extensions(content, capabilities=caps, config=config)
-        context["ext_catalog"] = build_admin_catalog(content, capabilities=caps, config=config)
+        context["ext_catalog"] = build_project_admin_catalog(
+            db, project, capabilities=caps, config=config, content=content
+        )
         context["ext_packs"] = list_packs(config)
         context["mascot_characters"] = list(MASCOT_CHARACTERS)
     elif plugin.admin_template:
@@ -321,7 +347,7 @@ def admin_blog_post(request: Request, project_id: int, db: DbSession, post_slug:
             "csrf": csrf_for(request),
             "project": project,
             "post": post,
-            "ext_editor": build_editor_bundle(content, project=project, post=post, config=config),
+            "ext_editor": build_editor_bundle(content, project=project, post=post, config=config, db=db),
             "parent": store.by_id(db, project.parent_id) if project.parent_id else None,
         },
     )
@@ -408,115 +434,44 @@ def delete_blog_post(project_id: int, post_slug: str, config: AdminConfig, db: D
     return {"ok": True}
 
 
-@router.get("/api/admin/projects/{project_id}/extensions")
-def list_project_extensions(project_id: int, config: AdminConfig, db: DbSession):
-    project, error = _get_extensible_project(db, project_id)
-    if error is not None or project is None:
-        return error
-    caps = _capabilities_of(project)
-    content = _parse_project_content(project, config)
-    return {"ok": True, "extensions": build_admin_catalog(content, capabilities=caps, config=config)}
-
-
-@router.post("/api/admin/projects/{project_id}/extensions/{ext_id}/install")
-def install_project_extension(
-    project_id: int,
-    ext_id: str,
-    config: AdminConfig,
-    db: DbSession,
-    payload: ExtensionInstallPayload | None = None,
+def _save_project_extension_state(
+    db,
+    config,
+    project: Project,
+    ext,
+    *,
+    mode: str,
+    cascade: bool | None,
+    incoming_config: dict[str, Any] | None,
 ):
-    project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
-    if error is not None or project is None or ext is None:
-        return error
     caps = _capabilities_of(project)
     content = _parse_project_content(project, config)
     old_media = referenced_media_urls(content, capabilities=caps, config=config)
     ext_map = dict(content.get("extensions") or {})
-    existing_state = ext_map.get(ext.id)
-    raw_existing_cfg = existing_state.get("config") if isinstance(existing_state, dict) else None
-    existing_cfg: dict[str, Any] = raw_existing_cfg if isinstance(raw_existing_cfg, dict) else {}
-    enabled = payload.enabled if payload is not None else True
-    if payload is not None and payload.config is not None:
-        raw_cfg: object = ext.merge_config(existing_cfg, payload.config)
+    prev_state = parse_layer_state(ext_map.get(ext.id), is_site=False)
+
+    if mode == "inherit":
+        ext_map.pop(ext.id, None)
     else:
-        raw_cfg = existing_cfg or None
-    try:
-        normalized_cfg = ext.normalize_config(raw_cfg, strict=True, project_slug=project.slug)
-    except InvalidContent as exc:
-        return api_error(str(exc), 422)
-    ext_map[ext.id] = {"installed": True, "enabled": enabled, "config": normalized_cfg}
-    content["extensions"] = ext_map
-    project.content = json.dumps(content, ensure_ascii=False)
-    touch(project)
-    db.commit()
-    _cleanup_unreferenced_media(
-        config,
-        project.slug,
-        old_media,
-        referenced_media_urls(content, capabilities=caps, config=config),
-    )
-    return {"ok": True, "extension": extension_catalog_item(ext, content)}
-
-
-@router.patch("/api/admin/projects/{project_id}/extensions/{ext_id}")
-def update_project_extension(
-    project_id: int,
-    ext_id: str,
-    payload: ExtensionPatchPayload,
-    config: AdminConfig,
-    db: DbSession,
-):
-    project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
-    if error is not None or project is None or ext is None:
-        return error
-    caps = _capabilities_of(project)
-    content = _parse_project_content(project, config)
-    ext_map = dict(content.get("extensions") or {})
-    state = ext_map.get(ext.id)
-    if not isinstance(state, dict) or state.get("installed") is not True:
-        return api_error("请先安装该插件", 400)
-    old_media = referenced_media_urls(content, capabilities=caps, config=config)
-    enabled = state.get("enabled") is True if payload.enabled is None else payload.enabled
-    raw_existing_cfg = state.get("config")
-    existing_cfg: dict[str, Any] = raw_existing_cfg if isinstance(raw_existing_cfg, dict) else {}
-    if payload.config is not None:
-        merged_cfg = ext.merge_config(existing_cfg, payload.config)
         try:
-            normalized_cfg = ext.normalize_config(merged_cfg, strict=True, project_slug=project.slug)
+            sparse_cfg = merge_layer_config(
+                ext,
+                prev_state.config,
+                incoming_config,
+                strict=True,
+                project_slug=project.slug,
+            )
         except InvalidContent as exc:
             return api_error(str(exc), 422)
-    else:
-        normalized_cfg = ext.normalize_config(existing_cfg, strict=False, project_slug=project.slug)
-    ext_map[ext.id] = {"installed": True, "enabled": enabled, "config": normalized_cfg}
-    content["extensions"] = ext_map
-    project.content = json.dumps(content, ensure_ascii=False)
-    touch(project)
-    db.commit()
-    _cleanup_unreferenced_media(
-        config,
-        project.slug,
-        old_media,
-        referenced_media_urls(content, capabilities=caps, config=config),
-    )
-    return {"ok": True, "extension": extension_catalog_item(ext, content)}
+        next_cascade = False
+        if caps is not None and "has_children" in caps:
+            next_cascade = prev_state.cascade if cascade is None else cascade
+        ext_map[ext.id] = {
+            "mode": mode,
+            "cascade": next_cascade,
+            "config": sparse_cfg,
+        }
 
-
-@router.delete("/api/admin/projects/{project_id}/extensions/{ext_id}")
-def uninstall_project_extension(
-    project_id: int,
-    ext_id: str,
-    config: AdminConfig,
-    db: DbSession,
-):
-    project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
-    if error is not None or project is None or ext is None:
-        return error
-    caps = _capabilities_of(project)
-    content = _parse_project_content(project, config)
-    old_media = referenced_media_urls(content, capabilities=caps, config=config)
-    ext_map = dict(content.get("extensions") or {})
-    ext_map.pop(ext.id, None)
     if ext_map:
         content["extensions"] = ext_map
     else:
@@ -530,7 +485,224 @@ def uninstall_project_extension(
         old_media,
         referenced_media_urls(content, capabilities=caps, config=config),
     )
-    return {"ok": True, "extension": extension_catalog_item(ext, content)}
+    resolved = resolve_project_extension(
+        db, project, ext.id, capabilities=caps, config=config, content=content
+    )
+    assert resolved is not None
+    return {"ok": True, "extension": resolved_catalog_item(resolved)}
+
+
+@router.get("/api/admin/site/extensions")
+def list_site_extensions(config: AdminConfig, db: DbSession):
+    return {"ok": True, "extensions": build_site_admin_catalog(db, config=config)}
+
+
+@router.put("/api/admin/site/extensions/{ext_id}")
+def put_site_extension(
+    ext_id: str,
+    payload: SiteExtensionPutPayload,
+    config: AdminConfig,
+    db: DbSession,
+):
+    ext = get_extension(ext_id, config=config)
+    if ext is None:
+        return api_error("插件不存在", 404)
+    site_map = load_site_extensions(db)
+    configured = ext.id in site_map
+    prev_state = parse_layer_state(site_map.get(ext.id), is_site=True)
+
+    if payload.mode is not None:
+        if payload.mode not in VALID_MODES:
+            return api_error("插件继承模式必须是 inherit、override 或 disabled", 422)
+        if payload.mode == "inherit":
+            site_map.pop(ext.id, None)
+            save_site_extensions(db, site_map)
+            db.commit()
+            return {"ok": True, "extension": site_catalog_item(ext, site_map)}
+        next_mode = payload.mode
+    elif payload.enabled is not None:
+        next_mode = "override" if payload.enabled else "disabled"
+    elif configured and prev_state.mode != "inherit":
+        next_mode = prev_state.mode
+    else:
+        next_mode = "override"
+
+    next_cascade = prev_state.cascade if payload.cascade is None else payload.cascade
+    if not configured and payload.cascade is None:
+        next_cascade = True
+    try:
+        sparse_cfg = merge_layer_config(
+            ext,
+            prev_state.config,
+            payload.config,
+            strict=True,
+            project_slug="__site__",
+        )
+    except InvalidContent as exc:
+        return api_error(str(exc), 422)
+    site_map[ext.id] = {
+        "mode": next_mode,
+        "enabled": next_mode == "override",
+        "cascade": next_cascade,
+        "config": sparse_cfg,
+    }
+    save_site_extensions(db, site_map)
+    db.commit()
+    return {"ok": True, "extension": site_catalog_item(ext, site_map)}
+
+
+@router.delete("/api/admin/site/extensions/{ext_id}")
+def delete_site_extension(ext_id: str, config: AdminConfig, db: DbSession):
+    ext = get_extension(ext_id, config=config)
+    if ext is None:
+        return api_error("插件不存在", 404)
+    site_map = load_site_extensions(db)
+    site_map.pop(ext.id, None)
+    save_site_extensions(db, site_map)
+    db.commit()
+    return {"ok": True, "extension": site_catalog_item(ext, site_map)}
+
+
+@router.get("/api/admin/projects/{project_id}/extensions")
+def list_project_extensions(project_id: int, config: AdminConfig, db: DbSession):
+    project, error = _get_extensible_project(db, project_id)
+    if error is not None or project is None:
+        return error
+    caps = _capabilities_of(project)
+    content = _parse_project_content(project, config)
+    return {
+        "ok": True,
+        "extensions": build_project_admin_catalog(
+            db, project, capabilities=caps, config=config, content=content
+        ),
+    }
+
+
+@router.post("/api/admin/projects/{project_id}/extensions/{ext_id}/install")
+def install_project_extension(
+    project_id: int,
+    ext_id: str,
+    config: AdminConfig,
+    db: DbSession,
+    payload: ExtensionInstallPayload | None = None,
+):
+    project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
+    if error is not None or project is None or ext is None:
+        return error
+    if payload is not None and payload.mode is not None:
+        if payload.mode not in VALID_MODES:
+            return api_error("插件继承模式必须是 inherit、override 或 disabled", 422)
+        mode = payload.mode
+    else:
+        enabled = payload.enabled if payload is not None else True
+        mode = "override" if enabled else "disabled"
+    return _save_project_extension_state(
+        db,
+        config,
+        project,
+        ext,
+        mode=mode,
+        cascade=payload.cascade if payload is not None else None,
+        incoming_config=payload.config if payload is not None else None,
+    )
+
+
+@router.put("/api/admin/projects/{project_id}/extensions/{ext_id}")
+def put_project_extension(
+    project_id: int,
+    ext_id: str,
+    payload: ExtensionPatchPayload,
+    config: AdminConfig,
+    db: DbSession,
+):
+    project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
+    if error is not None or project is None or ext is None:
+        return error
+    content = _parse_project_content(project, config)
+    ext_map = content.get("extensions") if isinstance(content.get("extensions"), dict) else {}
+    prev_state = parse_layer_state(ext_map.get(ext.id) if isinstance(ext_map, dict) else None, is_site=False)
+
+    if payload.mode is not None:
+        if payload.mode not in VALID_MODES:
+            return api_error("插件继承模式必须是 inherit、override 或 disabled", 422)
+        next_mode = payload.mode
+    elif payload.enabled is not None:
+        next_mode = "override" if payload.enabled else "disabled"
+    elif prev_state.mode != "inherit":
+        next_mode = prev_state.mode
+    else:
+        next_mode = "override"
+
+    return _save_project_extension_state(
+        db,
+        config,
+        project,
+        ext,
+        mode=next_mode,
+        cascade=payload.cascade,
+        incoming_config=payload.config,
+    )
+
+
+@router.patch("/api/admin/projects/{project_id}/extensions/{ext_id}")
+def update_project_extension(
+    project_id: int,
+    ext_id: str,
+    payload: ExtensionPatchPayload,
+    config: AdminConfig,
+    db: DbSession,
+):
+    project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
+    if error is not None or project is None or ext is None:
+        return error
+    content = _parse_project_content(project, config)
+    ext_map = content.get("extensions") if isinstance(content.get("extensions"), dict) else {}
+    prev_state = parse_layer_state(ext_map.get(ext.id) if isinstance(ext_map, dict) else None, is_site=False)
+    has_local = prev_state.mode != "inherit"
+    if not has_local and payload.mode is None and payload.cascade is None:
+        return api_error("请先安装该插件", 400)
+
+    if payload.mode is not None:
+        if payload.mode not in VALID_MODES:
+            return api_error("插件继承模式必须是 inherit、override 或 disabled", 422)
+        next_mode = payload.mode
+    elif payload.enabled is not None:
+        next_mode = "override" if payload.enabled else "disabled"
+    elif has_local:
+        next_mode = prev_state.mode
+    else:
+        next_mode = "override"
+
+    return _save_project_extension_state(
+        db,
+        config,
+        project,
+        ext,
+        mode=next_mode,
+        cascade=payload.cascade,
+        incoming_config=payload.config,
+    )
+
+
+@router.delete("/api/admin/projects/{project_id}/extensions/{ext_id}")
+def uninstall_project_extension(
+    project_id: int,
+    ext_id: str,
+    config: AdminConfig,
+    db: DbSession,
+):
+    project, ext, error = _get_project_and_extension(db, config, project_id, ext_id)
+    if error is not None or project is None or ext is None:
+        return error
+    return _save_project_extension_state(
+        db,
+        config,
+        project,
+        ext,
+        mode="inherit",
+        cascade=None,
+        incoming_config=None,
+    )
 
 
 @router.post("/api/admin/projects/{project_id}/extensions/{ext_id}/media")
@@ -575,9 +747,11 @@ def _save_project_ext_media(
     if error is not None or project is None or ext is None:
         return error
     content = _parse_project_content(project, config)
-    ext_map = content.get("extensions")
-    state = ext_map.get(ext.id) if isinstance(ext_map, dict) else None
-    if not isinstance(state, dict) or state.get("installed") is not True:
+    caps = _capabilities_of(project)
+    resolved = resolve_project_extension(
+        db, project, ext.id, capabilities=caps, config=config, content=content
+    )
+    if resolved is None or (resolved.local_mode == "inherit" and not resolved.effective_enabled):
         return api_error("请先安装该插件", 400)
     cleaned_kind = kind.strip()
     if not cleaned_kind or cleaned_kind not in ext.media_kinds:
