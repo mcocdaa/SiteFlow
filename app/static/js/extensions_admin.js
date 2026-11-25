@@ -31,6 +31,10 @@
   var drawerTabsEl = panel.querySelector("[data-ext-drawer-tabs]");
   var drawerFormEl = panel.querySelector("[data-ext-drawer-form]");
   var drawerBodyEl = panel.querySelector("[data-ext-drawer-body]");
+  if (drawerBodyEl) {
+    drawerBodyEl.addEventListener("input", function () { updateLivePreview(); });
+    drawerBodyEl.addEventListener("change", function () { updateLivePreview(); });
+  }
   var drawerStatusEl = panel.querySelector("[data-ext-drawer-status]");
   var drawerSaveBtn = panel.querySelector("[data-ext-drawer-save]");
 
@@ -639,6 +643,122 @@
     } else {
       preview.removeAttribute("src");
       preview.hidden = true;
+    }
+    updateLivePreview();
+  }
+
+  var LIVE_PREVIEW_IDS = { space_background: true, resume_style: true };
+
+  function readDrawerValue(name) {
+    if (!drawerBodyEl) return "";
+    var el = drawerBodyEl.querySelector('[name="' + name + '"]');
+    if (!el) return "";
+    if (el.type === "checkbox") return el.checked;
+    return el.value;
+  }
+
+  function buildLivePreview(item) {
+    var box = document.createElement("div");
+    box.className = "ext-live-preview";
+    box.setAttribute("data-live-preview", item.id);
+    var label = document.createElement("div");
+    label.className = "ext-drawer-field-label";
+    label.setAttribute("data-i18n", "ext.live_preview");
+    label.textContent = t("ext.live_preview", null, "实时预览");
+    box.appendChild(label);
+    var stage = document.createElement("div");
+    stage.setAttribute("aria-hidden", "true");
+    if (item.id === "space_background") {
+      stage.className = "ext-lp-space";
+      var layer = document.createElement("div");
+      layer.className = "ext-lp-space-layer";
+      var img = document.createElement("img");
+      img.className = "ext-lp-space-img";
+      img.alt = "";
+      img.referrerPolicy = "no-referrer";
+      img.hidden = true;
+      stage.appendChild(layer);
+      stage.appendChild(img);
+      var cards = document.createElement("div");
+      cards.className = "ext-lp-space-cards";
+      for (var i = 0; i < 3; i++) {
+        var card = document.createElement("div");
+        card.className = "ext-lp-space-card";
+        var line = document.createElement("span");
+        card.appendChild(line);
+        cards.appendChild(card);
+      }
+      stage.appendChild(cards);
+    } else {
+      stage.className = "ext-lp-resume";
+      var paper = document.createElement("div");
+      paper.className = "ext-lp-paper";
+      var name = document.createElement("div");
+      name.className = "ext-lp-name";
+      name.setAttribute("data-i18n", "ext.live_preview_name");
+      name.textContent = t("ext.live_preview_name", null, "张三 · 产品设计师");
+      paper.appendChild(name);
+      ["ext.live_preview_section_exp", "ext.live_preview_section_skill"].forEach(function (key, idx) {
+        var sec = document.createElement("div");
+        sec.className = "ext-lp-section";
+        var h = document.createElement("div");
+        h.className = "ext-lp-h";
+        h.setAttribute("data-i18n", key);
+        h.textContent = t(key, null, idx === 0 ? "工作经历" : "技能");
+        sec.appendChild(h);
+        var p = document.createElement("div");
+        p.className = "ext-lp-text";
+        p.setAttribute("data-i18n", "ext.live_preview_text");
+        p.textContent = t("ext.live_preview_text", null, "负责核心产品的体验设计与落地，推动多个版本按期上线。");
+        sec.appendChild(p);
+        if (idx === 1) {
+          var chips = document.createElement("div");
+          chips.className = "ext-lp-chips";
+          ["Figma", "CSS", "UX"].forEach(function (c) {
+            var chip = document.createElement("span");
+            chip.className = "ext-lp-chip";
+            chip.textContent = c;
+            chips.appendChild(chip);
+          });
+          sec.appendChild(chips);
+        }
+        paper.appendChild(sec);
+      });
+      stage.appendChild(paper);
+    }
+    box.appendChild(stage);
+    return box;
+  }
+
+  function updateLivePreview() {
+    if (!drawerBodyEl) return;
+    var box = drawerBodyEl.querySelector("[data-live-preview]");
+    if (!box) return;
+    var stage = box.lastElementChild;
+    if (box.getAttribute("data-live-preview") === "space_background") {
+      var preset = String(readDrawerValue("preset") || "none");
+      stage.querySelector(".ext-lp-space-layer").className = "ext-lp-space-layer ext-lp-bg-" + preset;
+      var img = stage.querySelector(".ext-lp-space-img");
+      var url = String(readDrawerValue("image_url") || "").trim();
+      if (isSafePreviewUrl(url)) {
+        if (img.getAttribute("src") !== url) img.src = url;
+        img.hidden = false;
+      } else {
+        img.removeAttribute("src");
+        img.hidden = true;
+      }
+      var op = parseFloat(readDrawerValue("opacity"));
+      img.style.opacity = String(isNaN(op) ? 0.2 : op);
+      stage.classList.toggle("is-frosted", Boolean(readDrawerValue("frosted_cards")));
+    } else {
+      stage.className = [
+        "ext-lp-resume",
+        "ext-lp-accent-" + (readDrawerValue("accent") || "indigo"),
+        "ext-lp-paper-" + (readDrawerValue("paper") || "clean"),
+        "ext-lp-density-" + (readDrawerValue("density") || "comfortable"),
+        "ext-lp-font-" + (readDrawerValue("font_style") || "sans"),
+        readDrawerValue("show_section_dividers") ? "has-dividers" : ""
+      ].join(" ");
     }
   }
 
@@ -1283,6 +1403,11 @@
       });
       if (drawerBodyEl) drawerBodyEl.appendChild(groupPanel);
     });
+
+    if (drawerBodyEl && LIVE_PREVIEW_IDS[item.id]) {
+      drawerBodyEl.insertBefore(buildLivePreview(item), drawerBodyEl.firstChild);
+      updateLivePreview();
+    }
 
     activeGroup = groups.length ? groups[0].id : "";
 

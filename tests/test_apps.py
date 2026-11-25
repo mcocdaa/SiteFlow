@@ -307,7 +307,11 @@ def test_resume_plugin_render_and_escape() -> None:
         assert 'id="plugin-data"' in admin_page.text
         assert 'id="f-name"' in admin_page.text
         assert 'data-section="work"' in admin_page.text
-        assert "保存并查看" in admin_page.text
+        assert "保存并查看" not in admin_page.text
+        assert 'data-action="save-content"' not in admin_page.text
+        assert 'data-testid="resume-save-state"' in admin_page.text
+        assert "修改会自动保存" in admin_page.text
+        assert "beforeunload" in admin_page.text
 
 
 def test_blog_plugin_index_detail_and_markdown_safety() -> None:

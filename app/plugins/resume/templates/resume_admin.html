@@ -17,6 +17,7 @@
         <p class="brand" data-i18n-auto>{{ project.title }}</p>
       </div>
       <div class="row-actions header-actions">
+        <span class="save-state muted" id="save-state" role="status" aria-live="polite" data-testid="resume-save-state" data-state="idle"><span data-save-text data-i18n="resume.autosave_hint">修改会自动保存</span> <button type="button" class="btn ghost save-retry" data-action="save-retry" hidden data-i18n="resume.retry">重试</button></span>
         <a class="btn ghost" href="/projects/{{ project.slug }}/" target="_blank">{{ icons.icon("external-link") }}<span data-i18n="resume.preview">预览</span></a>
         <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe") }}<span class="lang-label">EN</span></button>
         <button class="btn ghost" data-action="logout">{{ icons.icon("log-out") }}<span data-i18n="admin.logout">退出登录</span></button>
@@ -48,11 +49,6 @@
       <div class="entry-list"></div>
     </section>
     {% endfor %}
-    <div class="form-actions">
-      <button type="button" class="btn primary" data-action="save-content">{{ icons.icon("check") }}<span data-i18n="row.save">保存</span></button>
-      <button type="button" class="btn" data-action="save-preview" data-i18n="resume.save_preview">保存并查看</button>
-      <span class="muted" id="save-state"></span>
-    </div>
     {% if ext_catalog is defined %}
     {% set ext_section_id = "resume-extensions" %}
     {% set ext_section_title_key = "ext.resume_section_title" %}
@@ -244,41 +240,83 @@
     Object.keys(SECTION_FIELDS).forEach(function (section) { content[section] = collectSection(section); });
     return content;
   }
-  function save(thenView) {
-    var status = document.getElementById("save-state");
-    status.classList.remove("is-error");
-    status.setAttribute("role", "status");
-    status.textContent = tr("resume.saving", null, "保存中…");
+  var saveTimer = null;
+  var inFlight = false;
+  var pending = false;
+  var dirty = false;
+  var lastSaved = "";
+  function setSaveState(kind, key, fallback, extra) {
+    var box = document.getElementById("save-state");
+    var text = box.querySelector("[data-save-text]");
+    box.setAttribute("data-state", kind);
+    box.classList.toggle("is-error", kind === "error");
+    box.setAttribute("role", kind === "error" ? "alert" : "status");
+    text.setAttribute("data-i18n", key);
+    text.textContent = tr(key, null, fallback) + (extra ? "：" + extra : "");
+    if (extra) text.removeAttribute("data-i18n");
+    box.querySelector("[data-action='save-retry']").hidden = kind !== "error";
+  }
+  function scheduleSave(delay) {
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(save, delay);
+  }
+  function markDirty() {
+    var snapshot = JSON.stringify(collect());
+    dirty = snapshot !== lastSaved;
+    if (dirty) setSaveState("dirty", "resume.unsaved", "有未保存的修改");
+    return dirty;
+  }
+  function save() {
+    clearTimeout(saveTimer);
+    if (inFlight) { pending = true; return; }
     var payloadObj = collect();
+    var snapshot = JSON.stringify(payloadObj);
+    if (snapshot === lastSaved) { dirty = false; return; }
+    inFlight = true;
+    setSaveState("saving", "resume.saving", "保存中…");
     fetch("/api/admin/projects/" + projectId, {
       method: "PATCH",
       headers: { "Content-Type": "application/json", "X-CSRF-Token": CSRF },
-      body: JSON.stringify({ content: JSON.stringify(payloadObj) })
+      body: JSON.stringify({ content: snapshot })
     }).then(function (response) {
-      return response.json().then(function (data) {
+      return response.json().catch(function () { return {}; }).then(function (data) {
         if (!response.ok || data.ok === false) {
-          var errMsg = data.error ? (window.SiteFlowI18n ? window.SiteFlowI18n.translateText(data.error) : data.error) : tr("resume.save_failed", null, "保存失败");
+          var errMsg = data.error ? (window.SiteFlowI18n ? window.SiteFlowI18n.translateText(data.error) : data.error) : String(response.status);
           throw new Error(errMsg);
         }
+        lastSaved = snapshot;
         state = payloadObj;
-        Object.keys(SECTION_FIELDS).forEach(renderSection);
-        var previewUrl = body.getAttribute("data-preview-url");
-        var timeStr = new Date().toLocaleTimeString();
-        status.classList.remove("is-error");
-        status.setAttribute("role", "status");
-        status.innerHTML = tr("resume.saved_at", { time: timeStr }, "已保存 " + timeStr) + ' · <a href="' + previewUrl + '" target="_blank">' + tr("resume.view_resume", null, "查看简历") + '</a>';
-        if (thenView) window.location.href = previewUrl;
+        dirty = JSON.stringify(collect()) !== lastSaved;
+        setSaveState("saved", "resume.saved", "已保存");
       });
     }).catch(function (error) {
       var msg = error.message || String(error);
       if (window.SiteFlowI18n && window.SiteFlowI18n.translateText) msg = window.SiteFlowI18n.translateText(msg);
-      status.textContent = tr("resume.save_failed", null, "保存失败") + "：" + msg;
-      status.classList.add("is-error");
-      status.setAttribute("role", "alert");
+      dirty = true;
+      setSaveState("error", "resume.save_failed", "保存失败", msg);
+    }).then(function () {
+      inFlight = false;
+      if (pending) { pending = false; save(); }
+      else if (dirty && document.getElementById("save-state").getAttribute("data-state") !== "error") scheduleSave(800);
     });
   }
   loadBasics();
   Object.keys(SECTION_FIELDS).forEach(renderSection);
+  lastSaved = JSON.stringify(collect());
+  document.querySelector("main.wrap").addEventListener("input", function (event) {
+    if (event.target.closest("#resume-extensions")) return;
+    if (markDirty()) scheduleSave(800);
+  });
+  document.querySelector("main.wrap").addEventListener("focusout", function (event) {
+    if (event.target.closest("#resume-extensions")) return;
+    if (event.target.matches("input, textarea") && markDirty()) save();
+  });
+  window.addEventListener("beforeunload", function (event) {
+    if (!dirty && !inFlight) return;
+    save();
+    event.preventDefault();
+    event.returnValue = "";
+  });
   document.addEventListener("DOMContentLoaded", function () {
     Object.keys(SECTION_FIELDS).forEach(renderSection);
   });
@@ -304,6 +342,7 @@
       state[section] = collectSection(section);
       state[section].push({});
       renderSection(section);
+      if (markDirty()) save();
       return;
     }
     var entryButton = event.target.closest("[data-entry-action]");
@@ -322,10 +361,10 @@
       }
       state[sectionName] = collectSection(sectionName);
       renderSection(sectionName);
+      if (markDirty()) save();
       return;
     }
-    if (event.target.closest('[data-action="save-content"]')) save(false);
-    if (event.target.closest('[data-action="save-preview"]')) save(true);
+    if (event.target.closest('[data-action="save-retry"]')) save();
   });
 })();
   </script>

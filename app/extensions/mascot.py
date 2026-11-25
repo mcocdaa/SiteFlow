@@ -73,8 +73,17 @@ DEFAULT_API_PROTOCOL = "anthropic"
 MODEL_PRESETS = ("deepseek-flash", "deepseek-v4-pro", "deepseek-chat", "deepseek-reasoner")
 DEFAULT_API_BASE_URL = "https://api.deepseek.com"
 DEFAULT_MODEL = "deepseek-flash"
-DEFAULT_GREETING = "欢迎来逛逛～点我可以换一句悄悄话！"
+DEFAULT_GREETING = "欢迎来逛逛～有什么想了解的可以问我！"
 DEFAULT_TIPS = [
+    "# 每行一条点击提示语；以 # 开头的行为注释，不会展示给访客",
+    "# 可用变量：{progress} 浏览进度(%)，{heading} 当前章节，{title} 标题，{site} 站点名，{words} 字数，{time} 时段问候",
+    "欢迎来逛逛，慢慢看，累了就歇一会儿～",
+    "有什么想了解的可以问我哦～",
+    "已浏览 {progress}%，看看还有什么感兴趣的～",
+    "正在看「{heading}」，有疑问可以直接问我～",
+    "{time}好！按 Ctrl / Cmd + F 可以快速查找关键词哦",
+]
+_LEGACY_V4_DEFAULT_TIPS = [
     "# 每行一条点击提示语；以 # 开头的行为注释，不会展示给访客",
     "# 可用变量：{progress} 阅读进度(%)，{heading} 当前章节，{title} 标题，{site} 站点名，{words} 字数，{time} 时段问候",
     "好文章值得慢慢读，累了就歇一会儿～",
@@ -567,7 +576,7 @@ class MascotExtension(BaseExtension):
             strict=strict,
         )
         if not strict:
-            if tips in (LEGACY_DEFAULT_TIPS, _LEGACY_V3_DEFAULT_TIPS):
+            if tips in (LEGACY_DEFAULT_TIPS, _LEGACY_V3_DEFAULT_TIPS, _LEGACY_V4_DEFAULT_TIPS):
                 tips = list(DEFAULT_TIPS)
             if system_prompt in LEGACY_DEFAULT_SYSTEM_PROMPTS:
                 system_prompt = DEFAULT_SYSTEM_PROMPT
