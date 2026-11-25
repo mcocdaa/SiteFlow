@@ -25,7 +25,7 @@
 | 字段 | 说明 |
 |------|------|
 | `meta` | `type / slug / title / description / url / lang / cover / parent_chain`，任何插件可安全读取 |
-| `context(audience)` | 页面语义数据。`visitor`：公开可见内容；`ai`：可送入外部 LLM 的内容（比 visitor 更严，如简历去掉电话/邮箱）；`admin`：完整数据 |
+| `context(audience)` | 页面语义数据。`visitor`：公开可见内容；`plugin`：通过统一接口提供给扩展插件与外部服务读取的过滤后内容（比 visitor 更严，如简历默认去掉电话/邮箱/所在地）；`ai`：`plugin` 的向后兼容别名（`StaticSurface.context()` 中 `plugin` 与 `ai` 互作回退，再回退 `visitor`）；`admin`：完整数据 |
 | `slots` | 插件可注入的位置：`header` / `aside` / `overlay` / `footer` / `title_deco` / `icons`（兼容旧 `start/main_start/end`） |
 | `tokens` | CSS 变量（`--accent`、`--radius-card`、字体…）与图标集；主题插件写、页面模板读 |
 | `items` | 页面的可列举条目（空间子项、博客文章、简历段落），交给布局插件排布 |
@@ -36,7 +36,7 @@
 ### 2.2 Python Protocol 草案
 
 ```python
-Audience = Literal["visitor", "ai", "admin"]
+Audience = Literal["visitor", "plugin", "ai", "admin"]
 SlotName = Literal["header", "aside", "overlay", "footer", "title_deco", "icons"]
 Capability = Literal[
     "has_content",
@@ -116,11 +116,11 @@ base 侧只有三步：`provider.surface()` → `resolve_plugins(project)`（继
 
 ### 2.3 现有三类页面如何实现
 
-| 页面 | capabilities | context(visitor) | context(ai) | items |
-|------|--------------|------------------|-------------|-------|
+| 页面 | capabilities | context(visitor) | context(plugin / ai) | items |
+|------|--------------|------------------|----------------------|-------|
 | space | `has_children, has_items, supports_layout` | 标题、简介、主题 | 同 visitor（只含可见子项标题） | `store.visible_projects()` 的子项 |
 | blog（列表/文章） | `has_content, has_posts, has_items, supports_layout` | 博客信息；文章页加当前文章 | 标题/摘要/标签/正文节选（≤`_MAX_CONTEXT_BODY_CHARS`），草稿不出现 | 已发布文章 |
-| resume | `has_content, is_personal_profile, has_items` | 模板渲染所用的公开字段 | **去掉 `email`/`phone`** 等联系方式，只留姓名/头衔/摘要/经历 | 工作/教育/项目段落 |
+| resume | `has_content, is_personal_profile, has_items` | 模板渲染所用的公开字段 | 按插件隐私配置过滤（默认去掉 `email`/`phone`/`location`），同时注册 `plugin` 与 `ai` 指向同一份过滤上下文 | 工作/教育/项目段落 |
 
 `mascot_chat._build_page_context` 中按 `project.type` 分支拼文本的逻辑，迁移后改为 `surface.context("ai")` 的通用序列化，从而 resume 自动获得看板娘对话能力且不泄露联系方式。
 
