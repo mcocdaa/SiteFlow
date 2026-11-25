@@ -9,10 +9,12 @@ from app.auth import read_session
 from app.extensions.registry import build_render_bundle, normalize_extensions
 from app.models import Project
 from app.plugins.base import InvalidContent
+from app.surface import StaticSurface, SurfaceItem, project_meta
 from app.templating import templates
 
 BASICS_TEXT_FIELDS = ("name", "label", "email", "phone", "summary")
 LIMITS = {"text": 2000, "short": 200, "url": 500, "list": 20}
+PRIVATE_BASICS = frozenset({"email", "phone"})
 SECTIONS = ("work", "education", "projects", "skills")
 SECTION_TEXT_FIELDS = {
     "work": ("name", "position", "startDate", "endDate", "summary"),
@@ -163,6 +165,32 @@ class ResumeApp:
         if path.strip("/") == "admin":
             return RedirectResponse(f"/admin/projects/{project.id}", status_code=302)
         return None
+
+    def surface(self, request: Request, project: Project, db: Session, *, sub: str = "") -> StaticSurface:
+        config = request.app.state.config
+        resume = validate_content(project.content, project_slug=project.slug, config=config)
+        public = {key: value for key, value in resume.items() if key != "extensions"}
+        basics = dict(public.get("basics") or {})
+        ai_basics = {key: value for key, value in basics.items() if key not in PRIVATE_BASICS}
+        ai = {**public, "basics": ai_basics}
+        items = tuple(
+            SurfaceItem(
+                key=f"{section}-{index}",
+                title=str(entry.get("name") or entry.get("institution") or entry.get("position") or ""),
+                url=f"/projects/{project.slug}/#{section}",
+                summary=str(entry.get("summary") or entry.get("description") or entry.get("area") or ""),
+                kind=section,
+            )
+            for section in SECTIONS
+            for index, entry in enumerate(resume.get(section) or [])
+            if isinstance(entry, dict)
+        )
+        return StaticSurface(
+            meta=project_meta(db, project, title=str(basics.get("name") or "")),
+            capabilities=frozenset({"has_content", "is_personal_profile", "has_items"}),
+            contexts={"visitor": public, "ai": ai, "admin": resume},
+            item_list=items,
+        )
 
     def render(self, request: Request, project: Project, db: Session) -> HTMLResponse:
         config = request.app.state.config
