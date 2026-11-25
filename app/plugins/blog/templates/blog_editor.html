@@ -40,7 +40,7 @@
         {% include field.template %}
         {% endfor %}
         {% endif %}
-        <label class="full"><span data-i18n="blog.col_body">正文（Markdown）</span><textarea name="body" class="mono post-editor-body" rows="22" maxlength="200000">{{ post.body if post else '' }}</textarea></label>
+        <label class="full"><span class="sf-tip-label" data-hover-tip="支持 Markdown 语法与数学公式。" data-i18n-hover-tip="blog.col_body_help"><span data-i18n="blog.col_body">正文</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></span><textarea name="body" class="mono post-editor-body" rows="22" maxlength="200000">{{ post.body if post else '' }}</textarea></label>
       </div>
     </form>
     <div id="post-saved" class="post-saved plugin-block" hidden>
@@ -56,6 +56,7 @@
     </div>
   </main>
   <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  <script src="{{ static_url('js/admin_ui.js') }}" defer></script>
   <script src="{{ static_url('js/blog.js') }}" defer></script>
   <script src="{{ static_url('js/admin.js') }}" defer></script>
 </body>

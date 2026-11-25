@@ -18,16 +18,13 @@
   var siteActiveCountEl = scope === "site" ? document.querySelector("[data-site-ext-active-count]") : null;
 
   var gridEl = panel.querySelector("[data-ext-grid]");
-  var countEl = panel.querySelector("[data-ext-count]");
   var searchEl = panel.querySelector("[data-ext-search]");
   var packFiltersEl = panel.querySelector("[data-ext-pack-filters]");
   var filterEmptyEl = panel.querySelector("[data-ext-filter-empty]");
-  var panelStatusEl = panel.querySelector("[data-ext-panel-status]");
   var packsToggleEl = panel.querySelector("[data-ext-packs-toggle]");
   var packsPanelEl = panel.querySelector("[data-ext-packs-panel]");
   var packUrlFormEl = panel.querySelector("[data-ext-pack-url-form]");
   var packUploadBtn = panel.querySelector("[data-ext-pack-upload]");
-  var packStatusEl = panel.querySelector("[data-ext-pack-status]");
   var packsListEl = panel.querySelector("[data-ext-packs-list]");
 
   var drawerBackdropEl = panel.querySelector("[data-ext-drawer-backdrop]");
@@ -44,7 +41,6 @@
     drawerBodyEl.addEventListener("input", function () { updateLivePreview(); });
     drawerBodyEl.addEventListener("change", function () { updateLivePreview(); });
   }
-  var drawerStatusEl = panel.querySelector("[data-ext-drawer-status]");
   var drawerSaveBtn = panel.querySelector("[data-ext-drawer-save]");
 
   var catalog = [];
@@ -156,24 +152,31 @@
       : text;
   }
 
-  function setStatus(el, text, isError, statusKey) {
-    if (!el) return;
-    el.textContent = text || "";
-    el.classList.toggle("is-error", Boolean(isError));
-    el.setAttribute("role", isError ? "alert" : "status");
-    if (statusKey) {
-      el.dataset.statusKey = statusKey;
-    } else {
-      delete el.dataset.statusKey;
+  function showToast(text, type, key, vars) {
+    if (window.SiteFlowToast && window.SiteFlowToast.show) {
+      window.SiteFlowToast.show(text, { type: type || "info", key: key || "", vars: vars || null });
     }
   }
 
-  function refreshStatusLang(el) {
+  function hideTooltip() {
+    if (window.SiteFlowTooltip && window.SiteFlowTooltip.hide) {
+      window.SiteFlowTooltip.hide();
+    }
+  }
+
+  function setHoverTip(el, text, key, vars) {
     if (!el) return;
-    if (el.dataset.statusKey) {
-      el.textContent = t(el.dataset.statusKey);
-    } else if (el.textContent) {
-      el.textContent = trError(el.textContent);
+    el.setAttribute("data-hover-tip", text || "");
+    if (key) {
+      el.setAttribute("data-i18n-hover-tip", key);
+      if (vars) {
+        el.setAttribute("data-i18n-hover-tip-vars", JSON.stringify(vars));
+      } else {
+        el.removeAttribute("data-i18n-hover-tip-vars");
+      }
+    } else {
+      el.removeAttribute("data-i18n-hover-tip");
+      el.removeAttribute("data-i18n-hover-tip-vars");
     }
   }
 
@@ -327,12 +330,15 @@
   function buildCardNode(item) {
     var effOn = item.effective_enabled !== undefined ? Boolean(item.effective_enabled) : Boolean(item.enabled);
     var localMode = item.local_mode || (item.installed ? (item.enabled ? "override" : "disabled") : "inherit");
+    var inhOn = Boolean(item.inherited_enabled);
+    var visualMode = inhOn || localMode !== "inherit" ? localMode : "disabled";
+    var isBlocking = scope !== "site" && inhOn && localMode === "disabled";
 
     var article = document.createElement("article");
     article.className = "ext-card"
       + (effOn ? " is-enabled" : "")
       + (scope !== "site" && localMode === "inherit" && effOn ? " is-inherited" : "")
-      + (scope !== "site" && localMode === "disabled" ? " is-blocked" : "");
+      + (isBlocking ? " is-blocked" : "");
     article.dataset.extCard = item.id;
     article.dataset.extPack = item.pack_id || "official";
 
@@ -406,13 +412,16 @@
         badge.textContent = t("ext.site_unset", null, "未设置");
       }
     } else if (localMode === "disabled") {
-      badge.className = "ext-badge is-blocked";
+      badge.className = isBlocking ? "ext-badge is-blocked" : "ext-badge is-disabled";
       badge.setAttribute("data-i18n", "ext.badge_disabled");
       badge.textContent = t("ext.badge_disabled", null, "已关闭");
     } else if (localMode === "override") {
       badge.className = "ext-badge is-override";
-      badge.setAttribute("data-i18n", "ext.badge_override");
-      badge.textContent = t("ext.badge_override", null, "本层覆盖");
+      badge.setAttribute("data-i18n", "ext.badge_enabled");
+      badge.textContent = t("ext.badge_enabled", null, "已启用");
+      if (inhOn) {
+        setHoverTip(badge, t("ext.badge_override_tip", null, "本层启用并独立覆盖上级配置"), "ext.badge_override_tip");
+      }
     } else if (effOn && item.source === "site") {
       badge.className = "ext-badge is-inherited";
       badge.setAttribute("data-i18n", "ext.badge_inherited_site");
@@ -423,11 +432,11 @@
       badge.dataset.extSourceAncestor = item.source_title || "";
       var ancBadgeText = t("ext.badge_inherited_ancestor", { title: ancTitle }, "继承自 " + ancTitle);
       badge.textContent = ancBadgeText;
-      badge.setAttribute("title", ancBadgeText);
+      setHoverTip(badge, ancBadgeText);
     } else {
-      badge.className = "ext-badge is-uninstalled";
-      badge.setAttribute("data-i18n", "ext.badge_inactive");
-      badge.textContent = t("ext.badge_inactive", null, "未启用");
+      badge.className = "ext-badge is-disabled";
+      badge.setAttribute("data-i18n", "ext.badge_disabled");
+      badge.textContent = t("ext.badge_disabled", null, "已关闭");
     }
     head.appendChild(badge);
     article.appendChild(head);
@@ -442,29 +451,85 @@
       var modeGroup = document.createElement("div");
       modeGroup.className = "ext-mode-group";
       modeGroup.setAttribute("role", "radiogroup");
-      modeGroup.setAttribute("aria-label", t("ext.mode_group_label", null, "插件继承模式"));
+      modeGroup.setAttribute("aria-label", t("ext.mode_group_label", null, "插件启停与继承模式"));
       modeGroup.setAttribute("data-i18n-aria-label", "ext.mode_group_label");
 
-      [
-        { mode: "inherit", key: "ext.mode_inherit", fallback: "继承" },
-        { mode: "override", key: "ext.mode_override", fallback: "本层覆盖" },
-        { mode: "disabled", key: "ext.mode_disabled", fallback: "关闭" }
-      ].forEach(function (opt) {
-        var active = localMode === opt.mode;
-        var modeBtn = document.createElement("button");
-        modeBtn.type = "button";
-        modeBtn.className = "ext-mode-btn" + (active ? " is-active" : "");
-        modeBtn.setAttribute("role", "radio");
-        modeBtn.setAttribute("aria-checked", active ? "true" : "false");
-        modeBtn.dataset.extMode = opt.mode;
-        modeBtn.dataset.extId = item.id;
-        if (opt.mode === "override" && localMode === "inherit") {
-          modeBtn.dataset.extInstall = item.id;
-        }
-        modeBtn.setAttribute("data-i18n", opt.key);
-        modeBtn.textContent = t(opt.key, null, opt.fallback);
-        modeGroup.appendChild(modeBtn);
-      });
+      var inhAncTitle = trError(item.inherited_source_title || "");
+      var inhBtn = document.createElement("button");
+      inhBtn.type = "button";
+      var inhActive = visualMode === "inherit";
+      inhBtn.className = "ext-mode-btn" + (inhActive ? " is-active" : "") + (!inhOn ? " is-disabled" : "");
+      inhBtn.setAttribute("role", "radio");
+      inhBtn.setAttribute("aria-checked", inhActive ? "true" : "false");
+      if (!inhOn) {
+        inhBtn.setAttribute("aria-disabled", "true");
+        setHoverTip(
+          inhBtn,
+          t("ext.tip_mode_inherit_unavailable", null, "上级未启用此插件，无法继承"),
+          "ext.tip_mode_inherit_unavailable"
+        );
+      } else if (item.inherited_source === "site") {
+        setHoverTip(
+          inhBtn,
+          t("ext.tip_mode_inherit_site", null, "继承来自「全站默认」的启停与配置"),
+          "ext.tip_mode_inherit_site"
+        );
+      } else {
+        setHoverTip(
+          inhBtn,
+          t("ext.tip_mode_inherit_ancestor", { title: inhAncTitle }, "继承来自「" + inhAncTitle + "」的启停与配置"),
+          "ext.tip_mode_inherit_ancestor",
+          { title: inhAncTitle }
+        );
+      }
+      inhBtn.dataset.extMode = "inherit";
+      inhBtn.dataset.extId = item.id;
+      inhBtn.setAttribute("data-i18n", "ext.mode_inherit");
+      inhBtn.textContent = t("ext.mode_inherit", null, "继承");
+      modeGroup.appendChild(inhBtn);
+
+      var enableBtn = document.createElement("button");
+      enableBtn.type = "button";
+      var enableActive = visualMode === "override";
+      enableBtn.className = "ext-mode-btn" + (enableActive ? " is-active" : "");
+      enableBtn.setAttribute("role", "radio");
+      enableBtn.setAttribute("aria-checked", enableActive ? "true" : "false");
+      enableBtn.dataset.extMode = "override";
+      enableBtn.dataset.extId = item.id;
+      if (localMode === "inherit") {
+        enableBtn.dataset.extInstall = item.id;
+      }
+      var enableTipKey = inhOn ? "ext.tip_mode_enable_override" : "ext.tip_mode_enable_local";
+      setHoverTip(
+        enableBtn,
+        t(enableTipKey, null, inhOn ? "在本层启用并独立配置，覆盖上级设置" : "在本层启用此插件"),
+        enableTipKey
+      );
+      enableBtn.setAttribute("data-i18n", "ext.mode_override");
+      enableBtn.textContent = t("ext.mode_override", null, "启用");
+      modeGroup.appendChild(enableBtn);
+
+      var offBtn = document.createElement("button");
+      offBtn.type = "button";
+      var offActive = visualMode === "disabled";
+      offBtn.className = "ext-mode-btn" + (offActive ? " is-active" : "");
+      offBtn.setAttribute("role", "radio");
+      offBtn.setAttribute("aria-checked", offActive ? "true" : "false");
+      offBtn.dataset.extMode = "disabled";
+      offBtn.dataset.extId = item.id;
+      if (isBlocking) {
+        offBtn.dataset.extBlocking = "true";
+      }
+      var offTipKey = inhOn ? "ext.tip_mode_off_override" : "ext.tip_mode_off_default";
+      setHoverTip(
+        offBtn,
+        t(offTipKey, null, inhOn ? "在本层关闭此插件，不继承上级" : "默认关闭，不加载此插件资源"),
+        offTipKey
+      );
+      offBtn.setAttribute("data-i18n", "ext.mode_disabled");
+      offBtn.textContent = t("ext.mode_disabled", null, "关闭");
+      modeGroup.appendChild(offBtn);
+
       article.appendChild(modeGroup);
     }
 
@@ -495,8 +560,7 @@
         siteSettingsBtn.className = "btn ghost icon-btn btn-sm";
         siteSettingsBtn.dataset.extOpenDrawer = item.id;
         var siteSettingsTip = t("ext.settings_tip", null, "插件设置");
-        siteSettingsBtn.setAttribute("data-tip", siteSettingsTip);
-        siteSettingsBtn.setAttribute("data-i18n-tip", "ext.settings_tip");
+        setHoverTip(siteSettingsBtn, siteSettingsTip, "ext.settings_tip");
         siteSettingsBtn.setAttribute("aria-label", siteSettingsTip);
         siteSettingsBtn.setAttribute("data-i18n-aria-label", "ext.settings_tip");
         siteSettingsBtn.appendChild(cloneIcon("sliders"));
@@ -508,8 +572,7 @@
         siteDelBtn.className = "btn danger icon-btn btn-sm";
         siteDelBtn.dataset.extSiteDelete = item.id;
         var siteDelTip = t("ext.site_clear_default", null, "清除全站默认");
-        siteDelBtn.setAttribute("data-tip", siteDelTip);
-        siteDelBtn.setAttribute("data-i18n-tip", "ext.site_clear_default");
+        setHoverTip(siteDelBtn, siteDelTip, "ext.site_clear_default");
         siteDelBtn.setAttribute("aria-label", siteDelTip);
         siteDelBtn.setAttribute("data-i18n-aria-label", "ext.site_clear_default");
         siteDelBtn.appendChild(cloneIcon("trash"));
@@ -537,17 +600,17 @@
         var note = document.createElement("span");
         note.className = "ext-inherit-note";
         if (localMode === "inherit") {
-          if (item.inherited_enabled && item.inherited_source === "site") {
+          if (inhOn && item.inherited_source === "site") {
             note.setAttribute("data-i18n", "ext.inherit_hint_site");
             note.textContent = t("ext.inherit_hint_site", null, "生效来源：全站默认");
-          } else if (item.inherited_enabled && item.inherited_source === "ancestor") {
-            var inhAncTitle = trError(item.inherited_source_title || "");
-            var inhText = t("ext.inherit_hint_ancestor", { title: inhAncTitle }, "生效来源：" + inhAncTitle);
+          } else if (inhOn && item.inherited_source === "ancestor") {
+            var noteAncTitle = trError(item.inherited_source_title || "");
+            var inhText = t("ext.inherit_hint_ancestor", { title: noteAncTitle }, "生效来源：" + noteAncTitle);
             note.textContent = inhText;
-            note.setAttribute("title", inhText);
+            setHoverTip(note, inhText);
           } else {
             note.setAttribute("data-i18n", "ext.inherit_hint_none");
-            note.textContent = t("ext.inherit_hint_none", null, "上级未启用");
+            note.textContent = t("ext.inherit_hint_none", null, "默认关闭");
           }
         } else if (localMode === "override") {
           note.setAttribute("data-i18n", "ext.local_active_note");
@@ -568,8 +631,7 @@
         settingsBtn.className = "btn ghost icon-btn btn-sm";
         settingsBtn.dataset.extOpenDrawer = item.id;
         var settingsTip = t("ext.settings_tip", null, "插件设置");
-        settingsBtn.setAttribute("data-tip", settingsTip);
-        settingsBtn.setAttribute("data-i18n-tip", "ext.settings_tip");
+        setHoverTip(settingsBtn, settingsTip, "ext.settings_tip");
         settingsBtn.setAttribute("aria-label", settingsTip);
         settingsBtn.setAttribute("data-i18n-aria-label", "ext.settings_tip");
         settingsBtn.appendChild(cloneIcon("sliders"));
@@ -580,11 +642,11 @@
         resetBtn.type = "button";
         resetBtn.className = "btn ghost icon-btn btn-sm";
         resetBtn.dataset.extUninstall = item.id;
-        var resetTip = t("ext.reset_to_inherit", null, "恢复继承");
-        resetBtn.setAttribute("data-tip", resetTip);
-        resetBtn.setAttribute("data-i18n-tip", "ext.reset_to_inherit");
-        resetBtn.setAttribute("aria-label", resetTip);
-        resetBtn.setAttribute("data-i18n-aria-label", "ext.reset_to_inherit");
+        var resetAria = t("ext.reset_to_default", null, "恢复默认");
+        var resetTip = t("ext.tip_reset_to_default", null, "清除本层自定义配置并恢复默认状态");
+        setHoverTip(resetBtn, resetTip, "ext.tip_reset_to_default");
+        resetBtn.setAttribute("aria-label", resetAria);
+        resetBtn.setAttribute("data-i18n-aria-label", "ext.reset_to_default");
         resetBtn.appendChild(cloneIcon("rotate-ccw"));
         actions.appendChild(resetBtn);
       }
@@ -647,7 +709,6 @@
       card.hidden = !show;
       if (show) visibleCount += 1;
     });
-    if (countEl) countEl.textContent = String(visibleCount);
     if (filterEmptyEl) filterEmptyEl.hidden = visibleCount > 0 || catalog.length === 0;
   }
 
@@ -780,8 +841,7 @@
           syncBtn.className = "btn ghost icon-btn btn-sm";
           syncBtn.dataset.extPackSync = pack.id;
           var syncTip = t("ext.pack_sync", null, "同步更新");
-          syncBtn.setAttribute("data-tip", syncTip);
-          syncBtn.setAttribute("data-i18n-tip", "ext.pack_sync");
+          setHoverTip(syncBtn, syncTip, "ext.pack_sync");
           syncBtn.setAttribute("aria-label", syncTip);
           syncBtn.setAttribute("data-i18n-aria-label", "ext.pack_sync");
           syncBtn.appendChild(cloneIcon("refresh-cw"));
@@ -793,8 +853,7 @@
         delBtn.className = "btn danger icon-btn btn-sm";
         delBtn.dataset.extPackDelete = pack.id;
         var delTip = t("ext.pack_delete", null, "退订并移除插件包");
-        delBtn.setAttribute("data-tip", delTip);
-        delBtn.setAttribute("data-i18n-tip", "ext.pack_delete");
+        setHoverTip(delBtn, delTip, "ext.pack_delete");
         delBtn.setAttribute("aria-label", delTip);
         delBtn.setAttribute("data-i18n-aria-label", "ext.pack_delete");
         delBtn.appendChild(cloneIcon("trash"));
@@ -862,12 +921,12 @@
     var msg = "";
     if (localMode === "inherit") {
       msg = inhSource === "site"
-        ? t("ext.drawer_ctx_inherit_site", null, "当前展示继承自「全站默认」的配置，保存后将转为本层覆盖。")
-        : t("ext.drawer_ctx_inherit_ancestor", { title: ancTitle }, "当前展示继承自「" + ancTitle + "」的配置，保存后将转为本层覆盖。");
+        ? t("ext.drawer_ctx_inherit_site", null, "当前展示继承自「全站默认」的配置，保存后将转为本层独立配置。")
+        : t("ext.drawer_ctx_inherit_ancestor", { title: ancTitle }, "当前展示继承自「" + ancTitle + "」的配置，保存后将转为本层独立配置。");
     } else if (localMode === "override") {
       msg = inhSource === "site"
-        ? t("ext.drawer_ctx_override_site", null, "本层覆盖中，未修改项继续继承自「全站默认」。")
-        : t("ext.drawer_ctx_override_ancestor", { title: ancTitle }, "本层覆盖中，未修改项继续继承自「" + ancTitle + "」。");
+        ? t("ext.drawer_ctx_override_site", null, "本层已独立配置，未修改项继续继承自「全站默认」。")
+        : t("ext.drawer_ctx_override_ancestor", { title: ancTitle }, "本层已独立配置，未修改项继续继承自「" + ancTitle + "」。");
     }
     if (!msg) {
       drawerContextEl.hidden = true;
@@ -1045,6 +1104,28 @@
     }
   }
 
+  function buildFieldLabelEl(tagName, field, forId) {
+    var hasHelp = Boolean(field.help_default || field.help_key);
+    var el = document.createElement(tagName || "span");
+    el.className = "ext-drawer-field-label" + (hasHelp ? " sf-tip-label" : "");
+    if (forId) el.setAttribute("for", forId);
+
+    var textSpan = document.createElement("span");
+    if (field.label_key) textSpan.setAttribute("data-i18n", field.label_key);
+    textSpan.textContent = getFieldLabel(field);
+    el.appendChild(textSpan);
+
+    if (hasHelp) {
+      setHoverTip(el, getFieldHelp(field), field.help_key || "");
+      var iconSpan = document.createElement("span");
+      iconSpan.className = "sf-tip-icon";
+      iconSpan.setAttribute("aria-hidden", "true");
+      iconSpan.appendChild(cloneIcon("info"));
+      el.appendChild(iconSpan);
+    }
+    return el;
+  }
+
   function buildDrawerField(item, field) {
     var wrap = document.createElement("div");
     wrap.className = "ext-drawer-field";
@@ -1059,10 +1140,7 @@
     if (kind === "boolean") {
       var row = document.createElement("label");
       row.className = "ext-drawer-toggle-row";
-      var labelSpan = document.createElement("span");
-      labelSpan.className = "ext-drawer-field-label";
-      if (field.label_key) labelSpan.setAttribute("data-i18n", field.label_key);
-      labelSpan.textContent = getFieldLabel(field);
+      var labelSpan = buildFieldLabelEl("span", field);
       var toggleWrap = document.createElement("span");
       toggleWrap.className = "ext-toggle";
       var cb = document.createElement("input");
@@ -1075,10 +1153,7 @@
       row.appendChild(toggleWrap);
       wrap.appendChild(row);
     } else if (kind === "character_picker") {
-      var pickerLabel = document.createElement("span");
-      pickerLabel.className = "ext-drawer-field-label";
-      if (field.label_key) pickerLabel.setAttribute("data-i18n", field.label_key);
-      pickerLabel.textContent = getFieldLabel(field);
+      var pickerLabel = buildFieldLabelEl("span", field);
       wrap.appendChild(pickerLabel);
 
       var hiddenInput = document.createElement("input");
@@ -1138,12 +1213,8 @@
         : (Boolean(item.secrets_set && item.secrets_set[field.key]) && !isInheritedSecret);
       var secretHead = document.createElement("div");
       secretHead.className = "ext-secret-head";
-      var secretLabel = document.createElement("label");
-      secretLabel.className = "ext-drawer-field-label";
       var inputId = "ext-field-" + item.id + "-" + field.key;
-      secretLabel.setAttribute("for", inputId);
-      if (field.label_key) secretLabel.setAttribute("data-i18n", field.label_key);
-      secretLabel.textContent = getFieldLabel(field);
+      var secretLabel = buildFieldLabelEl("label", field, inputId);
       secretHead.appendChild(secretLabel);
 
       var pill = document.createElement("span");
@@ -1186,8 +1257,7 @@
       eyeBtn.type = "button";
       eyeBtn.className = "btn ghost icon-btn btn-sm";
       var eyeTip = t("ext.secret_toggle_visibility", null, "显示 / 隐藏");
-      eyeBtn.setAttribute("data-tip", eyeTip);
-      eyeBtn.setAttribute("data-i18n-tip", "ext.secret_toggle_visibility");
+      setHoverTip(eyeBtn, eyeTip, "ext.secret_toggle_visibility");
       eyeBtn.setAttribute("aria-label", eyeTip);
       eyeBtn.setAttribute("data-i18n-aria-label", "ext.secret_toggle_visibility");
       eyeBtn.appendChild(cloneIcon("eye"));
@@ -1204,8 +1274,7 @@
       clearSecretBtn.className = "btn danger icon-btn btn-sm";
       clearSecretBtn.dataset.secretClearBtn = field.key;
       var clearTip = t("ext.secret_clear", null, "清除已保存密钥");
-      clearSecretBtn.setAttribute("data-tip", clearTip);
-      clearSecretBtn.setAttribute("data-i18n-tip", "ext.secret_clear");
+      setHoverTip(clearSecretBtn, clearTip, "ext.secret_clear");
       clearSecretBtn.setAttribute("aria-label", clearTip);
       clearSecretBtn.setAttribute("data-i18n-aria-label", "ext.secret_clear");
       clearSecretBtn.hidden = !isLocalSet;
@@ -1239,12 +1308,8 @@
 
       wrap.appendChild(secretRow);
     } else if (kind === "image_url") {
-      var imgLabel = document.createElement("label");
-      imgLabel.className = "ext-drawer-field-label";
       var imgInputId = "ext-field-" + item.id + "-" + field.key;
-      imgLabel.setAttribute("for", imgInputId);
-      if (field.label_key) imgLabel.setAttribute("data-i18n", field.label_key);
-      imgLabel.textContent = getFieldLabel(field);
+      var imgLabel = buildFieldLabelEl("label", field, imgInputId);
       wrap.appendChild(imgLabel);
 
       var mediaRow = document.createElement("div");
@@ -1290,9 +1355,9 @@
               var data = await apiForm(base + "/extensions/" + encodeURIComponent(item.id) + "/media", fd);
               imgInput.value = data.url || "";
               syncDrawerPreview(wrap, imgInput.value);
-              setStatus(drawerStatusEl, "", false);
+              showToast(t("ext.media_uploaded", null, "图片上传成功"), "success", "ext.media_uploaded");
             } catch (error) {
-              setStatus(drawerStatusEl, error.message, true);
+              showToast(error.message, "error");
             } finally {
               uploadBtn.disabled = false;
               upSpan.textContent = t("blog.ext_upload", null, "上传图片");
@@ -1307,8 +1372,7 @@
       clearImgBtn.type = "button";
       clearImgBtn.className = "btn ghost icon-btn btn-sm";
       var clearImgTip = t("blog.ext_clear", null, "清除");
-      clearImgBtn.setAttribute("data-tip", clearImgTip);
-      clearImgBtn.setAttribute("data-i18n-tip", "blog.ext_clear");
+      setHoverTip(clearImgBtn, clearImgTip, "blog.ext_clear");
       clearImgBtn.setAttribute("aria-label", clearImgTip);
       clearImgBtn.setAttribute("data-i18n-aria-label", "blog.ext_clear");
       clearImgBtn.appendChild(cloneIcon("x"));
@@ -1334,11 +1398,7 @@
     } else if (kind === "select") {
       var selLabel = document.createElement("label");
       selLabel.className = "ext-field";
-      var selText = document.createElement("span");
-      selText.className = "ext-drawer-field-label";
-      if (field.label_key) selText.setAttribute("data-i18n", field.label_key);
-      selText.textContent = getFieldLabel(field);
-      selLabel.appendChild(selText);
+      selLabel.appendChild(buildFieldLabelEl("span", field));
 
       var select = document.createElement("select");
       select.name = field.key;
@@ -1357,11 +1417,7 @@
       var isList = Array.isArray(val) || Array.isArray(defCfg[field.key]);
       var taLabel = document.createElement("label");
       taLabel.className = "ext-field";
-      var taText = document.createElement("span");
-      taText.className = "ext-drawer-field-label";
-      if (field.label_key) taText.setAttribute("data-i18n", field.label_key);
-      taText.textContent = getFieldLabel(field);
-      taLabel.appendChild(taText);
+      taLabel.appendChild(buildFieldLabelEl("span", field));
 
       var ta = document.createElement("textarea");
       ta.name = field.key;
@@ -1496,11 +1552,7 @@
     } else if (kind === "range") {
       var rangeLabel = document.createElement("label");
       rangeLabel.className = "ext-field";
-      var rangeText = document.createElement("span");
-      rangeText.className = "ext-drawer-field-label";
-      if (field.label_key) rangeText.setAttribute("data-i18n", field.label_key);
-      rangeText.textContent = getFieldLabel(field);
-      rangeLabel.appendChild(rangeText);
+      rangeLabel.appendChild(buildFieldLabelEl("span", field));
 
       var rangeRow = document.createElement("div");
       rangeRow.className = "ext-field-range";
@@ -1525,11 +1577,7 @@
     } else if (kind === "number") {
       var numLabel = document.createElement("label");
       numLabel.className = "ext-field";
-      var numText = document.createElement("span");
-      numText.className = "ext-drawer-field-label";
-      if (field.label_key) numText.setAttribute("data-i18n", field.label_key);
-      numText.textContent = getFieldLabel(field);
-      numLabel.appendChild(numText);
+      numLabel.appendChild(buildFieldLabelEl("span", field));
 
       var numInput = document.createElement("input");
       numInput.type = "number";
@@ -1544,11 +1592,7 @@
     } else {
       var textLabel = document.createElement("label");
       textLabel.className = "ext-field";
-      var textSpan = document.createElement("span");
-      textSpan.className = "ext-drawer-field-label";
-      if (field.label_key) textSpan.setAttribute("data-i18n", field.label_key);
-      textSpan.textContent = getFieldLabel(field);
-      textLabel.appendChild(textSpan);
+      textLabel.appendChild(buildFieldLabelEl("span", field));
 
       var textInput = document.createElement("input");
       textInput.type = "text";
@@ -1577,14 +1621,6 @@
         textLabel.appendChild(textInput);
       }
       wrap.appendChild(textLabel);
-    }
-
-    if (field.help_default || field.help_key) {
-      var help = document.createElement("span");
-      help.className = "ext-field-help";
-      if (field.help_key) help.setAttribute("data-i18n", field.help_key);
-      help.textContent = getFieldHelp(field);
-      wrap.appendChild(help);
     }
 
     return wrap;
@@ -1629,9 +1665,9 @@
   function openDrawer(extId, triggerEl) {
     var item = findExt(extId);
     if (!item || !drawerEl || !drawerBackdropEl) return;
+    hideTooltip();
     activeExtId = extId;
     lastTrigger = triggerEl || document.activeElement;
-    setStatus(drawerStatusEl, "", false);
 
     if (drawerIconEl) {
       drawerIconEl.textContent = "";
@@ -1726,6 +1762,7 @@
 
   function closeDrawer() {
     if (!drawerEl || !drawerBackdropEl || drawerEl.hidden) return;
+    hideTooltip();
     cleanupLineEditors();
     drawerEl.classList.remove("is-open");
     drawerBackdropEl.classList.remove("is-open");
@@ -1734,7 +1771,6 @@
     drawerBackdropEl.hidden = true;
     activeExtId = null;
     drawerInitialValues = {};
-    setStatus(drawerStatusEl, "", false);
     if (lastTrigger && typeof lastTrigger.focus === "function" && document.contains(lastTrigger)) {
       lastTrigger.focus();
     }
@@ -1830,14 +1866,14 @@
       var url = urlInput ? urlInput.value.trim() : "";
       if (!url) return;
       if (submitBtn) submitBtn.disabled = true;
-      setStatus(packStatusEl, t("ext.pack_subscribing", null, "正在拉取并校验插件包…"), false, "ext.pack_subscribing");
+      showToast(t("ext.pack_subscribing", null, "正在拉取并校验插件包…"), "info", "ext.pack_subscribing");
       try {
         var data = await apiJson("POST", "/api/admin/plugin-packs", { url: url });
         if (urlInput) urlInput.value = "";
         await refreshAll(data.packs);
-        setStatus(packStatusEl, t("ext.pack_subscribed", null, "插件包订阅成功"), false, "ext.pack_subscribed");
+        showToast(t("ext.pack_subscribed", null, "插件包订阅成功"), "success", "ext.pack_subscribed");
       } catch (error) {
-        setStatus(packStatusEl, error.message, true);
+        showToast(error.message, "error");
       } finally {
         if (submitBtn) submitBtn.disabled = false;
       }
@@ -1852,16 +1888,16 @@
       picker.addEventListener("change", async function () {
         if (!picker.files || !picker.files.length) return;
         packUploadBtn.disabled = true;
-        setStatus(packStatusEl, t("ext.pack_uploading", null, "正在导入离线 ZIP 插件包…"), false, "ext.pack_uploading");
+        showToast(t("ext.pack_uploading", null, "正在导入离线 ZIP 插件包…"), "info", "ext.pack_uploading");
         try {
           var fd = new FormData();
           fd.append("file", picker.files[0]);
           fd.append("replace", "true");
           var data = await apiForm("/api/admin/plugin-packs/upload", fd);
           await refreshAll(data.packs);
-          setStatus(packStatusEl, t("ext.pack_uploaded", null, "离线插件包导入成功"), false, "ext.pack_uploaded");
+          showToast(t("ext.pack_uploaded", null, "离线插件包导入成功"), "success", "ext.pack_uploaded");
         } catch (error) {
-          setStatus(packStatusEl, error.message, true);
+          showToast(error.message, "error");
         } finally {
           packUploadBtn.disabled = false;
         }
@@ -1881,10 +1917,17 @@
 
     var modeBtn = event.target.closest("[data-ext-mode]");
     if (modeBtn && scope !== "site") {
+      if (modeBtn.getAttribute("aria-disabled") === "true") return;
       var modeExtId = modeBtn.dataset.extId;
       var nextMode = modeBtn.dataset.extMode;
       var curItem = findExt(modeExtId);
-      if (curItem && curItem.local_mode === nextMode) return;
+      if (curItem) {
+        var curVisualMode = curItem.inherited_enabled || curItem.local_mode !== "inherit"
+          ? curItem.local_mode
+          : "disabled";
+        if (curVisualMode === nextMode) return;
+      }
+      hideTooltip();
       var group = modeBtn.closest(".ext-mode-group");
       var groupBtns = group ? Array.from(group.querySelectorAll("button")) : [modeBtn];
       groupBtns.forEach(function (b) { b.disabled = true; });
@@ -1907,9 +1950,9 @@
           : nextMode === "disabled"
             ? "ext.mode_saved_disabled"
             : "ext.mode_saved_inherit";
-        setStatus(panelStatusEl, t(statusKey), false, statusKey);
+        showToast(t(statusKey), "success", statusKey);
       } catch (error) {
-        setStatus(panelStatusEl, error.message, true);
+        showToast(error.message, "error");
         groupBtns.forEach(function (b) { b.disabled = false; });
       }
       return;
@@ -1918,6 +1961,7 @@
     var siteDelBtn = event.target.closest("[data-ext-site-delete]");
     if (siteDelBtn && scope === "site") {
       if (!confirm(t("ext.site_confirm_clear", null, "确定清除该插件的全站默认设置？子页面将不再从全站继承该插件。"))) return;
+      hideTooltip();
       var siteDelId = siteDelBtn.dataset.extSiteDelete;
       siteDelBtn.disabled = true;
       try {
@@ -1929,9 +1973,9 @@
         } else {
           await refreshAll();
         }
-        setStatus(panelStatusEl, t("ext.site_cleared", null, "已清除全站默认设置"), false, "ext.site_cleared");
+        showToast(t("ext.site_cleared", null, "已清除全站默认设置"), "success", "ext.site_cleared");
       } catch (error) {
-        setStatus(panelStatusEl, error.message, true);
+        showToast(error.message, "error");
         siteDelBtn.disabled = false;
       }
       return;
@@ -1939,7 +1983,8 @@
 
     var uninstallBtn = event.target.closest("[data-ext-uninstall]");
     if (uninstallBtn) {
-      if (!confirm(t("ext.confirm_reset_inherit", null, "确定清除本层配置并恢复继承？"))) return;
+      if (!confirm(t("ext.confirm_reset_default", null, "确定清除本层配置并恢复默认状态？"))) return;
+      hideTooltip();
       var uninstallId = uninstallBtn.dataset.extUninstall;
       uninstallBtn.disabled = true;
       try {
@@ -1951,9 +1996,9 @@
         } else {
           await refreshAll();
         }
-        setStatus(panelStatusEl, t("ext.mode_saved_inherit", null, "已切换为继承模式"), false, "ext.mode_saved_inherit");
+        showToast(t("ext.reset_done", null, "已恢复默认状态"), "success", "ext.reset_done");
       } catch (error) {
-        setStatus(panelStatusEl, error.message, true);
+        showToast(error.message, "error");
         uninstallBtn.disabled = false;
       }
       return;
@@ -1976,13 +2021,13 @@
       var syncId = syncBtn.dataset.extPackSync;
       syncBtn.disabled = true;
       syncBtn.classList.add("is-spinning");
-      setStatus(packStatusEl, t("ext.pack_syncing", null, "正在同步插件包…"), false, "ext.pack_syncing");
+      showToast(t("ext.pack_syncing", null, "正在同步插件包…"), "info", "ext.pack_syncing");
       try {
         var syncData = await apiJson("POST", "/api/admin/plugin-packs/" + encodeURIComponent(syncId) + "/sync");
         await refreshAll(syncData.packs);
-        setStatus(packStatusEl, t("ext.pack_synced", null, "插件包已同步至最新版本"), false, "ext.pack_synced");
+        showToast(t("ext.pack_synced", null, "插件包已同步至最新版本"), "success", "ext.pack_synced");
       } catch (error) {
-        setStatus(packStatusEl, error.message, true);
+        showToast(error.message, "error");
       } finally {
         syncBtn.disabled = false;
         syncBtn.classList.remove("is-spinning");
@@ -1995,6 +2040,7 @@
       if (!confirm(t("ext.pack_confirm_delete", null, "确定退订并移除该插件包？将同时清理所有项目对该包插件的引用。"))) {
         return;
       }
+      hideTooltip();
       var delPackId = packDelBtn.dataset.extPackDelete;
       packDelBtn.disabled = true;
       try {
@@ -2002,9 +2048,9 @@
         if (activeExtId && activeExtId.indexOf(delPackId + ".") === 0) closeDrawer();
         if (activePackFilter === delPackId) activePackFilter = "";
         await refreshAll(packDelData.packs);
-        setStatus(packStatusEl, t("ext.pack_deleted", null, "已退订并移除插件包"), false, "ext.pack_deleted");
+        showToast(t("ext.pack_deleted", null, "已退订并移除插件包"), "success", "ext.pack_deleted");
       } catch (error) {
-        setStatus(packStatusEl, error.message, true);
+        showToast(error.message, "error");
         packDelBtn.disabled = false;
       }
     }
@@ -2037,11 +2083,12 @@
         } else {
           await refreshAll();
         }
-        setStatus(panelStatusEl, "", false);
+        var siteToastKey = siteEnabled ? "ext.site_saved_on" : "ext.site_saved_off";
+        showToast(t(siteToastKey), "success", siteToastKey);
       } catch (error) {
         siteToggle.checked = !siteEnabled;
         siteToggle.disabled = false;
-        setStatus(panelStatusEl, error.message, true);
+        showToast(error.message, "error");
       }
       return;
     }
@@ -2050,6 +2097,12 @@
     if (cascadeToggle && scope !== "site") {
       var casExtId = cascadeToggle.dataset.extCascade;
       var nextCascade = Boolean(cascadeToggle.checked);
+      if (nextCascade) {
+        if (!confirm(t("ext.confirm_cascade_on", null, "开启后将同步影响下级处于继承状态的子空间与页面配置，确定开启？"))) {
+          cascadeToggle.checked = false;
+          return;
+        }
+      }
       cascadeToggle.disabled = true;
       try {
         var casRes = await apiJson("PATCH", base + "/extensions/" + encodeURIComponent(casExtId), {
@@ -2062,11 +2115,11 @@
           await refreshAll();
         }
         var casKey = nextCascade ? "ext.cascade_saved_on" : "ext.cascade_saved_off";
-        setStatus(panelStatusEl, t(casKey), false, casKey);
+        showToast(t(casKey), "success", casKey);
       } catch (error) {
         cascadeToggle.checked = !nextCascade;
         cascadeToggle.disabled = false;
-        setStatus(panelStatusEl, error.message, true);
+        showToast(error.message, "error");
       }
       return;
     }
@@ -2086,11 +2139,12 @@
       } else {
         await refreshAll();
       }
-      setStatus(panelStatusEl, "", false);
+      var toggleKey = nextEnabled ? "ext.mode_saved_override" : "ext.mode_saved_disabled";
+      showToast(t(toggleKey), "success", toggleKey);
     } catch (error) {
       toggle.checked = !nextEnabled;
       toggle.disabled = false;
-      setStatus(panelStatusEl, error.message, true);
+      showToast(error.message, "error");
     }
   });
 
@@ -2101,7 +2155,6 @@
       var curItem = findExt(activeExtId);
       drawerSaving = true;
       if (drawerSaveBtn) drawerSaveBtn.disabled = true;
-      setStatus(drawerStatusEl, t("resume.saving", null, "保存中…"), false, "resume.saving");
 
       var collected = collectDrawerFields();
       var config = {};
@@ -2137,13 +2190,9 @@
           syncDrawerSecrets(res.extension);
           drawerInitialValues = collectDrawerFields().all;
         }
-        setStatus(drawerStatusEl, t("blog.ext_saved", null, "配置已保存"), false, "blog.ext_saved");
+        showToast(t("blog.ext_saved", null, "配置已保存"), "success", "blog.ext_saved");
       } catch (error) {
-        setStatus(
-          drawerStatusEl,
-          t("resume.save_failed", null, "保存失败") + "：" + error.message,
-          true
-        );
+        showToast(t("resume.save_failed", null, "保存失败") + "：" + error.message, "error");
       } finally {
         drawerSaving = false;
         if (drawerSaveBtn) drawerSaveBtn.disabled = false;
@@ -2164,9 +2213,6 @@
         syncDrawerSecrets(item);
       }
     }
-    refreshStatusLang(panelStatusEl);
-    refreshStatusLang(packStatusEl);
-    refreshStatusLang(drawerStatusEl);
   });
 
   panel.querySelectorAll('input[type="checkbox"][switch]').forEach(applySwitchSemantics);

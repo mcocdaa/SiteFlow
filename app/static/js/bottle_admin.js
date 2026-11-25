@@ -10,14 +10,12 @@
   var banListEl = document.getElementById("banned-list");
   var subPanelEl = document.getElementById("submission-panel");
   var banPanelEl = document.getElementById("banned-panel");
-  var modStatusEl = document.getElementById("mod-status");
   var refreshBtn = document.getElementById("refresh-submissions-btn");
   var clearBtn = document.getElementById("clear-submissions-btn");
   var clearDialog = document.getElementById("clear-confirm-dialog");
   var clearCurrentBtn = document.getElementById("clear-current-btn");
 
   var settingsForm = document.getElementById("bottle-settings-form");
-  var saveStateEl = document.getElementById("settings-save-state");
   var saveSettingsBtn = document.getElementById("save-bottle-settings");
 
   var activeTab = "pending";
@@ -55,18 +53,11 @@
     });
   }
 
-  function setModStatus(kind, message) {
-    if (!modStatusEl) return;
-    modStatusEl.classList.remove("is-success", "is-error");
-    if (!message) {
-      modStatusEl.hidden = true;
-      modStatusEl.textContent = "";
-      return;
+  function notify(type, message, key, vars) {
+    if (!message) return;
+    if (window.SiteFlowToast && window.SiteFlowToast.show) {
+      window.SiteFlowToast.show(message, { type: type || "info", key: key || "", vars: vars || null });
     }
-    modStatusEl.hidden = false;
-    modStatusEl.textContent = message;
-    if (kind === "success") modStatusEl.classList.add("is-success");
-    if (kind === "error") modStatusEl.classList.add("is-error");
   }
 
   function updateCounts(counts, bannedCount) {
@@ -191,7 +182,7 @@
         }
       })
       .catch(function (error) {
-        setModStatus("error", error.message || t("js.req_failed", null, "请求失败"));
+        notify("error", error.message || t("js.req_failed", null, "请求失败"));
       });
   }
 
@@ -223,7 +214,6 @@
 
   if (refreshBtn) {
     refreshBtn.addEventListener("click", function () {
-      setModStatus("", "");
       loadQueue();
     });
   }
@@ -245,14 +235,17 @@
       }
       adminApi("POST", "/submissions/clear", payload)
         .then(function (data) {
-          setModStatus(
+          var deleted = data.deleted || 0;
+          notify(
             "success",
-            t("bottle.admin_cleared", { n: data.deleted || 0 }, "已清空 " + (data.deleted || 0) + " 条漂流瓶记录")
+            t("bottle.admin_cleared", { n: deleted }, "已清空 " + deleted + " 条漂流瓶记录"),
+            "bottle.admin_cleared",
+            { n: deleted }
           );
           return loadQueue();
         })
         .catch(function (error) {
-          setModStatus("error", error.message || t("js.req_failed", null, "请求失败"));
+          notify("error", error.message || t("js.req_failed", null, "请求失败"));
         });
     });
   }
@@ -265,11 +258,18 @@
       actionBtn.disabled = true;
       adminApi("POST", "/submissions/" + encodeURIComponent(subId) + "/status", { action: action })
         .then(function () {
-          setModStatus("success", t("bottle.admin_action_done", null, "操作已完成"));
+          var doneKey = action === "approve"
+            ? "bottle.admin_approved"
+            : action === "reject"
+              ? "bottle.admin_rejected"
+              : action === "delete"
+                ? "bottle.admin_deleted"
+                : "bottle.admin_action_done";
+          notify("success", t(doneKey, null, "操作已完成"), doneKey);
           return loadQueue();
         })
         .catch(function (error) {
-          setModStatus("error", error.message || t("js.req_failed", null, "请求失败"));
+          notify("error", error.message || t("js.req_failed", null, "请求失败"));
         })
         .finally(function () {
           actionBtn.disabled = false;
@@ -283,11 +283,11 @@
       banBtn.disabled = true;
       adminApi("POST", "/submissions/ban", { ip_hash: ipHash })
         .then(function () {
-          setModStatus("success", t("bottle.admin_ip_banned", null, "已封禁该 IP"));
+          notify("success", t("bottle.admin_ip_banned", null, "已封禁该 IP"), "bottle.admin_ip_banned");
           return loadQueue();
         })
         .catch(function (error) {
-          setModStatus("error", error.message || t("js.req_failed", null, "请求失败"));
+          notify("error", error.message || t("js.req_failed", null, "请求失败"));
         })
         .finally(function () {
           banBtn.disabled = false;
@@ -301,11 +301,11 @@
       unbanBtn.disabled = true;
       adminApi("DELETE", "/submissions/ban/" + encodeURIComponent(targetHash))
         .then(function () {
-          setModStatus("success", t("bottle.admin_ip_unbanned", null, "已解除该 IP 封禁"));
+          notify("success", t("bottle.admin_ip_unbanned", null, "已解除该 IP 封禁"), "bottle.admin_ip_unbanned");
           return loadQueue();
         })
         .catch(function (error) {
-          setModStatus("error", error.message || t("js.req_failed", null, "请求失败"));
+          notify("error", error.message || t("js.req_failed", null, "请求失败"));
         })
         .finally(function () {
           unbanBtn.disabled = false;
@@ -318,10 +318,6 @@
       event.preventDefault();
       if (!settingsForm.reportValidity()) return;
       if (saveSettingsBtn) saveSettingsBtn.disabled = true;
-      if (saveStateEl) {
-        saveStateEl.classList.remove("is-error");
-        saveStateEl.textContent = t("resume.saving", null, "保存中…");
-      }
       var payload = {
         intro: document.getElementById("f-intro").value.trim(),
         placeholder: document.getElementById("f-placeholder").value.trim(),
@@ -334,16 +330,10 @@
       };
       adminApi("PATCH", "", { content: JSON.stringify(payload) })
         .then(function () {
-          if (saveStateEl) {
-            saveStateEl.classList.remove("is-error");
-            saveStateEl.textContent = t("bottle.settings_saved", null, "规则配置已保存");
-          }
+          notify("success", t("bottle.settings_saved", null, "规则配置已保存"), "bottle.settings_saved");
         })
         .catch(function (error) {
-          if (saveStateEl) {
-            saveStateEl.classList.add("is-error");
-            saveStateEl.textContent = error.message || t("resume.save_failed", null, "保存失败");
-          }
+          notify("error", error.message || t("resume.save_failed", null, "保存失败"));
         })
         .finally(function () {
           if (saveSettingsBtn) saveSettingsBtn.disabled = false;

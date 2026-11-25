@@ -8,23 +8,26 @@
 <section class="plugin-block ext-panel{{ ' is-site-scope' if scope == 'site' else '' }}" id="{{ panel_id }}" data-ext-panel data-ext-scope="{{ scope }}"{% if scope != 'site' %} data-project-id="{{ project.id }}"{% endif %} data-ext-target="{{ target_type }}">
   <div class="ext-panel-head">
     <div class="ext-panel-title-wrap">
+      {% if scope != 'site' %}
+      <h2 class="sf-tip-title" tabindex="0" data-hover-tip="继承全站或父空间配置，也可在本层启用或关闭；未启用时不会加载额外资源。" data-i18n-hover-tip="ext.project_section_desc">
+        <span data-i18n="{{ ext_section_title_key | default('ext.section_title') }}">{{ ext_section_title_default | default('插件扩展') }}</span>
+        <span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 14) }}</span>
+      </h2>
+      {% else %}
       <h2 data-i18n="{{ ext_section_title_key | default('ext.section_title') }}">{{ ext_section_title_default | default('插件扩展') }}</h2>
-      <span class="ext-count-pill" data-ext-count>{{ ext_catalog | length }}</span>
+      {% endif %}
     </div>
     <div class="ext-toolbar">
       <label class="ext-search-box">
         <span class="ext-search-icon">{{ icons.icon("search", 15) }}</span>
         <input type="search" class="ext-search-input" data-ext-search placeholder="搜索插件…" data-i18n-placeholder="ext.search_placeholder" aria-label="搜索插件" data-i18n-aria-label="ext.search_placeholder">
       </label>
-      <button type="button" class="btn ghost btn-sm ext-packs-toggle" data-ext-packs-toggle aria-expanded="false" aria-controls="{{ panel_id }}-packs">
+      <button type="button" class="btn ghost btn-sm ext-packs-toggle" data-ext-packs-toggle aria-expanded="false" aria-controls="{{ panel_id }}-packs" data-hover-tip="订阅 GitHub 插件包仓库或导入离线 ZIP 包，纯声明式静态扩展，无远程代码执行。" data-i18n-hover-tip="ext.packs_subtitle">
         {{ icons.icon("package", 15) }}
         <span data-i18n="ext.packs_title">插件订阅源</span>
       </button>
     </div>
   </div>
-  {% if scope != 'site' %}
-  <p class="ext-section-desc" data-i18n="ext.project_section_desc">继承全站或父空间配置，也可在本层覆盖或关闭；未启用时不会加载额外资源。</p>
-  {% endif %}
 
   <div class="ext-pack-filters" data-ext-pack-filters{% if packs_list | length <= 1 %} hidden{% endif %}>
     <button type="button" class="ext-filter-chip is-active" data-ext-filter-pack="" data-i18n="ext.filter_all">全部</button>
@@ -34,21 +37,17 @@
   </div>
 
   <div class="ext-packs-panel" id="{{ panel_id }}-packs" data-ext-packs-panel hidden>
-    <div class="ext-packs-head">
-      <span class="ext-packs-label" data-i18n="ext.packs_subtitle">订阅 GitHub 插件包仓库或导入离线 ZIP 包，纯声明式静态扩展，无远程代码执行。</span>
-    </div>
     <form class="ext-pack-url-form" data-ext-pack-url-form>
       <input type="url" name="url" required placeholder="https://github.com/owner/repo 或 .zip 地址" data-i18n-placeholder="ext.pack_url_placeholder" aria-label="插件包地址" data-i18n-aria-label="ext.pack_url_placeholder">
       <button type="submit" class="btn primary btn-sm" data-ext-pack-subscribe>
         {{ icons.icon("download", 14) }}
         <span data-i18n="ext.pack_subscribe">订阅</span>
       </button>
-      <button type="button" class="btn btn-sm" data-ext-pack-upload data-tip="导入离线 ZIP 插件包" data-i18n-tip="ext.pack_upload_zip" aria-label="导入离线 ZIP 插件包" data-i18n-aria-label="ext.pack_upload_zip">
+      <button type="button" class="btn btn-sm" data-ext-pack-upload data-hover-tip="导入离线 ZIP 插件包" data-i18n-hover-tip="ext.pack_upload_zip" aria-label="导入离线 ZIP 插件包" data-i18n-aria-label="ext.pack_upload_zip">
         {{ icons.icon("upload", 14) }}
         <span data-i18n="ext.pack_upload_short">导入 ZIP</span>
       </button>
     </form>
-    <p class="ext-status" data-ext-pack-status role="status" aria-live="polite"></p>
     <div class="ext-packs-list" data-ext-packs-list>
       {% for pack in packs_list %}
       {% set is_official = (pack.id == 'official') %}
@@ -73,9 +72,9 @@
         {% if not is_official %}
         <div class="ext-pack-actions">
           {% if can_sync %}
-          <button type="button" class="btn ghost icon-btn btn-sm" data-ext-pack-sync="{{ pack.id }}" data-tip="同步更新" data-i18n-tip="ext.pack_sync" aria-label="同步更新" data-i18n-aria-label="ext.pack_sync">{{ icons.icon("refresh-cw", 14) }}</button>
+          <button type="button" class="btn ghost icon-btn btn-sm" data-ext-pack-sync="{{ pack.id }}" data-hover-tip="同步更新" data-i18n-hover-tip="ext.pack_sync" aria-label="同步更新" data-i18n-aria-label="ext.pack_sync">{{ icons.icon("refresh-cw", 14) }}</button>
           {% endif %}
-          <button type="button" class="btn danger icon-btn btn-sm" data-ext-pack-delete="{{ pack.id }}" data-tip="退订并移除插件包" data-i18n-tip="ext.pack_delete" aria-label="退订并移除插件包" data-i18n-aria-label="ext.pack_delete">{{ icons.icon("trash", 14) }}</button>
+          <button type="button" class="btn danger icon-btn btn-sm" data-ext-pack-delete="{{ pack.id }}" data-hover-tip="退订并移除插件包" data-i18n-hover-tip="ext.pack_delete" aria-label="退订并移除插件包" data-i18n-aria-label="ext.pack_delete">{{ icons.icon("trash", 14) }}</button>
         </div>
         {% endif %}
       </div>
@@ -87,7 +86,10 @@
     {% for item in ext_catalog %}
     {% set eff_on = item.effective_enabled | default(item.enabled) %}
     {% set l_mode = item.local_mode | default('inherit') %}
-    <article class="ext-card{{ ' is-enabled' if eff_on else '' }}{{ ' is-inherited' if scope != 'site' and l_mode == 'inherit' and eff_on else '' }}{{ ' is-blocked' if scope != 'site' and l_mode == 'disabled' else '' }}" data-ext-card="{{ item.id }}" data-ext-pack="{{ item.pack_id | default('official') }}">
+    {% set inh_on = item.inherited_enabled | default(false) %}
+    {% set visual_mode = l_mode if (inh_on or l_mode != 'inherit') else 'disabled' %}
+    {% set is_blocking = (scope != 'site') and inh_on and (l_mode == 'disabled') %}
+    <article class="ext-card{{ ' is-enabled' if eff_on else '' }}{{ ' is-inherited' if scope != 'site' and l_mode == 'inherit' and eff_on else '' }}{{ ' is-blocked' if is_blocking else '' }}" data-ext-card="{{ item.id }}" data-ext-pack="{{ item.pack_id | default('official') }}">
       <div class="ext-card-head">
         <div class="ext-card-ident">
           <span class="ext-card-icon">{{ icons.icon(item.icon or "puzzle", 16) }}</span>
@@ -120,24 +122,32 @@
           {% endif %}
         {% else %}
           {% if l_mode == 'disabled' %}
-          <span class="ext-badge is-blocked" data-i18n="ext.badge_disabled">已关闭</span>
+          <span class="ext-badge{{ ' is-blocked' if inh_on else ' is-disabled' }}" data-i18n="ext.badge_disabled">已关闭</span>
           {% elif l_mode == 'override' %}
-          <span class="ext-badge is-override" data-i18n="ext.badge_override">本层覆盖</span>
+          <span class="ext-badge is-override" data-i18n="ext.badge_enabled"{% if inh_on %} data-hover-tip="本层启用并独立覆盖上级配置" data-i18n-hover-tip="ext.badge_override_tip"{% endif %}>已启用</span>
           {% elif eff_on and item.source == 'site' %}
           <span class="ext-badge is-inherited" data-i18n="ext.badge_inherited_site">继承自全站</span>
           {% elif eff_on and item.source == 'ancestor' %}
-          <span class="ext-badge is-inherited" title="继承自 {{ item.source_title }}" data-ext-source-ancestor="{{ item.source_title }}">继承自 {{ item.source_title }}</span>
+          <span class="ext-badge is-inherited" data-hover-tip="继承自 {{ item.source_title }}" data-ext-source-ancestor="{{ item.source_title }}">继承自 {{ item.source_title }}</span>
           {% else %}
-          <span class="ext-badge is-uninstalled" data-i18n="ext.badge_inactive">未启用</span>
+          <span class="ext-badge is-disabled" data-i18n="ext.badge_disabled">已关闭</span>
           {% endif %}
         {% endif %}
       </div>
       <p class="ext-card-desc"{% if item.description_key %} data-i18n="{{ item.description_key }}"{% endif %}>{{ item.description }}</p>
       {% if scope != 'site' %}
-      <div class="ext-mode-group" role="radiogroup" aria-label="插件继承模式" data-i18n-aria-label="ext.mode_group_label">
-        <button type="button" class="ext-mode-btn{{ ' is-active' if l_mode == 'inherit' else '' }}" role="radio" aria-checked="{{ 'true' if l_mode == 'inherit' else 'false' }}" data-ext-mode="inherit" data-ext-id="{{ item.id }}" data-i18n="ext.mode_inherit">继承</button>
-        <button type="button" class="ext-mode-btn{{ ' is-active' if l_mode == 'override' else '' }}" role="radio" aria-checked="{{ 'true' if l_mode == 'override' else 'false' }}" data-ext-mode="override" data-ext-id="{{ item.id }}"{% if l_mode == 'inherit' %} data-ext-install="{{ item.id }}"{% endif %} data-i18n="ext.mode_override">本层覆盖</button>
-        <button type="button" class="ext-mode-btn{{ ' is-active' if l_mode == 'disabled' else '' }}" role="radio" aria-checked="{{ 'true' if l_mode == 'disabled' else 'false' }}" data-ext-mode="disabled" data-ext-id="{{ item.id }}" data-i18n="ext.mode_disabled">关闭</button>
+      <div class="ext-mode-group" role="radiogroup" aria-label="插件启停与继承模式" data-i18n-aria-label="ext.mode_group_label">
+        {% if inh_on %}
+          {% if item.inherited_source == 'site' %}
+          <button type="button" class="ext-mode-btn{{ ' is-active' if visual_mode == 'inherit' else '' }}" role="radio" aria-checked="{{ 'true' if visual_mode == 'inherit' else 'false' }}" data-ext-mode="inherit" data-ext-id="{{ item.id }}" data-hover-tip="继承来自「全站默认」的启停与配置" data-i18n-hover-tip="ext.tip_mode_inherit_site" data-i18n="ext.mode_inherit">继承</button>
+          {% else %}
+          <button type="button" class="ext-mode-btn{{ ' is-active' if visual_mode == 'inherit' else '' }}" role="radio" aria-checked="{{ 'true' if visual_mode == 'inherit' else 'false' }}" data-ext-mode="inherit" data-ext-id="{{ item.id }}" data-hover-tip="继承来自「{{ item.inherited_source_title }}」的启停与配置" data-i18n-hover-tip="ext.tip_mode_inherit_ancestor" data-i18n-hover-tip-vars='{{ {"title": item.inherited_source_title} | tojson }}' data-i18n="ext.mode_inherit">继承</button>
+          {% endif %}
+        {% else %}
+          <button type="button" class="ext-mode-btn is-disabled" role="radio" aria-checked="false" aria-disabled="true" data-ext-mode="inherit" data-ext-id="{{ item.id }}" data-hover-tip="上级未启用此插件，无法继承" data-i18n-hover-tip="ext.tip_mode_inherit_unavailable" data-i18n="ext.mode_inherit">继承</button>
+        {% endif %}
+        <button type="button" class="ext-mode-btn{{ ' is-active' if visual_mode == 'override' else '' }}" role="radio" aria-checked="{{ 'true' if visual_mode == 'override' else 'false' }}" data-ext-mode="override" data-ext-id="{{ item.id }}"{% if l_mode == 'inherit' %} data-ext-install="{{ item.id }}"{% endif %} data-hover-tip="{{ '在本层启用并独立配置，覆盖上级设置' if inh_on else '在本层启用此插件' }}" data-i18n-hover-tip="{{ 'ext.tip_mode_enable_override' if inh_on else 'ext.tip_mode_enable_local' }}" data-i18n="ext.mode_override">启用</button>
+        <button type="button" class="ext-mode-btn{{ ' is-active' if visual_mode == 'disabled' else '' }}" role="radio" aria-checked="{{ 'true' if visual_mode == 'disabled' else 'false' }}" data-ext-mode="disabled" data-ext-id="{{ item.id }}"{% if is_blocking %} data-ext-blocking="true"{% endif %} data-hover-tip="{{ '在本层关闭此插件，不继承上级' if inh_on else '默认关闭，不加载此插件资源' }}" data-i18n-hover-tip="{{ 'ext.tip_mode_off_override' if inh_on else 'ext.tip_mode_off_default' }}" data-i18n="ext.mode_disabled">关闭</button>
       </div>
       {% endif %}
       <div class="ext-card-footer">
@@ -148,10 +158,10 @@
         </label>
         <div class="ext-card-actions">
           {% if item.config_schema %}
-          <button type="button" class="btn ghost icon-btn btn-sm" data-ext-open-drawer="{{ item.id }}" data-tip="插件设置" data-i18n-tip="ext.settings_tip" aria-label="插件设置" data-i18n-aria-label="ext.settings_tip">{{ icons.icon("sliders", 15) }}</button>
+          <button type="button" class="btn ghost icon-btn btn-sm" data-ext-open-drawer="{{ item.id }}" data-hover-tip="插件设置" data-i18n-hover-tip="ext.settings_tip" aria-label="插件设置" data-i18n-aria-label="ext.settings_tip">{{ icons.icon("sliders", 15) }}</button>
           {% endif %}
           {% if item.configured %}
-          <button type="button" class="btn danger icon-btn btn-sm" data-ext-site-delete="{{ item.id }}" data-tip="清除全站默认" data-i18n-tip="ext.site_clear_default" aria-label="清除全站默认" data-i18n-aria-label="ext.site_clear_default">{{ icons.icon("trash", 15) }}</button>
+          <button type="button" class="btn danger icon-btn btn-sm" data-ext-site-delete="{{ item.id }}" data-hover-tip="清除全站默认" data-i18n-hover-tip="ext.site_clear_default" aria-label="清除全站默认" data-i18n-aria-label="ext.site_clear_default">{{ icons.icon("trash", 15) }}</button>
           {% endif %}
         </div>
         {% else %}
@@ -162,12 +172,12 @@
             <span data-i18n="ext.cascade_children">向下级子项继承</span>
           </label>
           {% elif l_mode == 'inherit' %}
-            {% if item.inherited_enabled and item.inherited_source == 'site' %}
+            {% if inh_on and item.inherited_source == 'site' %}
             <span class="ext-inherit-note" data-i18n="ext.inherit_hint_site">生效来源：全站默认</span>
-            {% elif item.inherited_enabled and item.inherited_source == 'ancestor' %}
-            <span class="ext-inherit-note" title="生效来源：{{ item.inherited_source_title }}">生效来源：{{ item.inherited_source_title }}</span>
+            {% elif inh_on and item.inherited_source == 'ancestor' %}
+            <span class="ext-inherit-note" data-hover-tip="生效来源：{{ item.inherited_source_title }}">生效来源：{{ item.inherited_source_title }}</span>
             {% else %}
-            <span class="ext-inherit-note" data-i18n="ext.inherit_hint_none">上级未启用</span>
+            <span class="ext-inherit-note" data-i18n="ext.inherit_hint_none">默认关闭</span>
             {% endif %}
           {% elif l_mode == 'override' %}
           <span class="ext-inherit-note" data-i18n="ext.local_active_note">仅本页生效</span>
@@ -177,10 +187,10 @@
         </div>
         <div class="ext-card-actions">
           {% if item.config_schema and (l_mode == 'override' or eff_on) %}
-          <button type="button" class="btn ghost icon-btn btn-sm" data-ext-open-drawer="{{ item.id }}" data-tip="插件设置" data-i18n-tip="ext.settings_tip" aria-label="插件设置" data-i18n-aria-label="ext.settings_tip">{{ icons.icon("sliders", 15) }}</button>
+          <button type="button" class="btn ghost icon-btn btn-sm" data-ext-open-drawer="{{ item.id }}" data-hover-tip="插件设置" data-i18n-hover-tip="ext.settings_tip" aria-label="插件设置" data-i18n-aria-label="ext.settings_tip">{{ icons.icon("sliders", 15) }}</button>
           {% endif %}
           {% if l_mode != 'inherit' %}
-          <button type="button" class="btn ghost icon-btn btn-sm" data-ext-uninstall="{{ item.id }}" data-tip="恢复继承" data-i18n-tip="ext.reset_to_inherit" aria-label="恢复继承" data-i18n-aria-label="ext.reset_to_inherit">{{ icons.icon("rotate-ccw", 15) }}</button>
+          <button type="button" class="btn ghost icon-btn btn-sm" data-ext-uninstall="{{ item.id }}" data-hover-tip="清除本层自定义配置并恢复默认状态" data-i18n-hover-tip="ext.tip_reset_to_default" aria-label="恢复默认" data-i18n-aria-label="ext.reset_to_default">{{ icons.icon("rotate-ccw", 15) }}</button>
           {% endif %}
         </div>
         {% endif %}
@@ -190,7 +200,6 @@
   </div>
 
   <p class="empty small ext-filter-empty" data-ext-filter-empty hidden data-i18n="ext.no_matches">没有匹配的插件。</p>
-  <p class="ext-status ext-panel-status" data-ext-panel-status role="status" aria-live="polite"></p>
 
   <script type="application/json" data-ext-catalog-json>{{ ext_catalog | tojson }}</script>
   <script type="application/json" data-ext-packs-json>{{ packs_list | tojson }}</script>
@@ -203,6 +212,7 @@
     ("upload", 14),
     ("refresh-cw", 14),
     ("check", 14),
+    ("info", 13),
     ("x", 15),
     ("eye", 15),
     ("eye-off", 15),
@@ -250,7 +260,6 @@
     <form class="ext-drawer-form" data-ext-drawer-form novalidate>
       <div class="ext-drawer-body" data-ext-drawer-body></div>
       <div class="ext-drawer-footer">
-        <span class="ext-status" data-ext-drawer-status role="status" aria-live="polite"></span>
         <div class="ext-drawer-footer-actions">
           <button type="button" class="btn ghost btn-sm" data-ext-drawer-close data-i18n="ext.cancel">取消</button>
           <button type="submit" class="btn primary btn-sm" data-ext-drawer-save>{{ icons.icon("check", 14) }}<span data-i18n="blog.ext_save_config">保存配置</span></button>

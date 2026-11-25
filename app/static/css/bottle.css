@@ -539,11 +539,6 @@
   font-weight: 600;
 }
 
-.bottle-admin-sub {
-  margin: 4px 0 0;
-  font-size: 0.875rem;
-}
-
 .bottle-queue-actions {
   display: flex;
   align-items: center;
@@ -667,10 +662,6 @@
   font-weight: 600;
 }
 
-.bottle-admin-queue .bottle-feedback {
-  margin: 0 0 14px;
-}
-
 .bottle-status-tag.status-pending {
   color: var(--bottle-warn);
   background: rgba(245, 158, 11, 0.14);
@@ -722,14 +713,14 @@
 
 .bottle-check-row {
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   gap: 10px;
 }
 
 .bottle-check-row input[type="checkbox"] {
   width: 18px;
   height: 18px;
-  margin: 2px 0 0;
+  margin: 0;
   flex-shrink: 0;
   accent-color: var(--accent);
   cursor: pointer;

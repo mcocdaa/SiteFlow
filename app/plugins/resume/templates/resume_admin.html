@@ -38,14 +38,13 @@
         <label><span data-i18n="resume.field_country">国家代码</span> <input id="f-countryCode" maxlength="200" placeholder="CN" autocomplete="off"></label>
       </div>
       <label class="stack"><span data-i18n="resume.field_summary">简介</span> <textarea id="f-summary" rows="3" maxlength="2000" data-i18n-auto-val></textarea></label>
-      <label class="stack"><span data-i18n="resume.field_links">链接（每行一条：名称|https://...）</span><textarea id="f-links" rows="3" placeholder="GitHub|https://github.com/me"></textarea></label>
+      <label class="stack"><span class="sf-tip-label" data-hover-tip="每行一条，格式为：名称|https://..." data-i18n-hover-tip="resume.field_links_help"><span data-i18n="resume.field_links">链接</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></span><textarea id="f-links" rows="3" placeholder="GitHub|https://github.com/me"></textarea></label>
       <fieldset class="ai-vis-group">
-        <legend data-i18n="resume.ai_privacy_title">AI 隐私控制</legend>
-        <p class="muted small ai-vis-hint" data-i18n="resume.ai_privacy_hint">仅控制看板娘 AI 对话可读取的内容，不影响简历公开展示。</p>
+        <legend class="sf-tip-title" tabindex="0" data-hover-tip="仅控制看板娘 AI 对话可读取的内容，不影响简历公开展示。" data-i18n-hover-tip="resume.ai_privacy_hint"><span data-i18n="resume.ai_privacy_title">AI 隐私控制</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></legend>
         <div class="ai-vis-row">
           <label class="ext-toggle ai-vis-toggle" for="f-ai-contact">
             <input type="checkbox" switch role="switch" id="f-ai-contact" data-ai-vis="contact">
-            <span data-i18n="resume.ai_vis_contact">联系方式对 AI 可见（邮箱 / 电话）</span>
+            <span class="sf-tip-label" data-hover-tip="开启后看板娘 AI 对话可读取简历中的邮箱与电话。" data-i18n-hover-tip="resume.ai_vis_contact_help"><span data-i18n="resume.ai_vis_contact">联系方式对 AI 可见</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></span>
           </label>
           <label class="ext-toggle ai-vis-toggle" for="f-ai-location">
             <input type="checkbox" switch role="switch" id="f-ai-location" data-ai-vis="location">
@@ -78,6 +77,7 @@
   </main>
   <script id="plugin-data" type="application/json">{{ content | tojson }}</script>
   <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  <script src="{{ static_url('js/admin_ui.js') }}" defer></script>
   {% if ext_catalog is defined %}
   <script src="{{ static_url('js/extensions_admin.js') }}" defer></script>
   {% endif %}
@@ -91,7 +91,8 @@
   var ICONS = {
     up: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></svg>',
     down: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="m19 12-7 7-7-7"/></svg>',
-    trash: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>'
+    trash: '<svg class="icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/><line x1="10" x2="10" y1="11" y2="17"/><line x1="14" x2="14" y1="11" y2="17"/></svg>',
+    info: '<svg class="icon" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>'
   };
   var SECTION_FIELDS = {
     work: [
@@ -101,7 +102,7 @@
       ["endDate", "resume.col_end", "结束", "text", "span-3"],
       ["url", "resume.col_url", "链接", "text", "span-6"],
       ["summary", "resume.col_summary", "摘要", "textarea", "full"],
-      ["highlights", "resume.col_highlights", "要点（每行一条）", "list", "full"]
+      ["highlights", "resume.col_highlights", "要点", "list", "full", "resume.col_highlights_help", "每行输入一条要点。"]
     ],
     education: [
       ["institution", "resume.col_institution", "学校", "text", "span-6"],
@@ -113,13 +114,13 @@
     projects: [
       ["name", "resume.col_proj_name", "名称", "text", "span-6"],
       ["url", "resume.col_url", "链接", "text", "span-6"],
-      ["keywords", "resume.col_keywords", "关键词（逗号分隔）", "tags", "full"],
+      ["keywords", "resume.col_keywords", "关键词", "tags", "full", "resume.col_keywords_help", "多个关键词请用逗号分隔。"],
       ["description", "resume.col_proj_desc", "描述", "textarea", "full"],
-      ["highlights", "resume.col_highlights", "要点（每行一条）", "list", "full"]
+      ["highlights", "resume.col_highlights", "要点", "list", "full", "resume.col_highlights_help", "每行输入一条要点。"]
     ],
     skills: [
       ["name", "resume.col_skill_name", "技能", "text", "span-5"],
-      ["keywords", "resume.col_keywords", "关键词（逗号分隔）", "tags", "span-7"]
+      ["keywords", "resume.col_keywords", "关键词", "tags", "span-7", "resume.col_keywords_help", "多个关键词请用逗号分隔。"]
     ]
   };
 
@@ -178,9 +179,22 @@
     var grid = el("div", "entry-grid");
     SECTION_FIELDS[section].forEach(function (field) {
       var label = el("label", field[4] || undefined);
-      var spanEl = el("span", undefined, tr(field[1], null, field[2]));
-      spanEl.setAttribute("data-i18n", field[1]);
-      label.append(spanEl);
+      if (field[5]) {
+        var tipWrap = el("span", "sf-tip-label");
+        tipWrap.setAttribute("data-hover-tip", tr(field[5], null, field[6] || ""));
+        tipWrap.setAttribute("data-i18n-hover-tip", field[5]);
+        var textSpan = el("span", undefined, tr(field[1], null, field[2]));
+        textSpan.setAttribute("data-i18n", field[1]);
+        var iconSpan = el("span", "sf-tip-icon");
+        iconSpan.setAttribute("aria-hidden", "true");
+        iconSpan.innerHTML = ICONS.info;
+        tipWrap.append(textSpan, iconSpan);
+        label.append(tipWrap);
+      } else {
+        var spanEl = el("span", undefined, tr(field[1], null, field[2]));
+        spanEl.setAttribute("data-i18n", field[1]);
+        label.append(spanEl);
+      }
       var singleLine = field[3] === "text" || field[3] === "tags";
       var input = el(singleLine ? "input" : "textarea");
       if (singleLine) { input.type = "text"; input.autocomplete = "off"; }

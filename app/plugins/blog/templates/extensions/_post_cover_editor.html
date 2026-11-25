@@ -1,3 +1,4 @@
+{% import "icons.html" as icons %}
 {% set cover_ctx = ext_ctx if ext_ctx is defined else (field.context if field is defined else {}) %}
 {% set cover_val = cover_ctx.cover if cover_ctx and cover_ctx.cover else "" %}
 {% set alt_val = cover_ctx.cover_alt if cover_ctx and cover_ctx.cover_alt else "" %}
@@ -11,7 +12,7 @@
     </div>
   </div>
   <label class="ext-field">
-    <span data-i18n="blog.ext.post_cover.editor_cover_alt">封面替代文本（Alt）</span>
+    <span class="sf-tip-label" data-hover-tip="可选，用于无障碍阅读与图片说明，留空默认使用文章标题。" data-i18n-hover-tip="blog.ext.post_cover.editor_cover_alt_help"><span data-i18n="blog.ext.post_cover.editor_cover_alt">封面替代文字</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></span>
     <input type="text" name="meta.cover_alt" value="{{ alt_val }}" maxlength="200" placeholder="留空默认使用文章标题" data-i18n-placeholder="blog.ext.post_cover.editor_cover_alt_placeholder">
   </label>
   <img class="ext-cover-preview" data-ext-preview="meta.cover" src="{{ cover_val }}" alt="{{ alt_val }}" referrerpolicy="no-referrer"{% if not cover_val %} hidden{% endif %}>

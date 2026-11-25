@@ -659,6 +659,7 @@ def test_i18n_key_parity_and_ui_badge_rendering() -> None:
     for rel in (
         "templates/admin.html",
         "templates/_extensions_panel.html",
+        "static/js/admin_ui.js",
         "static/js/extensions_admin.js",
         "extensions/inheritance.py",
     ):
@@ -669,6 +670,10 @@ def test_i18n_key_parity_and_ui_badge_rendering() -> None:
         csrf = login(client)
         parent = create_app(client, csrf, "space", "设计系统空间").json()["project"]
         child = create_app(client, csrf, "space", "子组件空间", parent_id=parent["id"]).json()["project"]
+        blog = create_app(client, csrf, "blog", "技术博客", parent_id=child["id"]).json()["project"]
+        resume = create_app(client, csrf, "resume", "个人简历", parent_id=child["id"]).json()["project"]
+        bottle = create_app(client, csrf, "bottle", "海边漂流瓶", parent_id=child["id"]).json()["project"]
+
         assert (
             client.put(
                 f"/api/admin/projects/{parent['id']}/extensions/mascot",
@@ -678,14 +683,86 @@ def test_i18n_key_parity_and_ui_badge_rendering() -> None:
             == 200
         )
         parent_html = client.get(f"/admin/projects/{parent['id']}").text
-        assert "本层覆盖" in parent_html
+        assert "ext-count-pill" not in parent_html
+        assert "ext-section-desc" not in parent_html
+        assert "ext-panel-status" not in parent_html
+        assert "本层覆盖" not in parent_html
+        assert "恢复继承" not in parent_html
+        assert "已启用" in parent_html
+        assert "恢复默认" in parent_html
+        assert 'aria-disabled="true"' in parent_html
         assert 'data-ext-cascade="mascot"' in parent_html
+        assert 'data-ext-mode="inherit"' in parent_html
+        assert 'data-ext-mode="override"' in parent_html
+        assert 'data-ext-mode="disabled"' in parent_html
+        assert ">继承<" in parent_html
+        assert ">启用<" in parent_html
+        assert ">关闭<" in parent_html
+        assert "admin_ui.js" in parent_html
 
         child_html = client.get(f"/admin/projects/{child['id']}").text
         assert "继承自 设计系统空间" in child_html
         assert 'data-ext-mode="inherit"' in child_html
         assert 'data-ext-mode="override"' in child_html
         assert 'data-ext-mode="disabled"' in child_html
+        assert "ext-count-pill" not in child_html
+        assert "ext-section-desc" not in child_html
+
+        admin_html = client.get("/admin").text
+        assert "site-ext-dialog-sub" not in admin_html
+        assert "admin_ui.js" in admin_html
+        assert 'data-i18n-hover-tip="ext.site_section_desc"' in admin_html
+
+        blog_html = client.get(f"/admin/projects/{blog['id']}").text
+        assert "ext-count-pill" not in blog_html
+        assert "admin_ui.js" in blog_html
+        editor_html = client.get(f"/admin/projects/{blog['id']}/posts/new").text
+        assert "正文（Markdown）" not in editor_html
+        assert 'data-i18n-hover-tip="blog.col_body_help"' in editor_html
+        assert "admin_ui.js" in editor_html
+
+        resume_html = client.get(f"/admin/projects/{resume['id']}").text
+        assert "ai-vis-hint" not in resume_html
+        assert "联系方式对 AI 可见（邮箱 / 电话）" not in resume_html
+        assert "链接（每行一条" not in resume_html
+        assert "要点（每行一条）" not in resume_html
+        assert "关键词（逗号分隔）" not in resume_html
+        assert 'data-i18n-hover-tip="resume.ai_privacy_hint"' in resume_html
+        assert "admin_ui.js" in resume_html
+
+        bottle_html = client.get(f"/admin/projects/{bottle['id']}").text
+        assert "bottle-admin-sub" not in bottle_html
+        assert "单条字数上限（" not in bottle_html
+        assert "先审后发（" not in bottle_html
+        assert "投一捞一（" not in bottle_html
+        assert "允许包含网址或链接（" not in bottle_html
+        assert 'data-i18n-hover-tip="bottle.admin_queue_desc"' in bottle_html
+        assert "admin_ui.js" in bottle_html
+
+        mascot_cat = next(
+            e
+            for e in client.get("/api/admin/site/extensions", headers=auth_headers(csrf)).json()["extensions"]
+            if e["id"] == "mascot"
+        )
+        for field in mascot_cat["config_schema"]:
+            label = str(field["label_default"])
+            for forbidden in (
+                "Thinking",
+                "deepseek_web_search",
+                "deepseek_read_url",
+                "safety_check",
+                "（title）",
+                "（人设）",
+                "（可选）",
+                "（每行一条）",
+            ):
+                assert forbidden not in label, (field["key"], label)
+            for opt in field.get("options", []):
+                opt_label = str(opt["label_default"])
+                assert "Q版" not in opt_label, opt_label
+                assert "（high" not in opt_label, opt_label
+                assert "（low" not in opt_label, opt_label
+        assert "CDN" not in mascot_cat["description"]
 
 
 def test_capability_matched_site_inheritance_and_resume_mascot_privacy(
