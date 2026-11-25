@@ -46,10 +46,10 @@
 
     <section class="plugin-block bottle-admin-queue" aria-labelledby="bottle-queue-title">
       <div class="block-head">
-        <div>
-          <h2 id="bottle-queue-title" data-i18n="bottle.admin_queue_title">漂流瓶审核队列</h2>
-          <p class="muted bottle-admin-sub" data-i18n="bottle.admin_queue_desc">审核访客投递的漂流瓶，支持通过、拒绝、删除、封禁 IP 或一键清空。</p>
-        </div>
+        <h2 id="bottle-queue-title" class="sf-tip-title" tabindex="0" data-hover-tip="审核访客投递的漂流瓶，支持通过、拒绝、删除、封禁 IP 或一键清空。" data-i18n-hover-tip="bottle.admin_queue_desc">
+          <span data-i18n="bottle.admin_queue_title">漂流瓶审核队列</span>
+          <span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 14) }}</span>
+        </h2>
         <div class="bottle-queue-actions">
           <button type="button" class="btn ghost" id="refresh-submissions-btn">{{ icons.icon("refresh-cw", 15) }}<span data-i18n="bottle.admin_refresh">刷新</span></button>
           <button type="button" class="btn danger" id="clear-submissions-btn">{{ icons.icon("trash", 15) }}<span data-i18n="bottle.admin_clear_btn">一键清空</span></button>
@@ -74,8 +74,6 @@
           <span class="bottle-tab-count" id="count-banned">0</span>
         </button>
       </div>
-
-      <div id="mod-status" class="bottle-feedback" role="status" aria-live="polite" hidden></div>
 
       <div id="submission-panel" role="tabpanel" aria-labelledby="tab-pending">
         <div id="submission-list" class="bottle-sub-list"></div>
@@ -107,15 +105,15 @@
           <legend data-i18n="bottle.group_rules">审核与防刷策略</legend>
           <div class="editor-grid bottle-num-grid">
             <label for="f-max-length">
-              <span data-i18n="bottle.cfg_max_length">单条字数上限（50–1000）</span>
+              <span class="sf-tip-label" data-hover-tip="允许范围 50–1000 字。" data-i18n-hover-tip="bottle.cfg_max_length_help"><span data-i18n="bottle.cfg_max_length">单条字数上限</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></span>
               <input type="number" id="f-max-length" name="max_length" min="50" max="1000" required value="{{ content.max_length }}">
             </label>
             <label for="f-throw-limit">
-              <span data-i18n="bottle.cfg_throw_limit">单 IP 每小时投递上限（1–20）</span>
+              <span class="sf-tip-label" data-hover-tip="允许范围 1–20 次，防止恶意刷屏。" data-i18n-hover-tip="bottle.cfg_throw_limit_help"><span data-i18n="bottle.cfg_throw_limit">单 IP 每小时投递上限</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></span>
               <input type="number" id="f-throw-limit" name="throw_limit_per_hour" min="1" max="20" required value="{{ content.throw_limit_per_hour }}">
             </label>
             <label for="f-pick-limit">
-              <span data-i18n="bottle.cfg_pick_limit">单 IP 每小时捞取上限（1–100）</span>
+              <span class="sf-tip-label" data-hover-tip="允许范围 1–100 次。" data-i18n-hover-tip="bottle.cfg_pick_limit_help"><span data-i18n="bottle.cfg_pick_limit">单 IP 每小时捞取上限</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></span>
               <input type="number" id="f-pick-limit" name="pick_limit_per_hour" min="1" max="100" required value="{{ content.pick_limit_per_hour }}">
             </label>
           </div>
@@ -123,22 +121,21 @@
           <div class="bottle-checks">
             <div class="bottle-check-row">
               <input type="checkbox" id="f-require-approval" name="require_approval" {% if content.require_approval %}checked{% endif %}>
-              <label for="f-require-approval" data-i18n="bottle.cfg_require_approval">先审后发（访客投递后需站长审核通过才可被他人捞取）</label>
+              <label for="f-require-approval" class="sf-tip-label" data-hover-tip="访客投递后需站长审核通过才可被他人捞取。" data-i18n-hover-tip="bottle.cfg_require_approval_help"><span data-i18n="bottle.cfg_require_approval">先审后发</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></label>
             </div>
             <div class="bottle-check-row">
               <input type="checkbox" id="f-throw-to-pick" name="throw_to_pick" {% if content.throw_to_pick %}checked{% endif %}>
-              <label for="f-throw-to-pick" data-i18n="bottle.cfg_throw_to_pick">投一捞一（访客须先投出一个漂流瓶，才能捞取他人瓶子）</label>
+              <label for="f-throw-to-pick" class="sf-tip-label" data-hover-tip="访客须先投出一个漂流瓶，才能捞取他人瓶子。" data-i18n-hover-tip="bottle.cfg_throw_to_pick_help"><span data-i18n="bottle.cfg_throw_to_pick">投一捞一</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></label>
             </div>
             <div class="bottle-check-row">
               <input type="checkbox" id="f-allow-links" name="allow_links" {% if content.allow_links %}checked{% endif %}>
-              <label for="f-allow-links" data-i18n="bottle.cfg_allow_links">允许包含网址或链接（默认关闭，开启可能引入垃圾外链）</label>
+              <label for="f-allow-links" class="sf-tip-label" data-hover-tip="默认关闭，开启后可能引入垃圾外链。" data-i18n-hover-tip="bottle.cfg_allow_links_help"><span data-i18n="bottle.cfg_allow_links">允许包含网址或链接</span><span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span></label>
             </div>
           </div>
         </fieldset>
 
         <div class="bottle-settings-actions">
           <button type="submit" class="btn primary" id="save-bottle-settings" data-i18n="bottle.save_settings">保存配置</button>
-          <span id="settings-save-state" class="muted" role="status" aria-live="polite"></span>
         </div>
       </form>
     </section>
@@ -163,6 +160,7 @@
 
   <script id="plugin-data" type="application/json">{{ content | tojson }}</script>
   <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  <script src="{{ static_url('js/admin_ui.js') }}" defer></script>
   <script src="{{ static_url('js/admin.js') }}" defer></script>
   <script src="{{ static_url('js/bottle_admin.js') }}" defer></script>
   {% if ext_catalog is defined %}

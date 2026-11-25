@@ -60,7 +60,7 @@ class SpaceBannerExtension(BaseExtension):
             label_key="ext.space_banner.message",
             label_default="公告内容",
             placeholder_key="ext.space_banner.message_placeholder",
-            placeholder_default="输入简短说明或更新动态（可选）",
+            placeholder_default="输入简短说明或更新动态",
             max_length=500,
         ),
         ConfigField(
@@ -80,8 +80,10 @@ class SpaceBannerExtension(BaseExtension):
             kind="text",
             label_key="ext.space_banner.link_label",
             label_default="按钮文案",
+            help_key="ext.space_banner.link_label_help",
+            help_default="配置下方跳转链接后，按钮才会显示在公告栏中。",
             placeholder_key="ext.space_banner.link_label_placeholder",
-            placeholder_default="例如：查看详情（配置链接后显示）",
+            placeholder_default="例如：查看详情",
             max_length=40,
         ),
         ConfigField(

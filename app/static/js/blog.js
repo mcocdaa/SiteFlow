@@ -17,11 +17,24 @@
       ? window.SiteFlowI18n.translateText(text)
       : text;
   }
+  function toast(text, type, key) {
+    if (window.SiteFlowToast && window.SiteFlowToast.show) {
+      window.SiteFlowToast.show(text, { type: type || "info", key: key || "" });
+    }
+  }
+  function queueToast(text, type, key) {
+    if (window.SiteFlowToast && window.SiteFlowToast.queue) {
+      window.SiteFlowToast.queue(text, { type: type || "success", key: key || "" });
+    }
+  }
   if (status && status.getAttribute("data-i18n")) {
     status.dataset.statusKey = status.getAttribute("data-i18n");
   }
   function message(text, error, statusKey) {
-    if (!status) return;
+    if (!status) {
+      if (text) toast(text, error ? "error" : "info", statusKey);
+      return;
+    }
     status.textContent = text;
     status.classList.toggle("is-error", Boolean(error));
     status.setAttribute("role", error ? "alert" : "status");
@@ -32,6 +45,7 @@
       delete status.dataset.statusKey;
     }
     if (error) {
+      toast(text, "error");
       status.focus();
       status.scrollIntoView({ block: "center", behavior: "smooth" });
     }
@@ -171,6 +185,7 @@
         document.body.dataset.postSlug = data.post.slug;
         if (form.elements.slug) form.elements.slug.value = data.post.slug;
         message(t("blog.saved_label"), false, "blog.saved_label");
+        toast(t("blog.saved_title"), "success", "blog.saved_title");
         form.hidden = true;
         var saved = document.getElementById("post-saved");
         saved.hidden = false;
@@ -206,16 +221,16 @@
       saving = true;
       var button = settings.querySelector("button");
       button.disabled = true;
-      message(t("resume.saving"));
       try {
         await request("PATCH", base, {
           title: document.getElementById("f-title").value.trim(),
           description: document.getElementById("f-description").value.trim()
         });
         dirty = false;
+        queueToast(t("blog.settings_saved"), "success", "blog.settings_saved");
         location.reload();
       } catch (error) {
-        message(t("resume.save_failed") + "：" + error.message, true);
+        toast(t("resume.save_failed") + "：" + error.message, "error");
       } finally {
         saving = false;
         button.disabled = false;
@@ -229,9 +244,10 @@
       button.disabled = true;
       try {
         await request("DELETE", base + "/posts/" + encodeURIComponent(button.dataset.deletePost));
+        queueToast(t("blog.post_deleted"), "success", "blog.post_deleted");
         location.reload();
       } catch (error) {
-        message(error.message, true);
+        toast(error.message, "error");
         button.disabled = false;
       }
     });

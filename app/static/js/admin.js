@@ -30,12 +30,29 @@
 
   function refresh() { location.reload(); }
 
+  function toast(text, type, key) {
+    if (window.SiteFlowToast && window.SiteFlowToast.show) {
+      window.SiteFlowToast.show(text, { type: type || "info", key: key || "" });
+    }
+  }
+
+  function refreshWithToast(key, fallback) {
+    if (window.SiteFlowToast && window.SiteFlowToast.queue) {
+      window.SiteFlowToast.queue(t(key, null, fallback), { type: "success", key: key });
+    }
+    refresh();
+  }
+
   function onError(error) {
     var msg = (error && error.message) ? error.message : String(error);
     if (window.SiteFlowI18n && window.SiteFlowI18n.translateText) {
       msg = window.SiteFlowI18n.translateText(msg);
     }
-    alert(msg);
+    if (window.SiteFlowToast && window.SiteFlowToast.show) {
+      window.SiteFlowToast.show(msg, { type: "error" });
+    } else {
+      alert(msg);
+    }
   }
 
   var dropzone = document.getElementById("dropzone");
@@ -181,7 +198,7 @@
       var button = this.querySelector("button");
       button.disabled = true;
       api("POST", "/projects/link", { url: url, parent_id: parentId() })
-        .then(refresh)
+        .then(function () { refreshWithToast("admin.toast_link_added", "链接作品已添加"); })
         .catch(onError)
         .finally(function () { button.disabled = false; });
     });
@@ -230,6 +247,7 @@
       var labelSpan = button.querySelector("span");
       if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(tokenVal).then(function () {
+          toast(t("js.api_copied", null, "已复制密钥"), "success", "js.api_copied");
           if (labelSpan) labelSpan.textContent = t("js.api_copied", null, "已复制密钥");
           setTimeout(function () {
             if (labelSpan) labelSpan.textContent = t("admin.copy_api_key", null, "复制 API 密钥");
@@ -245,10 +263,14 @@
       var editor = row.querySelector(".editor");
       editor.hidden = !editor.hidden;
     } else if (action === "remove-cover") {
-      api("DELETE", "/projects/" + id + "/cover").then(refresh).catch(onError);
+      api("DELETE", "/projects/" + id + "/cover")
+        .then(function () { refreshWithToast("admin.toast_cover_removed", "已恢复默认封面"); })
+        .catch(onError);
     } else if (action === "clear-password") {
       if (confirm(t("js.confirm_clear_pwd", null, "确定清除此作品的访问密码？清除后任何人均可公开直接访问。"))) {
-        api("PATCH", "/projects/" + id, { password: "" }).then(refresh).catch(onError);
+        api("PATCH", "/projects/" + id, { password: "" })
+          .then(function () { refreshWithToast("admin.toast_pwd_cleared", "已清除访问密码"); })
+          .catch(onError);
       }
     } else if (action === "save") {
       var titleInput = row.querySelector('[name="title"]');
@@ -291,22 +313,32 @@
             });
           });
         })
-        .then(refresh)
+        .then(function () { refreshWithToast("admin.toast_saved", "作品信息已保存"); })
         .catch(onError)
         .finally(function () { button.disabled = false; });
     } else if (action === "toggle-pin") {
       var pinned = button.getAttribute("data-pinned") === "true";
-      api("PATCH", "/projects/" + id, { pinned: !pinned }).then(refresh).catch(onError);
+      api("PATCH", "/projects/" + id, { pinned: !pinned })
+        .then(function () {
+          refreshWithToast(pinned ? "admin.toast_unpinned" : "admin.toast_pinned", pinned ? "已取消置顶" : "已置顶");
+        })
+        .catch(onError);
     } else if (action === "toggle-visible") {
       var visible = button.getAttribute("data-visible") === "true";
-      api("PATCH", "/projects/" + id, { visible: !visible }).then(refresh).catch(onError);
+      api("PATCH", "/projects/" + id, { visible: !visible })
+        .then(function () {
+          refreshWithToast(visible ? "admin.toast_hidden" : "admin.toast_shown", visible ? "已隐藏作品" : "已设为公开显示");
+        })
+        .catch(onError);
     } else if (action === "move-up") {
       api("POST", "/projects/" + id + "/move", { direction: "up" }).then(refresh).catch(onError);
     } else if (action === "move-down") {
       api("POST", "/projects/" + id + "/move", { direction: "down" }).then(refresh).catch(onError);
     } else if (action === "delete") {
       if (confirm(t("js.confirm_delete", null, "确定删除该作品？文件将一并删除，不可恢复。"))) {
-        api("DELETE", "/projects/" + id).then(refresh).catch(onError);
+        api("DELETE", "/projects/" + id)
+          .then(function () { refreshWithToast("admin.toast_deleted", "作品已删除"); })
+          .catch(onError);
       }
     }
   });

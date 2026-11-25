@@ -29,7 +29,7 @@ class PostCoverExtension(BaseExtension):
     targets: tuple[TargetType, ...] = ("blog",)
     name = "文章封面"
     name_key = "blog.ext.post_cover.name"
-    description = "为文章配置封面图（支持上传或外链），展示在文章列表卡片与文章顶部。"
+    description = "为文章配置封面图，支持本地上传或外链，展示在文章列表卡片与文章顶部。"
     description_key = "blog.ext.post_cover.description"
     version = "1.0.0"
     icon = "image"
@@ -74,9 +74,11 @@ class PostCoverExtension(BaseExtension):
             key="default_cover",
             kind="image_url",
             label_key="blog.ext.post_cover.default_cover",
-            label_default="默认兜底封面",
+            label_default="默认封面",
+            help_key="blog.ext.post_cover.default_cover_help",
+            help_default="可选。留空则仅显示已单独设置封面的文章；支持输入图片链接或本地上传。",
             placeholder_key="blog.ext.post_cover.default_cover_placeholder",
-            placeholder_default="https://... 或点击右侧上传（留空不显示）",
+            placeholder_default="https://... 或点击右侧上传",
             max_length=500,
             upload_kind="cover",
         ),

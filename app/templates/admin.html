@@ -57,8 +57,10 @@
   <dialog class="site-ext-dialog" id="site-ext-dialog" closedby="any" aria-labelledby="site-ext-dialog-title">
     <div class="site-ext-dialog-head">
       <div class="site-ext-dialog-title-wrap">
-        <h1 id="site-ext-dialog-title" data-i18n="ext.site_section_title">全站默认插件</h1>
-        <p class="site-ext-dialog-sub" data-i18n="ext.site_section_desc">全站默认启用的插件会自动下发至所有适用页面，子空间与页面可按需覆盖或单独关闭。</p>
+        <h1 id="site-ext-dialog-title" class="sf-tip-title" tabindex="0" data-hover-tip="全站默认启用的插件会自动下发至所有适用页面，子空间与页面可按需覆盖或单独关闭。" data-i18n-hover-tip="ext.site_section_desc">
+          <span data-i18n="ext.site_section_title">全站默认插件</span>
+          <span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 14) }}</span>
+        </h1>
       </div>
       <button type="button" class="btn ghost icon-btn" data-site-ext-close aria-label="关闭" data-i18n-aria-label="common.close">{{ icons.icon("x", 18) }}</button>
     </div>
@@ -75,6 +77,7 @@
   {% include "_preview_modal.html" %}
   {% include "_command_palette.html" %}
   <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  <script src="{{ static_url('js/admin_ui.js') }}" defer></script>
   <script src="{{ static_url('js/preview.js') }}" defer></script>
   <script src="{{ static_url('js/palette.js') }}" defer></script>
   <script src="{{ static_url('js/admin.js') }}" defer></script>

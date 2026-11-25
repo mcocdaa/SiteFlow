@@ -53,7 +53,6 @@
         </div>
         <div class="blog-settings-actions">
           <button type="submit" class="btn" data-i18n="blog.save_settings">保存博客信息</button>
-          <span id="save-state" class="muted" role="status" aria-live="polite" tabindex="-1"></span>
         </div>
       </form>
     </section>
@@ -66,6 +65,7 @@
   </main>
   <script id="plugin-data" type="application/json">{{ content | tojson }}</script>
   <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  <script src="{{ static_url('js/admin_ui.js') }}" defer></script>
   <script src="{{ static_url('js/blog.js') }}" defer></script>
   <script src="{{ static_url('js/extensions_admin.js') }}" defer></script>
   <script src="{{ static_url('js/admin.js') }}" defer></script>
