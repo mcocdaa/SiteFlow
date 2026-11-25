@@ -495,7 +495,16 @@ main.wrap { padding: 28px 24px 72px; }
 .post-saved h2 { margin: 0 0 8px; font-size: 22px; }
 .post-saved p { margin: 0; font-size: 15px; overflow-wrap: anywhere; }
 .post-saved .content-choices { margin-top: 28px; justify-content: center; }
-#save-state.is-error { padding: 10px 12px; border: 1px solid currentColor; border-radius: var(--radius-btn); }
+.save-state { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; white-space: nowrap; }
+.save-state::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; opacity: .5; }
+.save-state[data-state="saved"] { color: #16a34a; }
+.save-state[data-state="saving"]::before { animation: save-pulse 1s ease-in-out infinite; }
+.save-state[data-state="dirty"] { color: #d97706; }
+.save-state.is-error { white-space: normal; }
+.save-state .save-retry { padding: 2px 8px; font-size: 13px; }
+@keyframes save-pulse { 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .save-state[data-state="saving"]::before { animation: none; } }
+#save-state:not(.save-state).is-error { padding: 10px 12px; border: 1px solid currentColor; border-radius: var(--radius-btn); }
 @media (max-width: 600px) {
   .site-header .row-between { flex-wrap: wrap; gap: 16px; }
   .site-header .row-between > div:first-child { min-width: 0; }
@@ -2730,4 +2739,128 @@ textarea.mono {
   .ext-search-box { width: 100%; }
   .ext-toolbar { width: 100%; }
   .ext-char-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+.ext-live-preview {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.ext-lp-space {
+  position: relative;
+  height: 150px;
+  overflow: hidden;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.ext-lp-space-layer,
+.ext-lp-space-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.ext-lp-space-img {
+  object-fit: cover;
+}
+.ext-lp-space-img[hidden] { display: none; }
+.ext-lp-bg-dots {
+  background-image: radial-gradient(color-mix(in srgb, var(--text) 16%, transparent) 1px, transparent 1px);
+  background-size: 12px 12px;
+}
+.ext-lp-bg-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--border) 75%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--border) 75%, transparent) 1px, transparent 1px);
+  background-size: 18px 18px;
+}
+.ext-lp-bg-aurora {
+  background-image:
+    radial-gradient(62% 48% at 14% 12%, color-mix(in srgb, var(--accent) 24%, transparent), transparent 72%),
+    radial-gradient(54% 46% at 88% 16%, color-mix(in srgb, #38bdf8 18%, transparent), transparent 74%),
+    radial-gradient(56% 48% at 50% 94%, color-mix(in srgb, #a855f7 16%, transparent), transparent 76%);
+}
+.ext-lp-bg-mesh {
+  background-image:
+    radial-gradient(48% 42% at 18% 22%, color-mix(in srgb, var(--accent) 22%, transparent), transparent 70%),
+    radial-gradient(44% 40% at 82% 28%, color-mix(in srgb, #14b8a6 18%, transparent), transparent 70%),
+    radial-gradient(50% 44% at 24% 84%, color-mix(in srgb, #f59e0b 15%, transparent), transparent 72%),
+    radial-gradient(46% 42% at 80% 82%, color-mix(in srgb, #ec4899 15%, transparent), transparent 72%);
+}
+.ext-lp-space-cards {
+  position: absolute;
+  inset: auto 14px 14px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.ext-lp-space-card {
+  height: 64px;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+.ext-lp-space-card span {
+  display: block;
+  width: 60%;
+  height: 6px;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--text) 18%, transparent);
+}
+.ext-lp-space.is-frosted .ext-lp-space-card {
+  background: color-mix(in srgb, var(--surface) 62%, transparent);
+  backdrop-filter: blur(8px);
+}
+.ext-lp-resume {
+  --lp-accent: #4f46e5;
+  padding: 14px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+}
+.ext-lp-accent-slate { --lp-accent: #334155; }
+.ext-lp-accent-emerald { --lp-accent: #059669; }
+.ext-lp-accent-amber { --lp-accent: #b45309; }
+.ext-lp-accent-rose { --lp-accent: #be123c; }
+.ext-lp-paper {
+  display: grid;
+  gap: 12px;
+  padding: 16px 18px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: #1f2937;
+  font-size: 12px;
+  line-height: 1.6;
+}
+.ext-lp-paper-warm { background: #f7f3eb; }
+.ext-lp-paper-warm .ext-lp-paper { background: #fcfaf5; border-color: #e7dfd1; }
+.ext-lp-paper-tint { background: #f1f5f9; }
+.ext-lp-density-compact .ext-lp-paper { gap: 6px; padding: 10px 14px; line-height: 1.4; }
+.ext-lp-font-serif .ext-lp-paper { font-family: Georgia, "Songti SC", "Noto Serif CJK SC", serif; }
+.ext-lp-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--lp-accent);
+}
+.ext-lp-section { display: grid; gap: 4px; }
+.ext-lp-h {
+  font-weight: 600;
+  color: var(--lp-accent);
+}
+.has-dividers .ext-lp-h {
+  padding-bottom: 3px;
+  border-bottom: 1px solid color-mix(in srgb, var(--lp-accent) 30%, #e5e7eb);
+}
+.ext-lp-text { color: #4b5563; }
+.ext-lp-chips { display: flex; gap: 6px; }
+.ext-lp-chip {
+  padding: 1px 8px;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, var(--lp-accent) 30%, #e5e7eb);
+  background: color-mix(in srgb, var(--lp-accent) 8%, transparent);
+  color: var(--lp-accent);
+  font-size: 11px;
 }

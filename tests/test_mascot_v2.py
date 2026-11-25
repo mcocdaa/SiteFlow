@@ -764,3 +764,15 @@ def test_mascot_ux_tools_centered_dock_clamping_and_ai_fade() -> None:
     assert ".ext-line-num.is-comment" in app_css
     assert ".ext-line-num.is-active" in app_css
     assert ".ext-line-mirror" in app_css
+
+
+def test_mascot_default_copy_is_scope_neutral() -> None:
+    from app.extensions.mascot import _LEGACY_V4_DEFAULT_TIPS, DEFAULT_GREETING, DEFAULT_TIPS, MascotExtension
+
+    for text in [DEFAULT_GREETING, *DEFAULT_TIPS]:
+        assert "文章" not in text
+        assert "博客" not in text
+    assert "欢迎来逛逛" in DEFAULT_GREETING
+    assert any("有什么想了解的可以问我" in line for line in DEFAULT_TIPS)
+    ext = MascotExtension()
+    assert ext.normalize_config({"tips": list(_LEGACY_V4_DEFAULT_TIPS)}, strict=False)["tips"] == DEFAULT_TIPS
