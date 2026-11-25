@@ -376,7 +376,7 @@ def ext_media_file(request: Request, slug: str, name: str, db: DbSession):
         name,
         db,
         namespace="ext",
-        allowed_types=("space", "resume"),
+        allowed_types=("space", "resume", "bottle"),
     )
 
 
@@ -574,6 +574,7 @@ _SEARCH_I18N_MAP = {
     "新建空间": "New Space",
     "简历": "Resume",
     "博客": "Blog",
+    "漂流瓶": "Drift Bottle",
     "林深 · 首席系统架构师简历": "Lin Shen · Principal Systems Architect Resume",
     "12 年分布式系统、云原生沙箱与高并发微服务架构设计经验": "12+ years in distributed systems, cloud-native sandboxes, and high-concurrency microservices",
     "系统架构与工程实践专栏": "Systems Architecture & Engineering Blog",

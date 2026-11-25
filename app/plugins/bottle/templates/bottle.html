@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>{{ project.title }} - {{ site_title }}</title>
+  <link rel="stylesheet" href="{{ static_url('css/app.css') }}">
+  <link rel="stylesheet" href="{{ static_url('css/bottle.css') }}">
+  {% set ext = ext | default({}) %}
+  {% set ext_slots = ext.slots | default({}) %}
+  {% set icon_overrides = ext.icon_overrides | default({}) %}
+  {% for href in ext.css_files | default([]) %}
+  <link rel="stylesheet" href="{{ href }}">
+  {% endfor %}
+  <script src="{{ static_url('js/theme-init.js') }}"></script>
+  {% if ext.tokens %}
+  <style data-ext-tokens>:root { {% for k, v in ext.tokens.items() %}{{ k }}: {{ v }}; {% endfor %}}</style>
+  {% endif %}
+</head>
+<body class="bottle-body{% for cls in ext.body_classes | default([]) %} {{ cls }}{% endfor %}">
+  {% import "icons.html" as icons %}
+  {% for frag in ext.body_start_fragments | default([]) %}{{ frag }}{% endfor %}
+  <header class="bottle-actions">
+    <a class="btn ghost bottle-back-btn" href="{{ back_url }}">{{ icons.icon("arrow-left", 16, icon_overrides) }}<span data-i18n="common.back">返回</span></a>
+    <span class="actions-right">
+      {% for frag in ext_slots.icons | default([]) %}{{ frag }}{% endfor %}
+      <button type="button" class="lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" title="切换为英文 / Switch to English" aria-label="Switch Language">{{ icons.icon("globe", 16, icon_overrides) }}<span class="lang-label">EN</span></button>
+      <a class="admin-entry" href="/admin/projects/{{ project.id }}" data-tip="管理入口" data-i18n-tip="common.admin_entry" aria-label="管理入口" data-i18n-aria-label="common.admin_entry">{{ icons.icon("settings", 16, icon_overrides) }}</a>
+    </span>
+  </header>
+  {% if ext_slots.header %}
+  <div class="bottle-main sf-slot sf-slot-header">{% for frag in ext_slots.header %}{{ frag }}{% endfor %}</div>
+  {% endif %}
+
+  <main class="bottle-main">
+    {% for frag in ext.main_start_fragments | default([]) %}{{ frag }}{% endfor %}
+    {% if ext_slots.aside %}
+    <aside class="sf-slot sf-slot-aside">{% for frag in ext_slots.aside %}{{ frag }}{% endfor %}</aside>
+    {% endif %}
+    <section class="bottle-hero">
+      <div class="bottle-emblem" aria-hidden="true">
+        {{ icons.icon("bottle", 28, icon_overrides) }}
+      </div>
+      <div class="sf-title-row">
+        <h1 data-i18n-auto>{{ project.title }}</h1>
+        {% for frag in ext_slots.title_deco | default([]) %}{{ frag }}{% endfor %}
+      </div>
+      {% if bottle.intro %}
+      <p class="bottle-intro">{{ bottle.intro }}</p>
+      {% endif %}
+      <div class="bottle-meta-strip">
+        <span class="bottle-pill bottle-pill-sea">
+          {{ icons.icon("waves", 14, icon_overrides) }}
+          <span id="bottle-sea-count-text"><strong id="bottle-sea-count">{{ approved_count }}</strong> <span data-i18n="bottle.sea_count_unit">只瓶子正在漂流</span></span>
+        </span>
+        {% if bottle.throw_to_pick and not is_admin %}
+        <span class="bottle-pill bottle-pill-credits" id="bottle-credits-pill">
+          {{ icons.icon("bottle", 14, icon_overrides) }}
+          <span data-i18n="bottle.credits_label">可捞取次数</span>
+          <strong id="bottle-credits">{{ credits }}</strong>
+          <span class="muted">/ {{ max_credits }}</span>
+        </span>
+        {% endif %}
+        {% if bottle.require_approval %}
+        <span class="bottle-pill" data-i18n="bottle.rule_approval">先审后发</span>
+        {% endif %}
+        {% if bottle.throw_to_pick %}
+        <span class="bottle-pill" data-i18n="bottle.rule_exchange">投一捞一</span>
+        {% endif %}
+        {% if not bottle.allow_links %}
+        <span class="bottle-pill" data-i18n="bottle.rule_no_links">禁发链接</span>
+        {% endif %}
+      </div>
+    </section>
+
+    <div class="bottle-stage">
+      <section class="bottle-card bottle-throw-card" aria-labelledby="throw-heading">
+        <div class="bottle-card-head">
+          <span class="bottle-card-icon" aria-hidden="true">{{ icons.icon("send", 18, icon_overrides) }}</span>
+          <h2 id="throw-heading" data-i18n="bottle.throw_heading">投出一个漂流瓶</h2>
+        </div>
+        <form id="bottle-throw-form" method="POST" action="/api/projects/{{ project.slug }}/bottle/throw" aria-labelledby="throw-heading" novalidate>
+          <div class="bottle-field">
+            <label for="bottle-message">
+              <span data-i18n="bottle.message_label">纸条内容</span>
+              <span class="bottle-req" aria-hidden="true">*</span>
+            </label>
+            <span id="bottle-message-hint" class="bottle-hint">
+              <span data-i18n="bottle.hint_limit_prefix">最多</span> {{ bottle.max_length }} <span data-i18n="bottle.hint_limit_unit">字</span>{% if not bottle.allow_links %} · <span data-i18n="bottle.hint_no_links">不支持包含网址或链接</span>{% endif %}
+            </span>
+            <textarea
+              id="bottle-message"
+              name="message"
+              rows="5"
+              required
+              maxlength="{{ bottle.max_length }}"
+              placeholder="{{ bottle.placeholder }}"
+              aria-describedby="bottle-message-hint bottle-char-count"
+              data-error="bottle-message-error"
+              aria-invalid="false"
+            ></textarea>
+            <div class="bottle-field-footer">
+              <span id="bottle-message-error" class="bottle-error-msg" hidden></span>
+              <span id="bottle-char-count" class="bottle-char-count">0 / {{ bottle.max_length }}</span>
+            </div>
+          </div>
+
+          <div class="bottle-field">
+            <label for="bottle-nickname" data-i18n="bottle.nickname_label">匿名落款（可选）</label>
+            <input
+              type="text"
+              id="bottle-nickname"
+              name="nickname"
+              maxlength="32"
+              autocomplete="nickname"
+              placeholder="匿名旅人"
+              data-i18n-placeholder="bottle.nickname_placeholder"
+              aria-invalid="false"
+            >
+          </div>
+
+          <div class="bottle-hp" aria-hidden="true">
+            <label for="bottle-website">Website</label>
+            <input type="text" id="bottle-website" name="website" tabindex="-1" autocomplete="off">
+          </div>
+
+          <div class="bottle-form-actions">
+            <button type="submit" class="btn primary bottle-submit-btn" id="bottle-throw-btn">
+              {{ icons.icon("send", 16, icon_overrides) }}
+              <span data-i18n="bottle.throw_btn">封瓶入海</span>
+            </button>
+          </div>
+          <div id="throw-status" class="bottle-feedback" role="status" aria-live="polite" hidden></div>
+        </form>
+      </section>
+
+      <section class="bottle-card bottle-pick-card" aria-labelledby="pick-heading">
+        <div class="bottle-card-head">
+          <span class="bottle-card-icon bottle-card-icon-sea" aria-hidden="true">{{ icons.icon("waves", 18, icon_overrides) }}</span>
+          <h2 id="pick-heading" data-i18n="bottle.pick_heading">打捞漂流瓶</h2>
+        </div>
+
+        <div class="bottle-ocean" id="bottle-ocean" aria-hidden="true">
+          <svg class="bottle-ocean-svg" viewBox="0 0 360 150" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="ocean-sky" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="currentColor" stop-opacity="0.03" />
+                <stop offset="100%" stop-color="currentColor" stop-opacity="0.14" />
+              </linearGradient>
+            </defs>
+            <rect width="360" height="150" rx="14" fill="url(#ocean-sky)" />
+            <g class="ocean-bottle-float">
+              <path d="M174 44h12v11l8 9a8 8 0 0 1 2 5.4V96a7 7 0 0 1-7 7h-18a7 7 0 0 1-7-7V69.4a8 8 0 0 1 2-5.4l8-9V44Z" stroke="currentColor" stroke-width="2" fill="var(--surface)" fill-opacity="0.72" />
+              <rect x="174" y="38" width="12" height="6" rx="2" fill="currentColor" fill-opacity="0.45" />
+              <path d="M173 74h14M173 82h10" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-opacity="0.6" />
+            </g>
+            <path class="ocean-wave wave-back" d="M-20 96 C 40 82, 100 110, 160 96 C 220 82, 280 110, 380 94 L 380 155 L -20 155 Z" fill="currentColor" fill-opacity="0.09" />
+            <path class="ocean-wave wave-front" d="M-20 112 C 50 98, 120 124, 190 110 C 260 96, 310 122, 380 108 L 380 155 L -20 155 Z" fill="currentColor" fill-opacity="0.15" />
+          </svg>
+        </div>
+
+        <div class="bottle-pick-controls">
+          <button type="button" class="btn bottle-pick-btn" id="bottle-pick-btn">
+            {{ icons.icon("bottle", 16, icon_overrides) }}
+            <span data-i18n="bottle.pick_btn">向海面捞一个</span>
+          </button>
+          {% if bottle.throw_to_pick and not is_admin %}
+          <p class="bottle-pick-hint muted" id="bottle-pick-hint" data-i18n="bottle.pick_exchange_hint">每投出一个漂流瓶，可获得 1 次捞取机会（最多累存 5 次）</p>
+          {% endif %}
+        </div>
+
+        <div id="pick-status" class="bottle-feedback" role="status" aria-live="polite" hidden></div>
+
+        <article id="picked-note" class="bottle-note" hidden aria-labelledby="picked-note-heading">
+          <header class="bottle-note-head">
+            <span id="picked-note-heading" class="bottle-note-kicker" data-i18n="bottle.note_kicker">来自海上的纸条</span>
+            <time id="picked-note-date" class="bottle-note-date"></time>
+          </header>
+          <p id="picked-note-body" class="bottle-note-body"></p>
+          <footer class="bottle-note-foot">
+            <span class="bottle-note-from">
+              <span data-i18n="bottle.note_from">落款：</span>
+              <strong id="picked-note-author"></strong>
+            </span>
+          </footer>
+        </article>
+      </section>
+    </div>
+    {% if ext_slots.footer %}
+    <footer class="sf-slot sf-slot-footer">{% for frag in ext_slots.footer %}{{ frag }}{% endfor %}</footer>
+    {% endif %}
+  </main>
+
+  {% for frag in ext_slots.overlay | default([]) %}{{ frag }}{% endfor %}
+  {% for frag in ext.body_end_fragments | default([]) %}{{ frag }}{% endfor %}
+  <script id="bottle-config" type="application/json">{{ {
+    "slug": project.slug,
+    "max_length": bottle.max_length,
+    "require_approval": bottle.require_approval,
+    "throw_to_pick": bottle.throw_to_pick,
+    "allow_links": bottle.allow_links,
+    "credits": credits,
+    "max_credits": max_credits,
+    "is_admin": is_admin,
+    "approved_count": approved_count
+  } | tojson }}</script>
+  <script src="{{ static_url('js/i18n.js') }}" defer></script>
+  <script src="{{ static_url('js/bottle.js') }}" defer></script>
+  {% for src in ext.js_files | default([]) %}
+  <script src="{{ src }}" defer></script>
+  {% endfor %}
+</body>
+</html>

@@ -11,7 +11,7 @@ from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from app import stats, store
+from app import stats, store, submissions
 from app.auth import csrf_for, hash_project_password, read_session
 from app.deps import AdminConfig, DbSession, api_error, get_config
 from app.extensions.base import TargetType, capabilities_for_target
@@ -48,6 +48,7 @@ from app.og import fetch_image, fetch_og
 from app.plugins import registry
 from app.plugins.base import InvalidContent
 from app.plugins.blog.plugin import validate_content as blog_content
+from app.plugins.bottle.plugin import validate_content as bottle_content
 from app.plugins.resume.plugin import validate_content as resume_content
 from app.plugins.space import validate_space_content
 from app.surface import Capability
@@ -123,6 +124,20 @@ class PackUrlPayload(BaseModel):
     url: str
 
 
+class SubmissionStatusPayload(BaseModel):
+    action: str | None = None
+    status: str | None = None
+
+
+class SubmissionClearPayload(BaseModel):
+    status: str | None = None
+    plugin_id: str | None = None
+
+
+class SubmissionBanPayload(BaseModel):
+    ip_hash: str
+
+
 def _target_of(project: Project) -> TargetType | None:
     if project.type == "blog":
         return "blog"
@@ -156,6 +171,8 @@ def _parse_project_content(project: Project, config, *, strict: bool = False) ->
         )
     if project.type == "resume":
         return resume_content(project.content, strict=strict, project_slug=project.slug, config=config)
+    if project.type == "bottle":
+        return bottle_content(project.content, strict=strict, project_slug=project.slug, config=config)
     return {}
 
 
@@ -322,6 +339,7 @@ def admin_project_page(request: Request, project_id: int, db: DbSession):
     elif plugin.admin_template:
         context["content"] = plugin.validate_content(project.content)
     if plugin.admin_template:
+        context["submission_counts"] = submissions.count_submissions(db, project_id=project.id)
         return templates.TemplateResponse(request, plugin.admin_template, context)
     return templates.TemplateResponse(request, "admin_app.html", context)
 
@@ -1075,7 +1093,6 @@ def patch_project(
     if url is not None and not url.lower().startswith(("http://", "https://")):
         return api_error("链接必须以 http:// 或 https:// 开头")
     old_ext_media: set[str] | None = None
-    ext_target = _target_of(project)
     ext_caps = _capabilities_of(project)
     content = updates.pop("content", None)
     if content is not None:
@@ -1083,7 +1100,7 @@ def patch_project(
         if plugin is None or not plugin.content_editable:
             return api_error("该类型不支持内容编辑")
         try:
-            if ext_target in ("blog", "resume"):
+            if project.type in ("blog", "resume", "bottle"):
                 existing_parsed = _parse_project_content(project, config)
                 old_ext_media = referenced_media_urls(
                     existing_parsed,
@@ -1093,10 +1110,20 @@ def patch_project(
                 try:
                     incoming_parsed = json.loads(content or "{}")
                 except json.JSONDecodeError as exc:
-                    msg = "博客内容不是合法 JSON" if ext_target == "blog" else "简历内容不是合法 JSON"
+                    if project.type == "blog":
+                        msg = "博客内容不是合法 JSON"
+                    elif project.type == "resume":
+                        msg = "简历内容不是合法 JSON"
+                    else:
+                        msg = "漂流瓶配置不是合法 JSON"
                     raise InvalidContent(msg) from exc
                 if not isinstance(incoming_parsed, dict):
-                    msg = "博客内容必须是 JSON 对象" if ext_target == "blog" else "简历内容必须是 JSON 对象"
+                    if project.type == "blog":
+                        msg = "博客内容必须是 JSON 对象"
+                    elif project.type == "resume":
+                        msg = "简历内容必须是 JSON 对象"
+                    else:
+                        msg = "漂流瓶配置必须是 JSON 对象"
                     raise InvalidContent(msg)
                 if "extensions" not in incoming_parsed:
                     if existing_parsed.get("extensions"):
@@ -1109,15 +1136,22 @@ def patch_project(
                         config=config,
                     )
                 merged_raw = json.dumps(incoming_parsed, ensure_ascii=False)
-                if ext_target == "blog":
+                if project.type == "blog":
                     validated = blog_content(
                         merged_raw,
                         strict=True,
                         project_slug=project.slug,
                         config=config,
                     )
-                else:
+                elif project.type == "resume":
                     validated = resume_content(
+                        merged_raw,
+                        strict=True,
+                        project_slug=project.slug,
+                        config=config,
+                    )
+                else:
+                    validated = bottle_content(
                         merged_raw,
                         strict=True,
                         project_slug=project.slug,
@@ -1240,6 +1274,142 @@ def delete_cover(project_id: int, config: AdminConfig, db: DbSession):
     return {"ok": True, "project": project.as_dict()}
 
 
+@router.get("/api/admin/projects/{project_id}/submissions")
+def list_project_submissions(
+    project_id: int,
+    _auth: AdminConfig,
+    db: DbSession,
+    status: str | None = None,
+    plugin_id: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+):
+    project = store.by_id(db, project_id)
+    if project is None:
+        return api_error("作品不存在", 404)
+    filter_status = None
+    if status and status != "all":
+        if status not in submissions.VALID_STATUSES:
+            return api_error("不支持的审核状态")
+        filter_status = status
+    items = submissions.list_submissions(
+        db,
+        project_id=project.id,
+        plugin_id=plugin_id or None,
+        status=filter_status,
+        limit=limit,
+        offset=offset,
+    )
+    counts = submissions.count_submissions(db, project_id=project.id, plugin_id=plugin_id or None)
+    banned_ips = submissions.list_banned_ips(db, project_id=project.id)
+    return {"ok": True, "submissions": items, "counts": counts, "banned_ips": banned_ips}
+
+
+@router.post("/api/admin/projects/{project_id}/submissions/{sub_id}/status")
+def update_project_submission_status(
+    project_id: int,
+    sub_id: int,
+    payload: SubmissionStatusPayload,
+    _auth: AdminConfig,
+    db: DbSession,
+):
+    project = store.by_id(db, project_id)
+    if project is None:
+        return api_error("作品不存在", 404)
+    raw_action = (payload.action or payload.status or "").strip().lower()
+    action_map = {
+        "approve": "approved",
+        "approved": "approved",
+        "reject": "rejected",
+        "rejected": "rejected",
+        "pending": "pending",
+        "delete": "delete",
+    }
+    normalized = action_map.get(raw_action)
+    if normalized is None:
+        return api_error("不支持的审核操作")
+    if normalized == "delete":
+        deleted = submissions.delete_submission(db, project_id=project.id, sub_id=sub_id)
+        if not deleted:
+            return api_error("提交记录不存在", 404)
+        counts = submissions.count_submissions(db, project_id=project.id)
+        return {"ok": True, "deleted": True, "counts": counts}
+    updated = submissions.set_submission_status(
+        db,
+        project_id=project.id,
+        sub_id=sub_id,
+        status=normalized,
+    )
+    if updated is None:
+        return api_error("提交记录不存在", 404)
+    counts = submissions.count_submissions(db, project_id=project.id)
+    return {"ok": True, "submission": updated, "counts": counts}
+
+
+@router.post("/api/admin/projects/{project_id}/submissions/clear")
+def clear_project_submissions(
+    project_id: int,
+    _auth: AdminConfig,
+    db: DbSession,
+    payload: SubmissionClearPayload | None = None,
+):
+    project = store.by_id(db, project_id)
+    if project is None:
+        return api_error("作品不存在", 404)
+    filter_status = None
+    plugin_id = None
+    if payload is not None:
+        plugin_id = payload.plugin_id or None
+        if payload.status and payload.status != "all":
+            if payload.status not in submissions.VALID_STATUSES:
+                return api_error("不支持的审核状态")
+            filter_status = payload.status
+    deleted = submissions.clear_submissions(
+        db,
+        project_id=project.id,
+        plugin_id=plugin_id,
+        status=filter_status,
+    )
+    counts = submissions.count_submissions(db, project_id=project.id, plugin_id=plugin_id)
+    return {"ok": True, "deleted": deleted, "counts": counts}
+
+
+@router.post("/api/admin/projects/{project_id}/submissions/ban")
+def ban_project_submission_ip(
+    project_id: int,
+    payload: SubmissionBanPayload,
+    _auth: AdminConfig,
+    db: DbSession,
+):
+    project = store.by_id(db, project_id)
+    if project is None:
+        return api_error("作品不存在", 404)
+    ip_hash = payload.ip_hash.strip().lower()
+    if not submissions.is_valid_ip_hash(ip_hash):
+        return api_error("无效的 IP 哈希格式")
+    submissions.ban_ip_hash(db, project_id=project.id, ip_hash=ip_hash)
+    banned_ips = submissions.list_banned_ips(db, project_id=project.id)
+    return {"ok": True, "ip_hash": ip_hash, "banned_ips": banned_ips}
+
+
+@router.delete("/api/admin/projects/{project_id}/submissions/ban/{ip_hash}")
+def unban_project_submission_ip(
+    project_id: int,
+    ip_hash: str,
+    _auth: AdminConfig,
+    db: DbSession,
+):
+    project = store.by_id(db, project_id)
+    if project is None:
+        return api_error("作品不存在", 404)
+    cleaned = ip_hash.strip().lower()
+    if not submissions.is_valid_ip_hash(cleaned):
+        return api_error("无效的 IP 哈希格式")
+    removed = submissions.unban_ip_hash(db, project_id=project.id, ip_hash=cleaned)
+    banned_ips = submissions.list_banned_ips(db, project_id=project.id)
+    return {"ok": True, "unbanned": removed, "banned_ips": banned_ips}
+
+
 @router.delete("/api/admin/projects/{project_id}")
 def delete_project(project_id: int, _auth: AdminConfig, db: DbSession):
     project = store.by_id(db, project_id)
@@ -1247,7 +1417,9 @@ def delete_project(project_id: int, _auth: AdminConfig, db: DbSession):
         return api_error("作品不存在", 404)
     config = _auth
     rows = [*reversed(store.descendants(db, project)), project]
-    store.delete_stats(db, [row.id for row in rows])
+    project_ids = [row.id for row in rows]
+    store.delete_stats(db, project_ids)
+    submissions.delete_project_submissions(db, project_ids, commit=False)
     for row in rows:
         store.delete_files(config, row)
         db.delete(row)

@@ -40,7 +40,7 @@ async function main() {
     await checkLocaleButtons();
     await page.locator('#lang-toggle-btn').click();
     await checkLocaleButtons();
-    assert.equal(await page.locator('.content-choices .btn').count(), 5, '所有添加方式使用统一入口');
+    assert.equal(await page.locator('.content-choices .btn').count(), 6, '所有添加方式使用统一入口');
     await page.locator('[data-panel="upload-panel"]').click();
     assert.equal(await page.locator('#file-input').getAttribute('multiple'), '', '支持多选');
     let failOnce = true;
@@ -96,7 +96,7 @@ async function main() {
     assert.equal(await page.locator('#project-list .row[data-type="link"]').count(), 1, '链接入口支持回车添加');
     await Promise.all([page.waitForURL(/\/admin\/projects\/\d+$/), page.locator('[data-action="create-app"][data-type="space"]').click()]);
     assert.equal(await page.locator('#space-theme-section').count(), 0, '空间外观设置已移除');
-    assert.equal(await page.locator('.content-choices .btn').count(), 5, '空间与根管理台使用相同添加入口');
+    assert.equal(await page.locator('.content-choices .btn').count(), 6, '空间与根管理台使用相同添加入口');
     await page.locator('[data-panel="upload-panel"]').click();
     await page.locator('#file-input').setInputFiles([
       { name: '空间内一.html', mimeType: 'text/html', buffer: Buffer.from('<h1>空间内一</h1>') },
