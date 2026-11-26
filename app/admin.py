@@ -1102,25 +1102,19 @@ def list_project_submissions(
     limit: int = 100,
     offset: int = 0,
 ):
-    project = store.by_id(db, project_id)
-    if project is None:
-        return api_error("作品不存在", 404)
-    filter_status = None
-    if status and status != "all":
-        if status not in submissions.VALID_STATUSES:
-            return api_error("不支持的审核状态")
-        filter_status = status
-    items = submissions.list_submissions(
-        db,
-        project_id=project.id,
-        plugin_id=plugin_id or None,
-        status=filter_status,
-        limit=limit,
-        offset=offset,
-    )
-    counts = submissions.count_submissions(db, project_id=project.id, plugin_id=plugin_id or None)
-    banned_ips = submissions.list_banned_ips(db, project_id=project.id)
-    return {"ok": True, "submissions": items, "counts": counts, "banned_ips": banned_ips}
+    try:
+        project = project_service.get_project_by_id(db, project_id)
+        result = project_service.list_project_submissions_v1(
+            db,
+            project,
+            status=status,
+            plugin_id=plugin_id,
+            limit=limit,
+            offset=offset,
+        )
+    except ServiceError as exc:
+        return api_error(exc.message, exc.status_code)
+    return {"ok": True, **result}
 
 
 @router.post("/api/admin/projects/{project_id}/submissions/{sub_id}/status")
@@ -1131,37 +1125,18 @@ def update_project_submission_status(
     _auth: AdminConfig,
     db: DbSession,
 ):
-    project = store.by_id(db, project_id)
-    if project is None:
-        return api_error("作品不存在", 404)
-    raw_action = (payload.action or payload.status or "").strip().lower()
-    action_map = {
-        "approve": "approved",
-        "approved": "approved",
-        "reject": "rejected",
-        "rejected": "rejected",
-        "pending": "pending",
-        "delete": "delete",
-    }
-    normalized = action_map.get(raw_action)
-    if normalized is None:
-        return api_error("不支持的审核操作")
-    if normalized == "delete":
-        deleted = submissions.delete_submission(db, project_id=project.id, sub_id=sub_id)
-        if not deleted:
-            return api_error("提交记录不存在", 404)
-        counts = submissions.count_submissions(db, project_id=project.id)
-        return {"ok": True, "deleted": True, "counts": counts}
-    updated = submissions.set_submission_status(
-        db,
-        project_id=project.id,
-        sub_id=sub_id,
-        status=normalized,
-    )
-    if updated is None:
-        return api_error("提交记录不存在", 404)
-    counts = submissions.count_submissions(db, project_id=project.id)
-    return {"ok": True, "submission": updated, "counts": counts}
+    try:
+        project = project_service.get_project_by_id(db, project_id)
+        result = project_service.update_submission_status_v1(
+            db,
+            project,
+            sub_id,
+            action=payload.action,
+            status=payload.status,
+        )
+    except ServiceError as exc:
+        return api_error(exc.message, exc.status_code)
+    return {"ok": True, **result}
 
 
 @router.post("/api/admin/projects/{project_id}/submissions/clear")

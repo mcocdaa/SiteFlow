@@ -5,37 +5,9 @@ from datetime import UTC, datetime, timedelta
 from fastapi.testclient import TestClient
 
 from app import store, tokens
-from app.deps import ApiAuth
-from app.main import app, create_app
+from app.main import app
 from app.models import Project
 from tests.test_flow import auth_headers, login
-
-
-def _app_with_whoami():
-    if any(getattr(route, "path", None) == "/api/v1/whoami" for route in app.routes):
-        return app
-    isolated = create_app(app.state.config)
-
-    @isolated.get("/api/v1/whoami")
-    def _v1_whoami(ctx: ApiAuth) -> dict[str, object]:
-        return {
-            "ok": True,
-            "api_version": "1",
-            "site_title": ctx.config.site_title,
-            "principal": {
-                "kind": ctx.principal.kind,
-                "is_admin": ctx.principal.is_admin,
-                "scopes": sorted(ctx.principal.scopes),
-                "allowed_slugs": (
-                    sorted(ctx.principal.allowed_slugs) if ctx.principal.allowed_slugs is not None else None
-                ),
-                "token_id": ctx.principal.token_id,
-                "name": ctx.principal.name,
-                "prefix": ctx.principal.prefix,
-            },
-        }
-
-    return isolated
 
 
 def test_admin_page_renders_icon_only_token_button_dialog_and_script() -> None:
@@ -150,8 +122,7 @@ def test_admin_tokens_lifecycle_flat_projects_and_immediate_revocation() -> None
         db.add(child_blog)
         db.commit()
 
-    target_app = _app_with_whoami()
-    with TestClient(target_app) as client:
+    with TestClient(app) as client:
         csrf = login(client)
         headers = auth_headers(csrf)
 

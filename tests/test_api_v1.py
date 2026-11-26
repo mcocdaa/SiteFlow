@@ -205,6 +205,25 @@ def test_security_matrix_scopes_slugs_inheritance_and_escape_prevention(monkeypa
         flat_resp = client.get("/api/v1/projects?view=flat", headers=scoped_hdr)
         assert {p["slug"] for p in flat_resp.json()["projects"]} == {"space-a", "sub-a1", "child-blog"}
 
+        allowed_parent_list = client.get("/api/v1/projects?parent_slug=space-a", headers=scoped_hdr)
+        assert allowed_parent_list.status_code == 200
+        assert [p["slug"] for p in allowed_parent_list.json()["projects"]] == ["sub-a1"]
+
+        forbidden_parent_flat = client.get("/api/v1/projects?parent_slug=space-b", headers=scoped_hdr)
+        assert forbidden_parent_flat.status_code == 403
+        assert forbidden_parent_flat.json()["code"] == "forbidden_project"
+
+        forbidden_parent_tree = client.get(
+            "/api/v1/projects?view=tree&parent_slug=space-b",
+            headers=scoped_hdr,
+        )
+        assert forbidden_parent_tree.status_code == 403
+        assert forbidden_parent_tree.json()["code"] == "forbidden_project"
+
+        missing_parent_list = client.get("/api/v1/projects?parent_slug=no-such-space", headers=scoped_hdr)
+        assert missing_parent_list.status_code == 404
+        assert missing_parent_list.json()["code"] == "parent_not_found"
+
         assert client.get("/api/v1/projects/other-blog", headers=scoped_hdr).status_code == 403
         assert client.get("/api/v1/projects/other-blog", headers=scoped_hdr).json()["code"] == (
             "forbidden_project"
@@ -745,6 +764,108 @@ def test_structured_content_patch_preserves_extensions_and_redacts_secrets() -> 
         )
         assert bad_type.status_code == 422
         assert bad_type.json()["code"] == "validation_error"
+
+
+def test_content_patch_requires_extensions_and_posts_write_scopes() -> None:
+    admin_hdr = _bearer(app.state.config.api_token)
+    with TestClient(app) as client:
+        assert (
+            client.post(
+                "/api/v1/projects/app",
+                headers=admin_hdr,
+                json={"type": "resume", "title": "权限简历", "slug": "scope-resume"},
+            ).status_code
+            == 201
+        )
+        assert (
+            client.post(
+                "/api/v1/projects/app",
+                headers=admin_hdr,
+                json={"type": "blog", "title": "权限博客", "slug": "scope-blog"},
+            ).status_code
+            == 201
+        )
+
+        _, content_only_raw = _create_db_token("仅内容写权限", ["read", "content:write"])
+        _, with_ext_raw = _create_db_token("内容加扩展权限", ["content:write", "extensions:write"])
+        _, with_posts_raw = _create_db_token("内容加文章权限", ["content:write", "posts:write"])
+        content_hdr = _bearer(content_only_raw)
+
+        ok_resume = client.patch(
+            "/api/v1/projects/scope-resume/content",
+            headers=content_hdr,
+            json={"basics": {"name": "测试者"}},
+        )
+        assert ok_resume.status_code == 200
+        assert ok_resume.json()["content"]["basics"]["name"] == "测试者"
+
+        ok_blog_meta = client.patch(
+            "/api/v1/projects/scope-blog/content",
+            headers=content_hdr,
+            json={"description": "仅更新博客说明"},
+        )
+        assert ok_blog_meta.status_code == 200
+
+        ext_denied_resume = client.patch(
+            "/api/v1/projects/scope-resume/content",
+            headers=content_hdr,
+            json={"extensions": {"mascot": {"mode": "override", "config": {"greeting": "hi"}}}},
+        )
+        assert ext_denied_resume.status_code == 403
+        assert ext_denied_resume.json()["code"] == "forbidden_scope"
+
+        ext_denied_blog = client.patch(
+            "/api/v1/projects/scope-blog/content",
+            headers=content_hdr,
+            json={"extensions": {"mascot": {"mode": "override", "config": {"greeting": "hi"}}}},
+        )
+        assert ext_denied_blog.status_code == 403
+        assert ext_denied_blog.json()["code"] == "forbidden_scope"
+
+        posts_denied_blog = client.patch(
+            "/api/v1/projects/scope-blog/content",
+            headers=content_hdr,
+            json={
+                "posts": [
+                    {
+                        "slug": "bypass-post",
+                        "title": "越权文章",
+                        "date": "2026-11-26",
+                        "tags": [],
+                        "summary": "",
+                        "body": "should be rejected",
+                    }
+                ]
+            },
+        )
+        assert posts_denied_blog.status_code == 403
+        assert posts_denied_blog.json()["code"] == "forbidden_scope"
+
+        ext_allowed = client.patch(
+            "/api/v1/projects/scope-resume/content",
+            headers=_bearer(with_ext_raw),
+            json={"extensions": {"mascot": {"mode": "override", "config": {"greeting": "允许更新"}}}},
+        )
+        assert ext_allowed.status_code == 200
+
+        posts_allowed = client.patch(
+            "/api/v1/projects/scope-blog/content",
+            headers=_bearer(with_posts_raw),
+            json={
+                "posts": [
+                    {
+                        "slug": "authorized-post",
+                        "title": "授权文章",
+                        "date": "2026-11-26",
+                        "tags": [],
+                        "summary": "",
+                        "body": "ok",
+                    }
+                ]
+            },
+        )
+        assert posts_allowed.status_code == 200
+        assert [p["slug"] for p in posts_allowed.json()["content"]["posts"]] == ["authorized-post"]
 
 
 def test_static_deploy_idempotent_html_and_zip() -> None:

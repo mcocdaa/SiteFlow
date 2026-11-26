@@ -293,6 +293,8 @@ def list_projects(
     parent_slug: str | None = None,
 ) -> dict[str, Any]:
     require_scope(auth, "read")
+    if parent_slug and (parent_row := store.by_slug(db, parent_slug)) is not None:
+        require_project_access(auth, db, parent_row)
     projects = project_service.list_projects_view(
         db,
         view=view,
@@ -439,6 +441,10 @@ def patch_project_content(
 ) -> dict[str, Any]:
     require_scope(auth, "content:write")
     project = _get_accessible_project(auth, db, slug)
+    if "extensions" in payload:
+        require_scope(auth, "extensions:write")
+    if project.type == "blog" and "posts" in payload:
+        require_scope(auth, "posts:write")
     updated_content = project_service.patch_project_content(
         db,
         auth.config,
