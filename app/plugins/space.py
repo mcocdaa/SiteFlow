@@ -69,6 +69,17 @@ def validate_space_content(
     return content
 
 
+def _child_surface_url(child: Project) -> str:
+    if (
+        child.type == "link"
+        and not child.password_hash
+        and child.url
+        and child.url.strip().lower().startswith(("http://", "https://"))
+    ):
+        return child.url.strip()
+    return f"/projects/{child.slug}/"
+
+
 class SpaceApp:
     type: str = "space"
     label: str = "空间"
@@ -100,7 +111,7 @@ class SpaceApp:
             SurfaceItem(
                 key=child.slug,
                 title=child.title,
-                url=f"/projects/{child.slug}/",
+                url=_child_surface_url(child),
                 summary=child.description,
                 cover=child.cover,
                 kind=child.type,
