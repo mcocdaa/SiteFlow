@@ -5,10 +5,10 @@ from urllib.parse import quote
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from app import project_service, stats, store, submissions
+from app import project_service, stats, store, submissions, tokens
 from app.auth import csrf_for, read_session
 from app.deps import AdminConfig, DbSession, ServiceError, api_error, get_config
 from app.extensions.inheritance import (
@@ -140,6 +140,13 @@ class SubmissionClearPayload(BaseModel):
 
 class SubmissionBanPayload(BaseModel):
     ip_hash: str
+
+
+class ApiTokenCreatePayload(BaseModel):
+    name: str = Field(max_length=200)
+    scopes: list[str] = Field(default_factory=list)
+    allowed_slugs: list[str] = Field(default_factory=list)
+    expires_at: str = Field(default="", max_length=64)
 
 
 hostname_of = project_service.hostname_of
@@ -1229,3 +1236,46 @@ def delete_project(project_id: int, _auth: AdminConfig, db: DbSession):
     except ServiceError as exc:
         return api_error(exc.message, exc.status_code)
     return {"ok": True}
+
+
+@router.get("/api/admin/tokens")
+def list_api_tokens(_auth: AdminConfig, db: DbSession):
+    projects = [
+        {
+            "id": item["id"],
+            "slug": item["slug"],
+            "title": item["title"],
+            "type": item["type"],
+            "parent_id": item["parent_id"],
+            "parent_slug": item["parent_slug"],
+        }
+        for item in project_service.list_projects_view(db, view="flat")
+    ]
+    return {
+        "ok": True,
+        "tokens": tokens.list_tokens(db),
+        "valid_scopes": list(tokens.VALID_SCOPES),
+        "projects": projects,
+    }
+
+
+@router.post("/api/admin/tokens", status_code=201)
+def create_api_token(payload: ApiTokenCreatePayload, _auth: AdminConfig, db: DbSession):
+    try:
+        meta, plaintext = tokens.create_token(
+            db,
+            name=payload.name,
+            scopes=payload.scopes,
+            allowed_slugs=payload.allowed_slugs,
+            expires_at=payload.expires_at,
+        )
+    except tokens.TokenError as exc:
+        return api_error(str(exc), 422)
+    return {"ok": True, "token": meta, "plaintext": plaintext}
+
+
+@router.delete("/api/admin/tokens/{token_id}")
+def revoke_api_token(token_id: int, _auth: AdminConfig, db: DbSession):
+    if not tokens.revoke_token(db, token_id):
+        return api_error("令牌不存在", 404)
+    return {"ok": True, "revoked": True}

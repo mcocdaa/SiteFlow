@@ -20,7 +20,7 @@
 
 ## 核心特性
 
-- **Human via UI, AI via API**：既为人类提供直观的拖拽管理后台，又为 AI Agent 与 CI/CD 流水线提供幂等的 `PUT /api/admin/projects/{slug}/deploy` 一键无头发布接口。
+- **Human via UI, AI via API**：既为人类提供直观的拖拽管理后台，又为 AI Agent 与 CI/CD 流水线提供面向自动化设计的 `/api/v1/*` 统一接口（鉴权 OpenAPI 自发现、细粒度可吊销 DB Token、博客幂等发布与正文插图、结构化内容局部更新及静态 HTML/ZIP `/deploy`）。
 - **PageSurface 统一扩展架构与分层继承**：通过 `PageSurface` 契约（`meta / context / slots / tokens / items / capabilities`）解耦页面与扩展，支持 `全站默认 → 父空间 → 子空间/页面` 三层继承、三态开关（`继承 / 启用 / 关闭` + `恢复默认` + 母空间级联确认）、密钥跨层安全继承不泄明文，以及 `visitor / plugin / admin` 隐私边界。
 - **零构建声明式插件包生态**：支持 GitHub 仓库 URL 订阅（一键同步）与离线 ZIP 导入，纯静态声明式 CSS/JS/SVG，无前端构建步骤、无服务端远程代码执行。官方插件包仓库：[`mcocdaa/siteflow-plugins`](https://github.com/mcocdaa/siteflow-plugins)。
 - **内置应用与扩展全景**：多级嵌套空间（最多 3 层，支持标准网格 / 瀑布流 / 拍立得 / 可自由拖拽持久化位置的拼贴桌面 + 背景/公告栏 + 实时预览）、GFM + 离线 KaTeX 数学公式博客、自动保存的简历编辑器与插件隐私控制、先审后发的漂流瓶空间，以及支持 DeepSeek/OpenAI 流式 AI 对话的看板娘 v3。
@@ -69,6 +69,7 @@ SiteFlow 通过 [`PageSurface`](docs/PLUGIN_DESIGN.md) 契约将页面类型（`
 4. **加锁外链走门禁跳转**：带密码保护的外链在非管理员画廊卡片与 `/api/search` 中仅暴露 `/projects/{slug}/`，验证密码后返回 `302`（带 `Cache-Control: no-store`），绝不提前泄露真实目标 URL。
 5. **安全重部署与外呼 SSRF 防护**：通过 `/deploy` 更新已有项目时若省略 `visible` 字段会保留原可见性（新建默认可见）；OG/封面抓取（`app/og.py`）、插件包 GitHub 同步与 AI 接口地址均执行公网主机/私网 IP 校验、超时与体积/重定向上限限制。
 6. **访客提交端点防刷与审核**：漂流瓶等公开提交接口强制执行同源校验、先审后发、服务端防混淆禁链、IP 哈希限频与封禁列表拦截。
+7. **细粒度可吊销 API 令牌与 `/api/v1/*` 边界**：数据库 API 令牌（`sft_...`）仅持久化 SHA-256 哈希与前缀且明文仅显示一次，支持最小权限 Scope、项目树作用域防逃逸与即时吊销；低权或受限令牌无法访问 `/api/admin/*`，`/api/v1/*` 强制携带 `Cache-Control: no-store` 与鉴权 OpenAPI 自发现。
 
 ## 快速开始
 
@@ -113,11 +114,30 @@ curl -H "Authorization: Bearer <SITEFLOW_API_TOKEN>" \
   http://127.0.0.1:8000/api/admin/projects
 ```
 
+### Agent-Ready API v1 与细粒度可吊销 Token
+
+面向通用 AI Agent 与自动化脚本，可在管理后台 `/admin` 顶栏 **API 令牌** 弹窗（或 `POST /api/v1/tokens`）按最小权限签发可随时吊销的 `sft_...` 令牌，自由组合权限 Scope（`read`、`posts:write`、`content:write`、`projects:write`、`deploy:write`、`submissions:write`、`extensions:write`、`admin`）、限定项目或父空间作用域与有效期：
+
+```bash
+# 查看当前令牌身份并拉取鉴权 OpenAPI 3.1 规范
+curl -H "Authorization: Bearer <sft_token>" http://127.0.0.1:8000/api/v1/whoami
+curl -H "Authorization: Bearer <sft_token>" http://127.0.0.1:8000/api/v1/openapi.json
+
+# 幂等发布或更新博客文章
+curl -X PUT http://127.0.0.1:8000/api/v1/blogs/my-blog/posts/release-notes \
+  -H "Authorization: Bearer <sft_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"发布说明","tags":["release"],"body":"## 摘要\n\n已上线 API v1。"}'
+```
+
+完整端点列表、权限矩阵与常见 `curl` 实战示例请见 [docs/API_V1.md](docs/API_V1.md)。
+
 ## 配置与文档导航
 
 | 文档 | 内容说明 |
 |------|----------|
 | [docs/index.md](docs/index.md) | 完整文档总索引 |
+| [docs/API_V1.md](docs/API_V1.md) | Agent-Ready `/api/v1/*` 接入指南、权限说明与 `curl` 实战 |
 | [docs/PLUGIN_DESIGN.md](docs/PLUGIN_DESIGN.md) | 已落地的 `PageSurface` 插件契约、分层继承与访客提交架构 |
 | [DESIGN.md](DESIGN.md) · [DESIGN-v2.md](DESIGN-v2.md) | v1/v2 产品架构与安全边界设计 |
 | [docs/deployment.md](docs/deployment.md) · [deploy/README.md](deploy/README.md) | Docker 部署、反向代理、HTTPS 与免源码服务器一键部署 |

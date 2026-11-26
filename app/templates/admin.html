@@ -23,6 +23,7 @@
           <span class="ext-header-badge" data-site-ext-active-count{% if not site_active_count %} hidden{% endif %}>{{ site_active_count }}</span>
         </button>
         {% endif %}
+        <button type="button" class="header-icon-btn" id="api-tokens-open-btn" aria-haspopup="dialog" aria-controls="api-tokens-dialog" data-hover-tip="API 令牌" data-i18n-hover-tip="admin.api_tokens" aria-label="API 令牌" data-i18n-aria-label="admin.api_tokens">{{ icons.icon("key", 16) }}</button>
         <button type="button" class="header-icon-btn lang-toggle-btn" id="lang-toggle-btn" data-action="toggle-lang" data-testid="locale-toggle" data-hover-tip="切换为英文" data-i18n-hover-tip="common.lang_tip" aria-label="切换为英文" data-i18n-aria-label="common.lang_tip">{{ icons.icon("globe", 16) }}</button>
         <button type="button" class="header-icon-btn" data-action="logout" data-hover-tip="退出登录" data-i18n-hover-tip="admin.logout" aria-label="退出登录" data-i18n-aria-label="admin.logout">{{ icons.icon("log-out", 16) }}</button>
       </div>
@@ -71,6 +72,149 @@
     </div>
   </dialog>
   {% endif %}
+  <dialog class="site-ext-dialog api-tokens-dialog" id="api-tokens-dialog" closedby="any" aria-labelledby="api-tokens-dialog-title">
+    <div class="site-ext-dialog-head">
+      <div class="site-ext-dialog-title-wrap">
+        <h1 id="api-tokens-dialog-title" class="sf-tip-title" tabindex="0" data-hover-tip="签发受限作用域与权限的 Agent 访问令牌，仅在创建时显示一次明文。" data-i18n-hover-tip="tokens.dialog_desc">
+          <span data-i18n="tokens.dialog_title">API 令牌管理</span>
+          <span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 14) }}</span>
+        </h1>
+      </div>
+      <button type="button" class="btn ghost icon-btn" data-tokens-close aria-label="关闭" data-i18n-aria-label="common.close">{{ icons.icon("x", 18) }}</button>
+    </div>
+    <div class="site-ext-dialog-body">
+      <section class="tokens-secret-banner" data-tokens-secret-banner hidden aria-live="polite">
+        <div class="tokens-secret-head">
+          <div class="tokens-secret-title">
+            <span class="tokens-secret-icon" aria-hidden="true">{{ icons.icon("check-circle", 16) }}</span>
+            <strong data-i18n="tokens.secret_title">令牌已签发 — 仅显示这一次</strong>
+          </div>
+          <button type="button" class="btn ghost icon-btn btn-sm" data-tokens-secret-dismiss aria-label="关闭" data-i18n-aria-label="common.close">{{ icons.icon("x", 14) }}</button>
+        </div>
+        <p class="tokens-secret-warn" data-i18n="tokens.secret_warning">请立即复制并妥善保存，关闭此提示或刷新页面后将无法再次查看明文。</p>
+        <div class="tokens-secret-box">
+          <code class="tokens-secret-code" data-tokens-secret-value></code>
+          <button type="button" class="btn primary btn-sm" data-tokens-copy-secret>
+            <span class="tokens-copy-icon" data-tokens-copy-icon aria-hidden="true"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></span>
+            <span data-tokens-copy-label data-i18n="tokens.secret_copy">复制令牌</span>
+          </button>
+        </div>
+        <p class="tokens-secret-hint" data-i18n="tokens.secret_openapi_hint">Agent 可携带此令牌调用 GET /api/v1/openapi.json 自动发现全部可用接口。</p>
+      </section>
+
+      <section class="tokens-section">
+        <h2 class="tokens-section-title" data-i18n="tokens.create_title">签发新令牌</h2>
+        <form class="tokens-form" data-tokens-form novalidate>
+          <div class="tokens-form-row">
+            <label class="tokens-field tokens-field-name">
+              <span class="tokens-field-label" data-i18n="tokens.name_label">令牌名称</span>
+              <input type="text" name="name" maxlength="80" required autocomplete="off" placeholder="例如：博客写作 Agent" data-i18n-placeholder="tokens.name_placeholder">
+            </label>
+            <label class="tokens-field tokens-field-expiry">
+              <span class="tokens-field-label" data-i18n="tokens.expiry_label">有效期</span>
+              <select name="expiry_days">
+                <option value="" data-i18n="tokens.expiry_never">永不过期</option>
+                <option value="7" data-i18n="tokens.expiry_7d">7 天</option>
+                <option value="30" data-i18n="tokens.expiry_30d">30 天</option>
+                <option value="90" data-i18n="tokens.expiry_90d">90 天</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="tokens-field">
+            <span class="tokens-field-label" data-i18n="tokens.presets_label">快捷权限预设</span>
+            <div class="tokens-presets" data-tokens-presets>
+              <button type="button" class="ext-filter-chip is-active" data-token-preset="readonly" data-hover-tip="仅授予 read 权限，适合信息检索与巡检 Agent" data-i18n-hover-tip="tokens.preset_readonly_tip" data-i18n="tokens.preset_readonly">只读</button>
+              <button type="button" class="ext-filter-chip" data-token-preset="blog" data-hover-tip="授予 read 与 posts:write 权限，适合博客写作与插图上传" data-i18n-hover-tip="tokens.preset_blog_tip" data-i18n="tokens.preset_blog">博客写作</button>
+              <button type="button" class="ext-filter-chip" data-token-preset="admin" data-hover-tip="授予全部权限并清空项目限定，可管理全站与令牌" data-i18n-hover-tip="tokens.preset_admin_tip" data-i18n="tokens.preset_admin">完全管理</button>
+            </div>
+          </div>
+
+          <div class="tokens-field">
+            <span class="tokens-field-label" data-i18n="tokens.scopes_label">细粒度权限</span>
+            <div class="tokens-scopes-grid" data-tokens-scopes>
+              <label class="tokens-scope-option" data-hover-tip="读取项目列表、结构化内容、博客文章、扩展状态与 OpenAPI 规范" data-i18n-hover-tip="tokens.scope_read_tip">
+                <input type="checkbox" name="scopes" value="read" checked>
+                <span class="tokens-scope-text"><strong data-i18n="tokens.scope_read">只读访问</strong><code>read</code></span>
+              </label>
+              <label class="tokens-scope-option" data-hover-tip="创建、更新、删除博客文章以及上传博客正文插图" data-i18n-hover-tip="tokens.scope_posts_write_tip">
+                <input type="checkbox" name="scopes" value="posts:write">
+                <span class="tokens-scope-text"><strong data-i18n="tokens.scope_posts_write">博客写作</strong><code>posts:write</code></span>
+              </label>
+              <label class="tokens-scope-option" data-hover-tip="结构化更新简历、空间主题、漂流瓶规则等项目内容" data-i18n-hover-tip="tokens.scope_content_write_tip">
+                <input type="checkbox" name="scopes" value="content:write">
+                <span class="tokens-scope-text"><strong data-i18n="tokens.scope_content_write">内容编辑</strong><code>content:write</code></span>
+              </label>
+              <label class="tokens-scope-option" data-hover-tip="创建、修改、移动、删除项目与更换项目封面" data-i18n-hover-tip="tokens.scope_projects_write_tip">
+                <input type="checkbox" name="scopes" value="projects:write">
+                <span class="tokens-scope-text"><strong data-i18n="tokens.scope_projects_write">项目管理</strong><code>projects:write</code></span>
+              </label>
+              <label class="tokens-scope-option" data-hover-tip="幂等上传或更新 HTML / ZIP 静态站点制品" data-i18n-hover-tip="tokens.scope_deploy_write_tip">
+                <input type="checkbox" name="scopes" value="deploy:write">
+                <span class="tokens-scope-text"><strong data-i18n="tokens.scope_deploy_write">静态部署</strong><code>deploy:write</code></span>
+              </label>
+              <label class="tokens-scope-option" data-hover-tip="审核通过、拒绝或删除漂流瓶等访客投稿记录" data-i18n-hover-tip="tokens.scope_submissions_write_tip">
+                <input type="checkbox" name="scopes" value="submissions:write">
+                <span class="tokens-scope-text"><strong data-i18n="tokens.scope_submissions_write">访客审核</strong><code>submissions:write</code></span>
+              </label>
+              <label class="tokens-scope-option" data-hover-tip="启停或修改项目级扩展插件配置（不会暴露密钥明文）" data-i18n-hover-tip="tokens.scope_extensions_write_tip">
+                <input type="checkbox" name="scopes" value="extensions:write">
+                <span class="tokens-scope-text"><strong data-i18n="tokens.scope_extensions_write">插件配置</strong><code>extensions:write</code></span>
+              </label>
+              <label class="tokens-scope-option" data-hover-tip="拥有全部接口权限；未限定项目时可管理令牌、修改密码及访问 /api/admin/*" data-i18n-hover-tip="tokens.scope_admin_tip">
+                <input type="checkbox" name="scopes" value="admin">
+                <span class="tokens-scope-text"><strong data-i18n="tokens.scope_admin">完全管理</strong><code>admin</code></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="tokens-field">
+            <div class="tokens-projects-head">
+              <span class="tokens-field-label sf-tip-label" tabindex="0" data-hover-tip="留空表示全站生效；选中空间会自动包含其下所有子空间与子项目。" data-i18n-hover-tip="tokens.projects_help">
+                <span data-i18n="tokens.projects_label">限定项目作用域</span>
+                <span class="sf-tip-icon" aria-hidden="true">{{ icons.icon("info", 13) }}</span>
+              </span>
+              <div class="tokens-projects-meta">
+                <span class="tokens-projects-status" data-tokens-projects-status data-i18n="tokens.projects_all_site">全站生效</span>
+                <button type="button" class="btn ghost btn-sm" data-tokens-clear-projects data-i18n="tokens.projects_clear_all" hidden>不限全站</button>
+              </div>
+            </div>
+            <label class="ext-search-box tokens-project-search">
+              <span class="ext-search-icon">{{ icons.icon("search", 14) }}</span>
+              <input type="search" class="ext-search-input" data-tokens-project-search placeholder="搜索项目标题或 slug…" data-i18n-placeholder="tokens.projects_search_placeholder" aria-label="搜索项目标题或 slug…" data-i18n-aria-label="tokens.projects_search_placeholder">
+            </label>
+            <div class="tokens-projects-picker" data-tokens-projects-list></div>
+            <p class="tokens-muted-note" data-tokens-projects-empty hidden data-i18n="tokens.projects_empty">当前暂无项目，令牌将默认全站生效。</p>
+            <p class="tokens-muted-note" data-tokens-projects-nomatch hidden data-i18n="tokens.projects_no_match">没有匹配的项目。</p>
+          </div>
+
+          <div class="tokens-form-actions">
+            <button type="submit" class="btn primary" data-tokens-submit>
+              {{ icons.icon("plus", 15) }}
+              <span data-tokens-submit-label data-i18n="tokens.create_btn">生成令牌</span>
+            </button>
+          </div>
+        </form>
+      </section>
+
+      <section class="tokens-section">
+        <div class="tokens-list-head">
+          <div class="tokens-list-title-wrap">
+            <h2 class="tokens-section-title" data-i18n="tokens.list_title">已签发令牌</h2>
+            <span class="tokens-count-pill" data-tokens-count>0</span>
+          </div>
+          <button type="button" class="btn ghost icon-btn btn-sm" data-tokens-refresh data-hover-tip="刷新列表" data-i18n-hover-tip="tokens.refresh" aria-label="刷新列表" data-i18n-aria-label="tokens.refresh">{{ icons.icon("refresh-cw", 14) }}</button>
+        </div>
+        <p class="tokens-muted-note" data-tokens-loading hidden data-i18n="tokens.loading">正在加载令牌列表…</p>
+        <p class="tokens-muted-note tokens-empty-state" data-tokens-empty hidden data-i18n="tokens.empty">尚未签发任何 API 令牌。</p>
+        <div class="tokens-list" data-tokens-list></div>
+      </section>
+
+      <template data-token-icon-tpl="trash">{{ icons.icon("trash", 15) }}</template>
+      <template data-token-icon-tpl="check">{{ icons.icon("check", 14) }}</template>
+      <template data-token-icon-tpl="copy"><svg class="icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg></template>
+    </div>
+  </dialog>
   {% include "_preview_modal.html" %}
   {% include "_command_palette.html" %}
   <script src="{{ static_url('js/i18n.js') }}" defer></script>
@@ -78,6 +222,7 @@
   <script src="{{ static_url('js/preview.js') }}" defer></script>
   <script src="{{ static_url('js/palette.js') }}" defer></script>
   <script src="{{ static_url('js/admin.js') }}" defer></script>
+  <script src="{{ static_url('js/tokens_admin.js') }}" defer></script>
   {% if site_ext_catalog is defined %}
   <script src="{{ static_url('js/extensions_admin.js') }}" defer></script>
   {% endif %}

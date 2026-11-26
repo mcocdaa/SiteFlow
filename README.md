@@ -20,7 +20,7 @@ Self-hosted sandboxed gallery, extensible page platform, and headless deployment
 
 ## Highlights
 
-- **Human via UI, AI via API**: Drag-and-drop Admin Console for humans alongside an idempotent `PUT /api/admin/projects/{slug}/deploy` endpoint for AI agents and CI/CD pipelines.
+- **Human via UI, AI via API**: Drag-and-drop Admin Console for humans alongside an Agent-Ready `/api/v1/*` REST API (authenticated OpenAPI self-discovery, scoped revocable DB tokens, idempotent blog publishing & image upload, structured content patching, and static HTML/ZIP `/deploy`).
 - **PageSurface Extension Architecture & Layered Inheritance**: Decoupled `PageSurface` contract (`meta / context / slots / tokens / items / capabilities`) with three-tier inheritance (`Site Default → Parent Space → Child Space / Page`), three-state controls (`Inherit / Enable / Off`), one-click `Reset to Default`, parent-space cascade confirmation, secret-safe cross-layer inheritance, and `visitor / plugin / admin` privacy boundaries.
 - **Zero-Build Declarative Plugin Pack Ecosystem**: Subscribe to GitHub plugin repositories (with one-click sync) or import offline ZIP packs—pure declarative CSS/JS/SVG with zero frontend build step and zero server-side code execution. Official pack: [`mcocdaa/siteflow-plugins`](https://github.com/mcocdaa/siteflow-plugins).
 - **Rich Built-in Apps & Interactive Extensions**: Multi-tier Spaces (up to 3 levels, with Grid / Masonry / Polaroid / Draggable Desk layouts, background, banner, and live preview), GFM + offline KaTeX Blogs, auto-saving Resumes with Plugin Privacy Controls, moderated Drift Bottle Spaces, and Mascot v3 with streaming DeepSeek/OpenAI AI chat.
@@ -69,6 +69,7 @@ In the Admin Console (`Plugin Sources`), subscribe to any compatible GitHub repo
 4. **Locked External Link Gate**: Password-protected external links expose only `/projects/{slug}/` in gallery cards and `/api/search` for visitors, redirecting (`302` with `Cache-Control: no-store`) only after gate verification so the target URL never leaks.
 5. **Safe Headless Redeploy & Outbound SSRF Defense**: Updating an existing project via `/deploy` without specifying `visible` preserves its current visibility (new projects default to visible). All platform outbound fetches (`app/og.py`), plugin pack syncs, and LLM API URLs enforce public-host/private-IP checks, timeouts, and size/redirect caps.
 6. **Visitor Submission Hardening**: Public submission routes (such as Drift Bottle) enforce same-origin validation, default pre-moderation, link/obfuscation blocking, IP-hash rate limiting, and IP ban lists.
+7. **Scoped Revocable API Tokens & `/api/v1/*` Isolation**: Database API tokens (`sft_...`) store only SHA-256 hashes and prefixes with one-time plaintext display, support least-privilege scopes, project-tree scoping with escape prevention, and instant revocation; non-admin tokens are denied on `/api/admin/*`, and `/api/v1/*` enforces `Cache-Control: no-store` with authenticated OpenAPI discovery.
 
 ## Quick Start
 
@@ -113,11 +114,30 @@ curl -H "Authorization: Bearer <SITEFLOW_API_TOKEN>" \
   http://127.0.0.1:8000/api/admin/projects
 ```
 
+### Agent-Ready API v1 & Scoped Revocable Tokens
+
+For AI agents and fine-grained automation, issue least-privilege revocable tokens (`sft_...`) with explicit scopes (`read`, `posts:write`, `content:write`, `projects:write`, `deploy:write`, `submissions:write`, `extensions:write`, `admin`), optional project/space scoping, and expiration directly from the Admin Console (**API Tokens** button in the topbar) or `POST /api/v1/tokens`:
+
+```bash
+# Discover token identity & authenticated OpenAPI 3.1 schema
+curl -H "Authorization: Bearer <sft_token>" http://127.0.0.1:8000/api/v1/whoami
+curl -H "Authorization: Bearer <sft_token>" http://127.0.0.1:8000/api/v1/openapi.json
+
+# Idempotently publish or update a blog post
+curl -X PUT http://127.0.0.1:8000/api/v1/blogs/my-blog/posts/release-notes \
+  -H "Authorization: Bearer <sft_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Release Notes","tags":["release"],"body":"## Summary\n\nShipped API v1."}'
+```
+
+See [docs/API_V1.md](docs/API_V1.md) for the complete endpoint reference, scope matrix, and `curl` recipes.
+
 ## Configuration & Docs
 
 | Document | Description |
 |----------|-------------|
 | [docs/index.md](docs/index.md) | Documentation directory & entry hub |
+| [docs/API_V1.md](docs/API_V1.md) | Agent-Ready `/api/v1/*` API guide, scope matrix & `curl` examples |
 | [docs/PLUGIN_DESIGN.md](docs/PLUGIN_DESIGN.md) | Implemented `PageSurface` contract, layered inheritance & submission architecture |
 | [DESIGN.md](DESIGN.md) · [DESIGN-v2.md](DESIGN-v2.md) | v1/v2 product architecture & security boundaries |
 | [docs/deployment.md](docs/deployment.md) · [deploy/README.md](deploy/README.md) | Docker deployment, reverse proxy, HTTPS & zero-source server bootstrap |
