@@ -15,6 +15,8 @@
 | [DESIGN.md](../DESIGN.md) | v1 产品与安全设计 |
 | [DESIGN-v2.md](../DESIGN-v2.md) | v2 应用注册表、嵌套空间、简历与博客设计 |
 | [PLUGIN_DESIGN.md](PLUGIN_DESIGN.md) | 已落地的 `PageSurface` 契约、分层继承、结构化插槽与访客提交架构 |
+| [API_V1.md](API_V1.md) | Agent-Ready `/api/v1/*` REST 接口指南、细粒度令牌权限矩阵与 `curl` 示例 |
+| [PLUGIN_IDEAS.md](PLUGIN_IDEAS.md) | 后续插件与扩展创意备忘（趣味交互、体验增强与架构延展，暂缓实施） |
 | [product_research_and_plan.md](product_research_and_plan.md) | 产品深度调研与全景演进白皮书 |
 
 ## 工程协作与安全
