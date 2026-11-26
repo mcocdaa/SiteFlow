@@ -1,8 +1,10 @@
 import json
 import re
 import secrets
+import shutil
 from collections.abc import Callable
 from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -14,11 +16,20 @@ from app.auth import hash_project_password
 from app.config import Config
 from app.deps import ServiceError
 from app.extensions.base import TargetType, capabilities_for_target
+from app.extensions.inheritance import (
+    VALID_MODES,
+    merge_layer_config,
+    parse_layer_state,
+    resolve_project_extension,
+)
 from app.extensions.registry import (
+    build_project_admin_catalog,
     merge_content_extension_secrets,
     redact_content_extensions,
     referenced_media_urls,
+    resolved_catalog_item,
 )
+from app.extensions.registry import get as get_extension
 from app.models import Project
 from app.og import OpenGraph, fetch_image, fetch_og
 from app.plugins import registry
@@ -32,7 +43,9 @@ from app.surface import Capability
 from app.uploads import (
     InvalidUpload,
     delete_project_media_url,
+    extract_site,
     make_cover,
+    remove_tree,
     save_blog_media,
     save_cover,
 )
@@ -1062,3 +1075,328 @@ def upload_blog_media(
     except InvalidUpload as exc:
         raise ServiceError(str(exc), 422, code="invalid_image") from exc
     return {"url": url, "markdown": f"![]({url})"}
+
+
+def deploy_static_bytes(
+    db: Session,
+    config: Config,
+    *,
+    slug: str,
+    raw_bytes: bytes,
+    filename: str,
+    title: str = "",
+    description: str = "",
+    visible: bool | None = None,
+    parent_id: int | None = None,
+    allowed_parent_check: Callable[[Project | None], None] | None = None,
+) -> tuple[Project, bool]:
+    clean_slug = validate_slug(slug)
+    if len(raw_bytes) > config.upload_limit:
+        raise ServiceError("文件超出大小限制", 413, code="file_too_large")
+    base_name = Path(filename or "").name
+    lower_name = base_name.lower()
+    if not lower_name.endswith((".html", ".htm", ".zip")):
+        raise ServiceError(
+            "只支持 .html / .htm / .zip 文件",
+            400,
+            code="unsupported_file_type",
+            hint="请上传 .html、.htm 或 .zip 格式文件",
+        )
+    parent = resolve_parent_by_id(db, parent_id)
+    existing = store.by_slug(db, clean_slug)
+    if existing is not None:
+        if existing.type not in ("static", "html", "zip"):
+            raise ServiceError(
+                "该标识已被非静态项目占用",
+                409,
+                code="slug_type_conflict",
+                hint="请更换其他 slug，或确认目标项目为静态制品",
+            )
+    elif allowed_parent_check is not None:
+        allowed_parent_check(parent)
+
+    suffix = ".html" if lower_name.endswith((".html", ".htm")) else ".zip"
+    tmp_token = store.unique_slug_name()
+    tmp_path = config.data / "tmp" / f"{tmp_token}{suffix}"
+    stage_dir = config.data / "tmp" / f"stage_{tmp_token}"
+    backup_dir = config.data / "tmp" / f"backup_{tmp_token}"
+    tmp_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        tmp_path.write_bytes(raw_bytes)
+        try:
+            stage_dir.mkdir(parents=True, exist_ok=True)
+            if suffix == ".html":
+                shutil.copyfile(tmp_path, stage_dir / "index.html")
+                entry = "index.html"
+            else:
+                entry = extract_site(tmp_path, stage_dir, config)
+        except InvalidUpload as exc:
+            remove_tree(stage_dir)
+            raise ServiceError(str(exc), 422, code="invalid_upload") from exc
+        except Exception:
+            remove_tree(stage_dir)
+            raise
+
+        folder = config.data / "projects" / clean_slug
+        folder.parent.mkdir(parents=True, exist_ok=True)
+        if folder.exists():
+            remove_tree(backup_dir)
+            folder.rename(backup_dir)
+        try:
+            stage_dir.rename(folder)
+        except Exception:
+            if backup_dir.exists() and not folder.exists():
+                backup_dir.rename(folder)
+            raise
+        finally:
+            remove_tree(backup_dir)
+
+        created = existing is None
+        if existing is not None:
+            existing.entry = entry
+            if title.strip():
+                existing.title = title.strip()[:200]
+            if description.strip():
+                existing.description = description.strip()[:500]
+            if visible is not None:
+                existing.visible = visible
+            if parent_id is not None:
+                new_parent_id = parent.id if parent else None
+                if existing.parent_id != new_parent_id:
+                    existing.parent_id = new_parent_id
+                    existing.sort_order = store.next_sort_order(db, new_parent_id)
+            touch(existing)
+            project = existing
+        else:
+            name_title = (base_name.rsplit(".", 1)[0] or clean_slug)[:200]
+            project_title = (title.strip() or name_title)[:200]
+            project = Project(
+                slug=clean_slug,
+                type="static",
+                parent_id=parent.id if parent else None,
+                title=project_title,
+                description=description.strip()[:500],
+                entry=entry,
+                visible=True if visible is None else visible,
+                sort_order=store.next_sort_order(db, parent.id if parent else None),
+            )
+            db.add(project)
+        db.commit()
+        db.refresh(project)
+        return project, created
+    finally:
+        tmp_path.unlink(missing_ok=True)
+        remove_tree(stage_dir)
+        remove_tree(backup_dir)
+
+
+def list_project_extensions_v1(
+    db: Session,
+    config: Config,
+    project: Project,
+) -> list[dict[str, Any]]:
+    caps = capabilities_of(project)
+    if caps is None:
+        raise ServiceError(
+            "该类型不支持插件",
+            400,
+            code="extensions_unsupported",
+            hint="仅具备扩展能力的应用类型支持插件管理",
+        )
+    content = _parse_raw_content(project, config, strict=False)
+    return build_project_admin_catalog(
+        db,
+        project,
+        capabilities=caps,
+        config=config,
+        content=content,
+    )
+
+
+def set_project_extension_state_v1(
+    db: Session,
+    config: Config,
+    project: Project,
+    ext_id: str,
+    *,
+    mode: str | None = None,
+    enabled: bool | None = None,
+    cascade: bool | None = None,
+    incoming_config: dict[str, Any] | None = None,
+) -> dict[str, Any]:
+    caps = capabilities_of(project)
+    if caps is None:
+        raise ServiceError(
+            "该类型不支持插件",
+            400,
+            code="extensions_unsupported",
+            hint="仅具备扩展能力的应用类型支持插件管理",
+        )
+    ext = get_extension(ext_id, config=config)
+    if ext is None:
+        raise ServiceError(
+            "插件不存在",
+            404,
+            code="extension_not_found",
+            hint="请先查询该项目可用插件列表确认插件 ID",
+        )
+    if not ext.matches_capabilities(caps):
+        raise ServiceError(
+            "该插件不适用于当前应用类型",
+            400,
+            code="extension_incompatible",
+            hint="请选择适用于当前项目类型的插件",
+        )
+
+    content = _parse_raw_content(project, config, strict=False)
+    old_media = referenced_media_urls(content, capabilities=caps, config=config)
+    ext_map = dict(content.get("extensions") or {})
+    prev_state = parse_layer_state(ext_map.get(ext.id), is_site=False)
+
+    if mode is not None:
+        if mode not in VALID_MODES:
+            raise ServiceError(
+                "插件继承模式必须是 inherit、override 或 disabled",
+                422,
+                code="invalid_extension_mode",
+                hint="mode 可选值：inherit、override、disabled",
+            )
+        next_mode = mode
+    elif enabled is not None:
+        next_mode = "override" if enabled else "disabled"
+    elif prev_state.mode != "inherit":
+        next_mode = prev_state.mode
+    else:
+        next_mode = "override"
+
+    if next_mode == "inherit":
+        ext_map.pop(ext.id, None)
+    else:
+        try:
+            sparse_cfg = merge_layer_config(
+                ext,
+                prev_state.config,
+                incoming_config,
+                strict=True,
+                project_slug=project.slug,
+            )
+        except InvalidContent as exc:
+            raise ServiceError(str(exc), 422, code="invalid_extension_config") from exc
+        next_cascade = False
+        if "has_children" in caps:
+            next_cascade = prev_state.cascade if cascade is None else bool(cascade)
+        ext_map[ext.id] = {
+            "mode": next_mode,
+            "cascade": next_cascade,
+            "config": sparse_cfg,
+        }
+
+    if ext_map:
+        content["extensions"] = ext_map
+    else:
+        content.pop("extensions", None)
+    project.content = json.dumps(content, ensure_ascii=False)
+    touch(project)
+    db.commit()
+    cleanup_unreferenced_media(
+        config,
+        project.slug,
+        old_media,
+        referenced_media_urls(content, capabilities=caps, config=config),
+    )
+    resolved = resolve_project_extension(
+        db,
+        project,
+        ext.id,
+        capabilities=caps,
+        config=config,
+        content=content,
+    )
+    assert resolved is not None
+    return resolved_catalog_item(resolved)
+
+
+def list_project_submissions_v1(
+    db: Session,
+    project: Project,
+    *,
+    status: str | None = None,
+    plugin_id: str | None = None,
+    limit: int = 100,
+    offset: int = 0,
+) -> dict[str, Any]:
+    filter_status: str | None = None
+    if status and status != "all":
+        if status not in submissions.VALID_STATUSES:
+            raise ServiceError(
+                "不支持的审核状态",
+                400,
+                code="invalid_submission_status",
+                hint="可选状态：pending、approved、rejected、all",
+            )
+        filter_status = status
+    clean_plugin = plugin_id.strip() if isinstance(plugin_id, str) and plugin_id.strip() else None
+    items = submissions.list_submissions(
+        db,
+        project_id=project.id,
+        plugin_id=clean_plugin,
+        status=filter_status,
+        limit=limit,
+        offset=offset,
+    )
+    counts = submissions.count_submissions(db, project_id=project.id, plugin_id=clean_plugin)
+    banned_ips = submissions.list_banned_ips(db, project_id=project.id)
+    return {"submissions": items, "counts": counts, "banned_ips": banned_ips}
+
+
+def update_submission_status_v1(
+    db: Session,
+    project: Project,
+    sub_id: int,
+    *,
+    action: str | None = None,
+    status: str | None = None,
+) -> dict[str, Any]:
+    raw_action = (action or status or "").strip().lower()
+    action_map = {
+        "approve": "approved",
+        "approved": "approved",
+        "reject": "rejected",
+        "rejected": "rejected",
+        "pending": "pending",
+        "delete": "delete",
+    }
+    normalized = action_map.get(raw_action)
+    if normalized is None:
+        raise ServiceError(
+            "不支持的审核操作",
+            400,
+            code="invalid_submission_action",
+            hint="支持操作：approve、reject、pending、delete",
+        )
+    if normalized == "delete":
+        deleted = submissions.delete_submission(db, project_id=project.id, sub_id=sub_id)
+        if not deleted:
+            raise ServiceError(
+                "提交记录不存在",
+                404,
+                code="submission_not_found",
+                hint="请检查提交记录 ID 是否属于该项目",
+            )
+        counts = submissions.count_submissions(db, project_id=project.id)
+        return {"deleted": True, "counts": counts}
+    updated = submissions.set_submission_status(
+        db,
+        project_id=project.id,
+        sub_id=sub_id,
+        status=normalized,
+    )
+    if updated is None:
+        raise ServiceError(
+            "提交记录不存在",
+            404,
+            code="submission_not_found",
+            hint="请检查提交记录 ID 是否属于该项目",
+        )
+    counts = submissions.count_submissions(db, project_id=project.id)
+    return {"submission": updated, "counts": counts}
