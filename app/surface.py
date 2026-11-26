@@ -41,6 +41,7 @@ class SurfaceItem:
     cover: str = ""
     kind: str = ""
     tags: tuple[str, ...] = ()
+    date: str = ""
 
 
 class PageSurface(Protocol):
@@ -68,6 +69,7 @@ class StaticSurface:
     contexts: Mapping[str, Mapping[str, Any]]
     item_list: tuple[SurfaceItem, ...] = ()
     token_map: Mapping[str, str] = field(default_factory=dict)
+    audience_items: Mapping[str, tuple[SurfaceItem, ...]] = field(default_factory=dict)
 
     def context(self, audience: Audience) -> Mapping[str, Any]:
         if audience in self.contexts:
@@ -79,6 +81,14 @@ class StaticSurface:
         return self.contexts.get("visitor", {})
 
     def items(self, audience: Audience) -> Sequence[SurfaceItem]:
+        if audience in self.audience_items:
+            return self.audience_items[audience]
+        if audience == "plugin" and "ai" in self.audience_items:
+            return self.audience_items["ai"]
+        if audience == "ai" and "plugin" in self.audience_items:
+            return self.audience_items["plugin"]
+        if "visitor" in self.audience_items:
+            return self.audience_items["visitor"]
         return self.item_list
 
     def tokens(self) -> Mapping[str, str]:

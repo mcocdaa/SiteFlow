@@ -1,5 +1,6 @@
 import json
 import re
+from dataclasses import replace
 from typing import Any
 
 from fastapi import Request
@@ -41,6 +42,13 @@ def _tags(value: object) -> list[str]:
     if not isinstance(value, list):
         return []
     return [_text(item, 50) for item in value[:10] if _text(item, 50)]
+
+
+def _post_excerpt(body: str, limit: int = 160) -> str:
+    collapsed = " ".join(body.split())
+    if len(collapsed) <= limit:
+        return collapsed
+    return collapsed[: limit - 1].rstrip() + "…"
 
 
 def default_content() -> dict:
@@ -152,7 +160,7 @@ class BlogApp:
         content = validate_content(project.content, project_slug=project.slug, config=config)
         posts = content["posts"]
         base = f"/projects/{project.slug}/"
-        items = tuple(
+        visitor_items = tuple(
             SurfaceItem(
                 key=post["slug"],
                 title=post["title"],
@@ -160,8 +168,13 @@ class BlogApp:
                 summary=post["summary"],
                 kind="post",
                 tags=tuple(post["tags"]),
+                date=post["date"],
             )
             for post in posts
+        )
+        ai_items = tuple(
+            replace(item, summary=post["summary"] or _post_excerpt(post["body"]))
+            for item, post in zip(visitor_items, posts, strict=True)
         )
         blog = {
             "title": content["title"] or project.title,
@@ -191,7 +204,13 @@ class BlogApp:
             ),
             capabilities=self.capabilities,
             contexts={"visitor": visitor, "ai": ai, "admin": admin},
-            item_list=items,
+            item_list=visitor_items,
+            audience_items={
+                "visitor": visitor_items,
+                "plugin": ai_items,
+                "ai": ai_items,
+                "admin": visitor_items,
+            },
         )
 
     def route(self, request: Request, project: Project, path: str, db: Session):

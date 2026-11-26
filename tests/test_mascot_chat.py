@@ -764,3 +764,185 @@ def test_mascot_chat_access_gates_origin_ssrf_validation_and_rate_limit(
         limited = guest_client.post(chat_url, json=valid_body, headers=ORIGIN)
         assert limited.status_code == 429
         assert int(limited.headers["retry-after"]) >= 1
+
+
+def test_mascot_chat_list_pages_serialize_surface_items_and_preserve_boundaries(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    secret_key = "sk-list-surface-secret"
+    locked_external_url = "https://secret.example.com/private"
+    with TestClient(app) as admin_client, TestClient(app) as guest_client:
+        csrf = login(admin_client)
+        blog = create_app(admin_client, csrf, "blog", "博客").json()["project"]
+        assert (
+            admin_client.patch(
+                f"/api/admin/projects/{blog['id']}",
+                json={"description": "技术相关"},
+                headers=auth_headers(csrf),
+            ).status_code
+            == 200
+        )
+        for post_payload in (
+            {
+                "title": "零信任静态托管实战",
+                "slug": "zero-trust-post",
+                "date": "2026-11-24",
+                "tags": ["安全", "架构"],
+                "summary": "介绍沙箱 CSP 与隔离策略",
+                "body": "这是文章正文的关键技术细节：使用 sandbox CSP 与独立路径。",
+            },
+            {
+                "title": "无摘要长文测试",
+                "slug": "no-summary-post",
+                "date": "2026-11-20",
+                "tags": ["随笔"],
+                "summary": "",
+                "body": "纯正文开头片段：记录 SiteFlow 多级扩展与 PageSurface 实战。" + "补充细节" * 60,
+            },
+        ):
+            assert (
+                admin_client.post(
+                    f"/api/admin/projects/{blog['id']}/posts",
+                    json=post_payload,
+                    headers=auth_headers(csrf),
+                ).status_code
+                == 200
+            )
+        assert (
+            admin_client.post(
+                f"/api/admin/projects/{blog['id']}/extensions/mascot/install",
+                json={
+                    "enabled": True,
+                    "config": {
+                        "chat_access": "public",
+                        "api_key": secret_key,
+                        "include_page_context": True,
+                        "rate_limit_per_min": 60,
+                    },
+                },
+                headers=auth_headers(csrf),
+            ).status_code
+            == 200
+        )
+
+        captured_list = _patch_upstream(monkeypatch)
+        list_resp = guest_client.post(
+            f"/api/projects/{blog['slug']}/mascot/chat",
+            json={"messages": [{"role": "user", "content": "这个博客都有哪些文章？"}]},
+            headers=ORIGIN,
+        )
+        assert list_resp.status_code == 200
+        sys_list = captured_list[0]["json"]["system"]
+        assert "页面条目（共 2 项）：" in sys_list
+        assert "零信任静态托管实战" in sys_list
+        assert "2026-11-24" in sys_list
+        assert "标签：安全、架构" in sys_list
+        assert "介绍沙箱 CSP 与隔离策略" in sys_list
+        assert f"/projects/{blog['slug']}/posts/zero-trust-post" in sys_list
+        assert "无摘要长文测试" in sys_list
+        assert "2026-11-20" in sys_list
+        assert "标签：随笔" in sys_list
+        assert "纯正文开头片段：记录 SiteFlow 多级扩展与 PageSurface 实战。" in sys_list
+        assert f"/projects/{blog['slug']}/posts/no-summary-post" in sys_list
+
+        captured_detail = _patch_upstream(monkeypatch)
+        detail_resp = guest_client.post(
+            f"/api/projects/{blog['slug']}/mascot/chat",
+            json={
+                "messages": [{"role": "user", "content": "还有别的文章吗？"}],
+                "post_slug": "zero-trust-post",
+            },
+            headers=ORIGIN,
+        )
+        assert detail_resp.status_code == 200
+        sys_detail = captured_detail[0]["json"]["system"]
+        assert "sandbox CSP" in sys_detail
+        assert "其他条目（所属列表共 2 项）：" in sys_detail
+        assert "无摘要长文测试" in sys_detail
+        assert f"/projects/{blog['slug']}/posts/no-summary-post" in sys_detail
+        assert f"链接：/projects/{blog['slug']}/posts/zero-trust-post" not in sys_detail
+
+        space = create_app(admin_client, csrf, "space", "媒体画廊空间").json()["project"]
+        assert (
+            admin_client.patch(
+                f"/api/admin/projects/{space['id']}",
+                json={"description": "空间总览"},
+                headers=auth_headers(csrf),
+            ).status_code
+            == 200
+        )
+        visible_child = create_app(admin_client, csrf, "blog", "公开博客作品", parent_id=space["id"]).json()[
+            "project"
+        ]
+        assert (
+            admin_client.patch(
+                f"/api/admin/projects/{visible_child['id']}",
+                json={"description": "深入浅出讲清楚架构"},
+                headers=auth_headers(csrf),
+            ).status_code
+            == 200
+        )
+        hidden_child = create_app(admin_client, csrf, "blog", "私密草稿作品", parent_id=space["id"]).json()[
+            "project"
+        ]
+        assert (
+            admin_client.patch(
+                f"/api/admin/projects/{hidden_child['id']}",
+                json={"visible": False, "description": "机密草稿描述"},
+                headers=auth_headers(csrf),
+            ).status_code
+            == 200
+        )
+        locked_link = admin_client.post(
+            "/api/admin/projects/link",
+            json={
+                "url": locked_external_url,
+                "title": "加锁外链入口",
+                "description": "需要密码的外链简介",
+                "parent_id": space["id"],
+            },
+            headers=auth_headers(csrf),
+        ).json()["project"]
+        assert (
+            admin_client.patch(
+                f"/api/admin/projects/{locked_link['id']}",
+                json={"password": "LinkGate88"},
+                headers=auth_headers(csrf),
+            ).status_code
+            == 200
+        )
+        assert (
+            admin_client.post(
+                f"/api/admin/projects/{space['id']}/extensions/mascot/install",
+                json={
+                    "enabled": True,
+                    "config": {
+                        "chat_access": "public",
+                        "api_key": secret_key,
+                        "include_page_context": True,
+                        "rate_limit_per_min": 60,
+                    },
+                },
+                headers=auth_headers(csrf),
+            ).status_code
+            == 200
+        )
+
+        captured_space = _patch_upstream(monkeypatch)
+        space_resp = guest_client.post(
+            f"/api/projects/{space['slug']}/mascot/chat",
+            json={"messages": [{"role": "user", "content": "介绍空间里有什么"}]},
+            headers=ORIGIN,
+        )
+        assert space_resp.status_code == 200
+        sys_space = captured_space[0]["json"]["system"]
+        assert "页面条目（共 2 项）：" in sys_space
+        assert "公开博客作品" in sys_space
+        assert "深入浅出讲清楚架构" in sys_space
+        assert f"/projects/{visible_child['slug']}/" in sys_space
+        assert "加锁外链入口" in sys_space
+        assert "需要密码的外链简介" in sys_space
+        assert f"/projects/{locked_link['slug']}/" in sys_space
+        assert "私密草稿作品" not in sys_space
+        assert "机密草稿描述" not in sys_space
+        assert locked_external_url not in sys_space

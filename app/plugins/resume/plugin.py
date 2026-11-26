@@ -300,23 +300,34 @@ class ResumeApp:
         for section in SECTIONS:
             if visibility[section]:
                 plugin_ctx[section] = public.get(section, [])
-        items = tuple(
-            SurfaceItem(
-                key=f"{section}-{index}",
-                title=str(entry.get("name") or entry.get("institution") or entry.get("position") or ""),
-                url=f"/projects/{project.slug}/#{section}",
-                summary=str(entry.get("summary") or entry.get("description") or entry.get("area") or ""),
-                kind=section,
+        tagged_items = [
+            (
+                section,
+                SurfaceItem(
+                    key=f"{section}-{index}",
+                    title=str(entry.get("name") or entry.get("institution") or entry.get("position") or ""),
+                    url=f"/projects/{project.slug}/#{section}",
+                    summary=str(entry.get("summary") or entry.get("description") or entry.get("area") or ""),
+                    kind=section,
+                ),
             )
             for section in SECTIONS
             for index, entry in enumerate(resume.get(section) or [])
             if isinstance(entry, dict)
-        )
+        ]
+        visitor_items = tuple(item for _, item in tagged_items)
+        plugin_items = tuple(item for section, item in tagged_items if visibility[section])
         return StaticSurface(
             meta=project_meta(db, project, title=str(basics.get("name") or "")),
             capabilities=self.capabilities,
             contexts={"visitor": public, "plugin": plugin_ctx, "ai": plugin_ctx, "admin": resume},
-            item_list=items,
+            item_list=visitor_items,
+            audience_items={
+                "visitor": visitor_items,
+                "plugin": plugin_items,
+                "ai": plugin_items,
+                "admin": visitor_items,
+            },
         )
 
     def render(self, request: Request, project: Project, db: Session) -> HTMLResponse:
