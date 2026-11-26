@@ -79,6 +79,20 @@ def _migrate(engine: Engine) -> None:
                 PRIMARY KEY (project_id, ip_hash)
             )
         """)
+        conn.exec_driver_sql("""
+            CREATE TABLE IF NOT EXISTS api_tokens (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                prefix TEXT NOT NULL,
+                token_hash TEXT NOT NULL UNIQUE,
+                scopes TEXT NOT NULL,
+                allowed_slugs TEXT NOT NULL DEFAULT '[]',
+                created_at TEXT NOT NULL,
+                last_used_at TEXT NOT NULL DEFAULT '',
+                expires_at TEXT NOT NULL DEFAULT ''
+            )
+        """)
+        conn.exec_driver_sql("CREATE INDEX IF NOT EXISTS ix_api_tokens_hash ON api_tokens (token_hash)")
         conn.commit()
 
 
