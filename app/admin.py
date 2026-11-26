@@ -1,20 +1,16 @@
 import json
-import re
-import secrets
 import shutil
-from datetime import UTC, datetime
 from typing import Annotated, Any
-from urllib.parse import quote, urlparse
+from urllib.parse import quote
 
 from fastapi import APIRouter, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import RedirectResponse
 from pydantic import BaseModel
 from starlette.concurrency import run_in_threadpool
 
-from app import stats, store, submissions
-from app.auth import csrf_for, hash_project_password, read_session
-from app.deps import AdminConfig, DbSession, api_error, get_config
-from app.extensions.base import TargetType, capabilities_for_target
+from app import project_service, stats, store, submissions
+from app.auth import csrf_for, read_session
+from app.deps import AdminConfig, DbSession, ServiceError, api_error, get_config
 from app.extensions.inheritance import (
     VALID_MODES,
     load_site_extensions,
@@ -36,7 +32,6 @@ from app.extensions.registry import (
     build_editor_bundle,
     build_project_admin_catalog,
     build_site_admin_catalog,
-    merge_content_extension_secrets,
     redact_content_extensions,
     referenced_media_urls,
     resolved_catalog_item,
@@ -47,27 +42,36 @@ from app.models import Project
 from app.og import fetch_image, fetch_og
 from app.plugins import registry
 from app.plugins.base import InvalidContent
+from app.plugins.blog.plugin import _slug as normalize_post_slug
 from app.plugins.blog.plugin import validate_content as blog_content
-from app.plugins.bottle.plugin import validate_content as bottle_content
-from app.plugins.resume.plugin import validate_content as resume_content
-from app.plugins.space import validate_space_content
-from app.surface import Capability
+from app.project_service import (
+    _SLUG_RE,
+    COVER_LIMIT,
+    touch,
+)
+from app.project_service import (
+    _parse_raw_content as _parse_project_content,
+)
+from app.project_service import (
+    capabilities_of as _capabilities_of,
+)
+from app.project_service import (
+    cleanup_unreferenced_media as _cleanup_unreferenced_media,
+)
+from app.project_service import (
+    project_dict_redacted as _project_dict_redacted,
+)
 from app.templating import templates
 from app.uploads import (
     InvalidUpload,
-    delete_project_media_url,
     extract_site,
-    make_cover,
     remove_tree,
-    save_cover,
     save_project_media,
 )
 
 router = APIRouter()
 
-COVER_LIMIT = 10 * 1024 * 1024
 PACK_UPLOAD_LIMIT = 10 * 1024 * 1024
-_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 
 
 class LinkPayload(BaseModel):
@@ -138,58 +142,7 @@ class SubmissionBanPayload(BaseModel):
     ip_hash: str
 
 
-def _target_of(project: Project) -> TargetType | None:
-    if project.type == "blog":
-        return "blog"
-    if project.type == "space":
-        return "space"
-    if project.type == "resume":
-        return "resume"
-    return None
-
-
-def _capabilities_of(project: Project) -> frozenset[Capability] | None:
-    plugin = registry.get(project.type)
-    if plugin is None:
-        return None
-    caps = getattr(plugin, "capabilities", None)
-    if isinstance(caps, frozenset):
-        return caps
-    target = _target_of(project)
-    return capabilities_for_target(target) if target is not None else None
-
-
-def _parse_project_content(project: Project, config, *, strict: bool = False) -> dict[str, Any]:
-    if project.type == "blog":
-        return blog_content(project.content, strict=strict, project_slug=project.slug, config=config)
-    if project.type == "space":
-        return validate_space_content(
-            project.content,
-            strict=strict,
-            project_slug=project.slug,
-            config=config,
-        )
-    if project.type == "resume":
-        return resume_content(project.content, strict=strict, project_slug=project.slug, config=config)
-    if project.type == "bottle":
-        return bottle_content(project.content, strict=strict, project_slug=project.slug, config=config)
-    return {}
-
-
-def _project_dict_redacted(project: Project, config) -> dict[str, Any]:
-    data = project.as_dict()
-    caps = _capabilities_of(project)
-    if caps is None or not project.content:
-        return data
-    try:
-        parsed = json.loads(project.content)
-    except (TypeError, ValueError):
-        return data
-    if not isinstance(parsed, dict) or "extensions" not in parsed:
-        return data
-    redacted = redact_content_extensions(parsed, capabilities=caps, config=config)
-    data["content"] = json.dumps(redacted, ensure_ascii=False)
-    return data
+hostname_of = project_service.hostname_of
 
 
 def _get_extensible_project(db, project_id: int):
@@ -214,16 +167,6 @@ def _get_project_and_extension(db, config, project_id: int, ext_id: str):
     return project, ext, None
 
 
-def _cleanup_unreferenced_media(
-    config,
-    project_slug: str,
-    old_media: set[str],
-    new_media: set[str],
-) -> None:
-    for stale_url in old_media - new_media:
-        delete_project_media_url(config, project_slug, stale_url)
-
-
 def _install_pack_url_sync(config, url: str):
     pack = install_pack_from_url(config, url)
     return pack, list_packs(config)
@@ -239,26 +182,11 @@ def _sync_pack_sync(config, pack_id: str):
     return pack, list_packs(config)
 
 
-def hostname_of(url: str) -> str:
-    return (urlparse(url).hostname or "").replace("www.", "")
-
-
-def touch(project: Project) -> None:
-    project.updated_at = datetime.now(UTC).isoformat()
-
-
 def resolve_parent(db, parent_id: int | None):
-    if parent_id is None:
-        return None, None
-    parent = store.by_id(db, parent_id)
-    if parent is None:
-        return None, api_error("父级不存在", 404)
-    plugin = registry.get(parent.type)
-    if plugin is None or plugin.leaf:
-        return None, api_error("只有可包含子项的应用可以嵌套")
-    if store.depth(db, parent) >= 3:
-        return None, api_error("已达最大嵌套深度（3 层）")
-    return parent, None
+    try:
+        return project_service.resolve_parent_by_id(db, parent_id), None
+    except ServiceError as exc:
+        return None, api_error(exc.message, exc.status_code)
 
 
 def app_choices() -> list[dict]:
@@ -379,54 +307,25 @@ def save_blog_post(
     project = store.by_id(db, project_id)
     if project is None or project.type != "blog":
         return api_error("博客不存在", 404)
-    content = blog_content(project.content, project_slug=project.slug, config=config)
-    old_media = referenced_media_urls(content, target="blog", config=config)
-    posts = content["posts"]
-    index = next((i for i, post in enumerate(posts) if post["slug"] == post_slug), None)
-    if post_slug is not None and index is None:
-        return api_error("文章不存在，请返回文章列表", 404)
-    candidate = dict(payload)
-    if index is None:
-        posts.append(candidate)
-    else:
-        existing_meta = posts[index].get("meta")
-        if isinstance(existing_meta, dict):
-            incoming_meta = candidate.get("meta")
-            if incoming_meta is None:
-                candidate["meta"] = dict(existing_meta)
-            elif isinstance(incoming_meta, dict):
-                merged_meta = dict(existing_meta)
-                for key, value in incoming_meta.items():
-                    if value == "" or value is None:
-                        merged_meta.pop(key, None)
-                    else:
-                        merged_meta[key] = value
-                candidate["meta"] = merged_meta
-        posts[index] = candidate
     try:
-        validated = blog_content(
-            json.dumps(content, ensure_ascii=False),
-            strict=True,
-            project_slug=project.slug,
-            config=config,
-        )
-        saved = blog_content(
-            json.dumps({"posts": [candidate]}, ensure_ascii=False),
-            strict=True,
-            project_slug=project.slug,
-            config=config,
-        )["posts"][0]
-    except InvalidContent as exc:
-        return api_error(str(exc), 422)
-    project.content = json.dumps(validated, ensure_ascii=False)
-    touch(project)
-    db.commit()
-    _cleanup_unreferenced_media(
-        config,
-        project.slug,
-        old_media,
-        referenced_media_urls(validated, target="blog", config=config),
-    )
+        if post_slug is None:
+            saved = project_service.create_blog_post(db, config, project, payload)
+        else:
+            new_slug: str | None = None
+            if "slug" in payload and payload["slug"] is not None:
+                raw_slug = str(payload["slug"]).strip()
+                if raw_slug:
+                    new_slug = raw_slug
+                else:
+                    fallback = normalize_post_slug(payload.get("title"))
+                    if fallback:
+                        new_slug = fallback
+            saved = project_service.patch_blog_post(
+                db, config, project, post_slug, payload, new_slug=new_slug
+            )
+    except ServiceError as exc:
+        status_code = 422 if exc.code == "post_slug_exists" else exc.status_code
+        return api_error(exc.message, status_code)
     return {"ok": True, "post": saved}
 
 
@@ -435,20 +334,10 @@ def delete_blog_post(project_id: int, post_slug: str, config: AdminConfig, db: D
     project = store.by_id(db, project_id)
     if project is None or project.type != "blog":
         return api_error("博客不存在", 404)
-    content = blog_content(project.content, project_slug=project.slug, config=config)
-    old_media = referenced_media_urls(content, target="blog", config=config)
-    if not any(post["slug"] == post_slug for post in content["posts"]):
-        return api_error("文章不存在，请返回文章列表", 404)
-    content["posts"] = [post for post in content["posts"] if post["slug"] != post_slug]
-    project.content = json.dumps(content, ensure_ascii=False)
-    touch(project)
-    db.commit()
-    _cleanup_unreferenced_media(
-        config,
-        project.slug,
-        old_media,
-        referenced_media_urls(content, target="blog", config=config),
-    )
+    try:
+        project_service.delete_blog_post(db, config, project, post_slug)
+    except ServiceError as exc:
+        return api_error(exc.message, exc.status_code)
     return {"ok": True}
 
 
@@ -965,25 +854,16 @@ async def deploy_project(
 
 @router.post("/api/admin/projects/app")
 def create_app(payload: AppPayload, _auth: AdminConfig, db: DbSession):
-    plugin = registry.get(payload.type)
-    if plugin is None:
-        return api_error("不支持的应用类型")
-    parent, error = resolve_parent(db, payload.parent_id)
-    if error is not None:
-        return error
-    title = (payload.title.strip() or plugin.label)[:200]
-    content = json.dumps(plugin.default_content(), ensure_ascii=False)
-    project = Project(
-        slug=store.unique_slug(db, title),
-        type=payload.type,
-        parent_id=parent.id if parent else None,
-        title=title,
-        description=payload.description.strip()[:500],
-        content=content,
-        sort_order=store.next_sort_order(db, parent.id if parent else None),
-    )
-    db.add(project)
-    db.commit()
+    try:
+        project = project_service.create_app_project(
+            db,
+            app_type=payload.type,
+            title=payload.title,
+            description=payload.description,
+            parent_id=payload.parent_id,
+        )
+    except ServiceError as exc:
+        return api_error(exc.message, exc.status_code)
     return {"ok": True, "project": project.as_dict()}
 
 
@@ -1050,32 +930,19 @@ async def upload_project(
 
 @router.post("/api/admin/projects/link")
 def add_link(payload: LinkPayload, config: AdminConfig, db: DbSession):
-    if not payload.url.lower().startswith(("http://", "https://")):
-        return api_error("链接必须以 http:// 或 https:// 开头")
-    parent, error = resolve_parent(db, payload.parent_id)
-    if error is not None:
-        return error
-    og = fetch_og(payload.url)
-    title = payload.title or (og.title if og else "") or hostname_of(payload.url) or "未命名作品"
-    description = payload.description or (og.description if og else "")
-    slug = store.unique_slug(db, title)
-    cover = ""
-    if og is not None and og.image_url:
-        raw = fetch_image(og.image_url)
-        if raw is not None:
-            cover = save_cover(config, raw, slug)
-    project = Project(
-        slug=slug,
-        type="link",
-        parent_id=parent.id if parent else None,
-        title=title[:200],
-        description=description[:500],
-        url=payload.url,
-        cover=cover,
-        sort_order=store.next_sort_order(db, parent.id if parent else None),
-    )
-    db.add(project)
-    db.commit()
+    try:
+        project = project_service.create_link_project(
+            db,
+            config,
+            url=payload.url,
+            title=payload.title,
+            description=payload.description,
+            parent_id=payload.parent_id,
+            fetch_og_fn=fetch_og,
+            fetch_image_fn=fetch_image,
+        )
+    except ServiceError as exc:
+        return api_error(exc.message, exc.status_code)
     return {"ok": True, "project": project.as_dict()}
 
 
@@ -1086,132 +953,85 @@ def patch_project(
     config: AdminConfig,
     db: DbSession,
 ):
-    project = store.by_id(db, project_id)
-    if project is None:
-        return api_error("作品不存在", 404)
-    updates = payload.model_dump(exclude_none=True)
-    url = updates.get("url")
-    if url is not None and not url.lower().startswith(("http://", "https://")):
+    try:
+        project = project_service.get_project_by_id(db, project_id)
+    except ServiceError as exc:
+        return api_error(exc.message, exc.status_code)
+
+    if payload.url is not None and not payload.url.lower().startswith(("http://", "https://")):
         return api_error("链接必须以 http:// 或 https:// 开头")
-    old_ext_media: set[str] | None = None
-    ext_caps = _capabilities_of(project)
-    content = updates.pop("content", None)
-    if content is not None:
-        plugin = registry.get(project.type)
+
+    incoming_content: dict[str, Any] | None = None
+    plugin = registry.get(project.type)
+    if payload.content is not None:
         if plugin is None or not plugin.content_editable:
             return api_error("该类型不支持内容编辑")
-        try:
-            if project.type in ("blog", "resume", "bottle"):
-                existing_parsed = _parse_project_content(project, config)
-                old_ext_media = referenced_media_urls(
-                    existing_parsed,
-                    capabilities=ext_caps,
-                    config=config,
-                )
-                try:
-                    incoming_parsed = json.loads(content or "{}")
-                except json.JSONDecodeError as exc:
-                    if project.type == "blog":
-                        msg = "博客内容不是合法 JSON"
-                    elif project.type == "resume":
-                        msg = "简历内容不是合法 JSON"
-                    else:
-                        msg = "漂流瓶配置不是合法 JSON"
-                    raise InvalidContent(msg) from exc
-                if not isinstance(incoming_parsed, dict):
-                    if project.type == "blog":
-                        msg = "博客内容必须是 JSON 对象"
-                    elif project.type == "resume":
-                        msg = "简历内容必须是 JSON 对象"
-                    else:
-                        msg = "漂流瓶配置必须是 JSON 对象"
-                    raise InvalidContent(msg)
-                if "extensions" not in incoming_parsed:
-                    if existing_parsed.get("extensions"):
-                        incoming_parsed["extensions"] = existing_parsed["extensions"]
-                else:
-                    incoming_parsed = merge_content_extension_secrets(
-                        existing_parsed,
-                        incoming_parsed,
-                        capabilities=ext_caps,
-                        config=config,
-                    )
-                if project.type == "resume":
-                    existing_basics = existing_parsed.get("basics")
-                    existing_image = existing_basics.get("image") if isinstance(existing_basics, dict) else ""
-                    if isinstance(existing_image, str) and existing_image:
-                        incoming_basics = incoming_parsed.get("basics")
-                        if isinstance(incoming_basics, dict) and "image" not in incoming_basics:
-                            incoming_basics["image"] = existing_image
-                merged_raw = json.dumps(incoming_parsed, ensure_ascii=False)
+        if project.type in ("blog", "resume", "bottle"):
+            try:
+                parsed_incoming = json.loads(payload.content or "{}")
+            except json.JSONDecodeError:
                 if project.type == "blog":
-                    validated = blog_content(
-                        merged_raw,
-                        strict=True,
-                        project_slug=project.slug,
-                        config=config,
-                    )
+                    msg = "博客内容不是合法 JSON"
                 elif project.type == "resume":
-                    validated = resume_content(
-                        merged_raw,
-                        strict=True,
-                        project_slug=project.slug,
-                        config=config,
-                    )
+                    msg = "简历内容不是合法 JSON"
                 else:
-                    validated = bottle_content(
-                        merged_raw,
-                        strict=True,
-                        project_slug=project.slug,
-                        config=config,
-                    )
-            else:
-                validated = plugin.validate_content(content)
-        except InvalidContent as exc:
-            return api_error(str(exc), 422)
-        project.content = json.dumps(validated, ensure_ascii=False)
-    if project.type == "blog" and ("title" in updates or "description" in updates):
-        blog = blog_content(project.content, project_slug=project.slug, config=config)
-        for field, limit in (("title", 200), ("description", 500)):
-            if field in updates:
-                value = updates[field].strip()[:limit]
-                if field == "title" and not value:
-                    return api_error("标题不能为空", 422)
-                updates[field] = value
-                blog[field] = value
-        project.content = json.dumps(blog, ensure_ascii=False)
-    theme = updates.pop("theme", None)
-    if theme is not None:
-        if project.type != "space":
-            return api_error("只有空间支持主题配置")
-        existing_space = validate_space_content(project.content, project_slug=project.slug, config=config)
-        merged_space = dict(theme) if isinstance(theme, dict) else {}
-        if existing_space.get("extensions") and "extensions" not in merged_space:
-            merged_space["extensions"] = existing_space["extensions"]
-        validated_theme = validate_space_content(
-            merged_space,
-            project_slug=project.slug,
-            config=config,
+                    msg = "漂流瓶配置不是合法 JSON"
+                return api_error(msg, 422)
+            if not isinstance(parsed_incoming, dict):
+                if project.type == "blog":
+                    msg = "博客内容必须是 JSON 对象"
+                elif project.type == "resume":
+                    msg = "简历内容必须是 JSON 对象"
+                else:
+                    msg = "漂流瓶配置必须是 JSON 对象"
+                return api_error(msg, 422)
+            incoming_content = parsed_incoming
+
+    if payload.theme is not None and project.type != "space":
+        return api_error("只有空间支持主题配置")
+
+    if payload.title is not None and not payload.title.strip():
+        return api_error("标题不能为空", 422)
+
+    try:
+        if payload.content is not None:
+            if incoming_content is not None:
+                project_service.patch_project_content(db, config, project, incoming_content, merge=False)
+            elif plugin is not None:
+                validated = plugin.validate_content(payload.content)
+                project.content = json.dumps(validated, ensure_ascii=False)
+                touch(project)
+                db.commit()
+        if payload.theme is not None:
+            theme_dict = dict(payload.theme) if isinstance(payload.theme, dict) else {}
+            project_service.patch_project_content(db, config, project, theme_dict, merge=False)
+        has_meta = any(
+            val is not None
+            for val in (
+                payload.title,
+                payload.description,
+                payload.url,
+                payload.visible,
+                payload.pinned,
+                payload.password,
+            )
         )
-        project.content = json.dumps(validated_theme, ensure_ascii=False)
-    password = updates.pop("password", None)
-    if password is not None:
-        p_clean = password.strip()
-        if p_clean in ("", "none", "clear"):
-            project.password_hash = None
-        else:
-            project.password_hash = hash_project_password(p_clean)
-    for field, value in updates.items():
-        setattr(project, field, value)
-    touch(project)
-    db.commit()
-    if old_ext_media is not None and ext_caps is not None:
-        new_ext_media = referenced_media_urls(
-            _parse_project_content(project, config),
-            capabilities=ext_caps,
-            config=config,
-        )
-        _cleanup_unreferenced_media(config, project.slug, old_ext_media, new_ext_media)
+        if has_meta or (payload.content is None and payload.theme is None):
+            project_service.patch_project_meta(
+                db,
+                config,
+                project,
+                title=payload.title,
+                description=payload.description,
+                url=payload.url,
+                visible=payload.visible,
+                pinned=payload.pinned,
+                password=payload.password,
+            )
+    except ServiceError as exc:
+        return api_error(exc.message, exc.status_code)
+    except InvalidContent as exc:
+        return api_error(str(exc), 422)
     return {"ok": True, "project": _project_dict_redacted(project, config)}
 
 
@@ -1247,38 +1067,21 @@ async def upload_cover(
 
 
 def _replace_cover(project_id: int, raw: bytes, config, db):
-    project = store.by_id(db, project_id)
-    if project is None:
-        return api_error("作品不存在", 404)
-    filename = f"{project.slug}-{secrets.token_hex(6)}.webp"
-    destination = config.data / "media" / "covers" / filename
-    destination.parent.mkdir(parents=True, exist_ok=True)
     try:
-        make_cover(raw, destination)
-    except InvalidUpload as exc:
-        return api_error(str(exc), 422)
-    old_name = project.cover
-    project.cover = filename
-    touch(project)
-    db.commit()
-    if old_name and old_name != filename:
-        old_path = config.data / "media" / "covers" / old_name
-        if old_path.exists():
-            old_path.unlink()
+        project = project_service.get_project_by_id(db, project_id)
+        project = project_service.replace_cover(db, config, project, raw)
+    except ServiceError as exc:
+        return api_error(exc.message, exc.status_code)
     return {"ok": True, "project": project.as_dict()}
 
 
 @router.delete("/api/admin/projects/{project_id}/cover")
 def delete_cover(project_id: int, config: AdminConfig, db: DbSession):
-    project = store.by_id(db, project_id)
-    if project is None:
-        return api_error("作品不存在", 404)
-    old_name = project.cover
-    project.cover = ""
-    touch(project)
-    db.commit()
-    if old_name:
-        (config.data / "media" / "covers" / old_name).unlink(missing_ok=True)
+    try:
+        project = project_service.get_project_by_id(db, project_id)
+        project = project_service.remove_cover(db, config, project)
+    except ServiceError as exc:
+        return api_error(exc.message, exc.status_code)
     return {"ok": True, "project": project.as_dict()}
 
 
@@ -1420,17 +1223,9 @@ def unban_project_submission_ip(
 
 @router.delete("/api/admin/projects/{project_id}")
 def delete_project(project_id: int, _auth: AdminConfig, db: DbSession):
-    project = store.by_id(db, project_id)
-    if project is None:
-        return api_error("作品不存在", 404)
-    config = _auth
-    rows = [*reversed(store.descendants(db, project)), project]
-    project_ids = [row.id for row in rows]
-    store.delete_stats(db, project_ids)
-    submissions.delete_project_submissions(db, project_ids, commit=False)
-    for row in rows:
-        store.delete_files(config, row)
-        db.delete(row)
-        db.flush()
-    db.commit()
+    try:
+        project = project_service.get_project_by_id(db, project_id)
+        project_service.delete_project_cascade(db, _auth, project)
+    except ServiceError as exc:
+        return api_error(exc.message, exc.status_code)
     return {"ok": True}
