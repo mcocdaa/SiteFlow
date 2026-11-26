@@ -751,7 +751,20 @@
     if (!raw || typeof raw !== "string") return false;
     var cleaned = raw.trim();
     if (/[\x00-\x20\x7f]/.test(cleaned)) return false;
-    return cleaned.indexOf("https://") === 0 || cleaned.indexOf("http://") === 0;
+    return /^https?:\/\/[^/\\]/i.test(cleaned);
+  }
+
+  function isSafeRelativeUrl(raw) {
+    if (!raw || typeof raw !== "string") return false;
+    var cleaned = raw.trim();
+    if (!cleaned || /[\x00-\x20\x7f\\]/.test(cleaned)) return false;
+    if (cleaned.charAt(0) === "/") {
+      return cleaned.indexOf("//") !== 0;
+    }
+    if (cleaned.charAt(0) === "#") {
+      return cleaned.length > 1;
+    }
+    return false;
   }
 
   function appendInlineMarkdown(parent, text, depth) {
@@ -805,11 +818,15 @@
             var linkUrl = text.slice(closeBracket + 2, closeParen).trim();
             if (linkLabel.indexOf("\n") === -1 && linkUrl.indexOf("\n") === -1) {
               flushPlain();
-              if (isSafeHttpUrl(linkUrl)) {
+              var isHttpLink = isSafeHttpUrl(linkUrl);
+              var isRelativeLink = !isHttpLink && isSafeRelativeUrl(linkUrl);
+              if (isHttpLink || isRelativeLink) {
                 var aEl = document.createElement("a");
                 aEl.href = linkUrl;
-                aEl.target = "_blank";
-                aEl.rel = "noopener noreferrer";
+                if (isHttpLink) {
+                  aEl.target = "_blank";
+                  aEl.rel = "noopener noreferrer";
+                }
                 if (lvl < 4) appendInlineMarkdown(aEl, linkLabel, lvl + 1);
                 else aEl.textContent = linkLabel;
                 parent.appendChild(aEl);

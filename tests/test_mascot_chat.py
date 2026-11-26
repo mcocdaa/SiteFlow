@@ -771,6 +771,7 @@ def test_mascot_chat_list_pages_serialize_surface_items_and_preserve_boundaries(
 ) -> None:
     secret_key = "sk-list-surface-secret"
     locked_external_url = "https://secret.example.com/private"
+    public_external_url = "https://open.example.com/guide"
     with TestClient(app) as admin_client, TestClient(app) as guest_client:
         csrf = login(admin_client)
         blog = create_app(admin_client, csrf, "blog", "博客").json()["project"]
@@ -911,6 +912,16 @@ def test_mascot_chat_list_pages_serialize_surface_items_and_preserve_boundaries(
             ).status_code
             == 200
         )
+        unlocked_link = admin_client.post(
+            "/api/admin/projects/link",
+            json={
+                "url": public_external_url,
+                "title": "公开外链文档",
+                "description": "公开外部参考文档",
+                "parent_id": space["id"],
+            },
+            headers=auth_headers(csrf),
+        ).json()["project"]
         assert (
             admin_client.post(
                 f"/api/admin/projects/{space['id']}/extensions/mascot/install",
@@ -936,10 +947,17 @@ def test_mascot_chat_list_pages_serialize_surface_items_and_preserve_boundaries(
         )
         assert space_resp.status_code == 200
         sys_space = captured_space[0]["json"]["system"]
-        assert "页面条目（共 2 项）：" in sys_space
+        assert "页面条目（共 3 项）：" in sys_space
         assert "公开博客作品" in sys_space
         assert "深入浅出讲清楚架构" in sys_space
         assert f"/projects/{visible_child['slug']}/" in sys_space
+        assert "公开外链文档" in sys_space
+        assert "公开外部参考文档" in sys_space
+        assert f"链接：{public_external_url}" in sys_space
+        assert f"/projects/{unlocked_link['slug']}/" not in sys_space
+        assert (
+            guest_client.get(f"/projects/{unlocked_link['slug']}/", follow_redirects=False).status_code == 404
+        )
         assert "加锁外链入口" in sys_space
         assert "需要密码的外链简介" in sys_space
         assert f"/projects/{locked_link['slug']}/" in sys_space

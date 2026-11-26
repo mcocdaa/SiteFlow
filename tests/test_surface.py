@@ -57,6 +57,57 @@ def test_space_surface() -> None:
             assert surface.context(audience)["title"] == "主空间"
 
 
+def test_space_surface_external_link_urls() -> None:
+    public_external_url = "https://open.example.com/docs"
+    locked_external_url = "https://secret.example.com/vault"
+    with TestClient(app) as client:
+        csrf = login(client)
+        space = create_app(client, csrf, "space", "外链测试空间").json()["project"]
+        unlocked_resp = client.post(
+            "/api/admin/projects/link",
+            json={
+                "url": public_external_url,
+                "title": "公开外链文档",
+                "description": "公开外部地址",
+                "parent_id": space["id"],
+            },
+            headers=auth_headers(csrf),
+        )
+        assert unlocked_resp.status_code == 200, unlocked_resp.text
+        unlocked_link = unlocked_resp.json()["project"]
+
+        locked_resp = client.post(
+            "/api/admin/projects/link",
+            json={
+                "url": locked_external_url,
+                "title": "加锁外链入口",
+                "description": "受密码保护的外链",
+                "parent_id": space["id"],
+            },
+            headers=auth_headers(csrf),
+        )
+        assert locked_resp.status_code == 200, locked_resp.text
+        locked_link = locked_resp.json()["project"]
+        assert (
+            client.patch(
+                f"/api/admin/projects/{locked_link['id']}",
+                json={"password": "LinkPass99"},
+                headers=auth_headers(csrf),
+            ).status_code
+            == 200
+        )
+
+        assert client.get(f"/projects/{unlocked_link['slug']}/", follow_redirects=False).status_code == 404
+
+        surface = _surface(space["id"])
+        for audience in ("visitor", "ai", "plugin"):
+            items_by_key = {item.key: item for item in surface.items(audience)}
+            assert items_by_key[unlocked_link["slug"]].url == public_external_url
+            assert items_by_key[locked_link["slug"]].url == f"/projects/{locked_link['slug']}/"
+            assert all(locked_external_url not in item.url for item in surface.items(audience))
+            assert locked_external_url not in json.dumps(surface.context(audience), ensure_ascii=False)
+
+
 def test_blog_surface_post_context() -> None:
     with TestClient(app) as client:
         csrf = login(client)

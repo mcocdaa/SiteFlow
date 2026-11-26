@@ -1,8 +1,10 @@
 import io
 import json
 import re
+import subprocess
 import xml.etree.ElementTree as ET
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
@@ -776,3 +778,197 @@ def test_mascot_default_copy_is_scope_neutral() -> None:
     assert any("有什么想了解的可以问我" in line for line in DEFAULT_TIPS)
     ext = MascotExtension()
     assert ext.normalize_config({"tips": list(_LEGACY_V4_DEFAULT_TIPS)}, strict=False)["tips"] == DEFAULT_TIPS
+
+
+def test_mascot_markdown_link_rendering_allows_safe_internal_and_blocks_unsafe() -> None:
+    js_source = (APP_DIR / "static" / "js" / "blog_ext_mascot.js").read_text(encoding="utf-8")
+    start_idx = js_source.index("  function isSafeHttpUrl(")
+    render_idx = js_source.index("  function renderMarkdownToDom(", start_idx)
+    end_idx = js_source.index("\n  }", render_idx) + len("\n  }")
+    snippet = js_source[start_idx:end_idx]
+    assert "function isSafeRelativeUrl(" in snippet
+    assert "function appendInlineMarkdown(" in snippet
+
+    allowed_cases: list[dict[str, Any]] = [
+        {
+            "md": "[零信任文章](/projects/my-blog/posts/zero-trust)",
+            "href": "/projects/my-blog/posts/zero-trust",
+            "text": "零信任文章",
+            "target": None,
+            "rel": None,
+            "child_tags": [],
+        },
+        {
+            "md": "[中文路径](/projects/my-blog/posts/零信任)",
+            "href": "/projects/my-blog/posts/零信任",
+            "text": "中文路径",
+            "target": None,
+            "rel": None,
+            "child_tags": [],
+        },
+        {
+            "md": "[空间作品](/projects/demo-app/)",
+            "href": "/projects/demo-app/",
+            "text": "空间作品",
+            "target": None,
+            "rel": None,
+            "child_tags": [],
+        },
+        {
+            "md": "[简历经历](/projects/my-resume/#work)",
+            "href": "/projects/my-resume/#work",
+            "text": "简历经历",
+            "target": None,
+            "rel": None,
+            "child_tags": [],
+        },
+        {
+            "md": "[工作经历](#work)",
+            "href": "#work",
+            "text": "工作经历",
+            "target": None,
+            "rel": None,
+            "child_tags": [],
+        },
+        {
+            "md": "[**加粗站内**](/projects/demo/)",
+            "href": "/projects/demo/",
+            "text": "加粗站内",
+            "target": None,
+            "rel": None,
+            "child_tags": ["strong"],
+        },
+        {
+            "md": "[官网文档](https://example.com/docs)",
+            "href": "https://example.com/docs",
+            "text": "官网文档",
+            "target": "_blank",
+            "rel": "noopener noreferrer",
+            "child_tags": [],
+        },
+        {
+            "md": "[维基](https://en.wikipedia.org/wiki/Foo_(bar))",
+            "href": "https://en.wikipedia.org/wiki/Foo_(bar)",
+            "text": "维基",
+            "target": "_blank",
+            "rel": "noopener noreferrer",
+            "child_tags": [],
+        },
+    ]
+    blocked_cases: list[tuple[str, str]] = [
+        ("危险协议", "javascript:alert(1)"),
+        ("数据协议", "data:text/html,<script>alert(1)</script>"),
+        ("协议相对", "//evil.com/phish"),
+        ("三斜杠路径", "///evil.com/phish"),
+        ("反斜杠路径", r"/\evil.com/phish"),
+        ("空锚点", "#"),
+        ("空主机协议", "https://"),
+        ("三斜杠协议", "https:///evil"),
+        ("含空格路径", "/projects/a b"),
+        ("无前导斜杠", "posts/foo"),
+    ]
+
+    runner_js = """
+const fs = require("fs");
+const vm = require("vm");
+const payload = JSON.parse(fs.readFileSync(0, "utf8"));
+function createText(text) {
+  return { nodeType: 3, tagName: "", children: [], _text: String(text) };
+}
+function createNode(type, tag) {
+  const node = {
+    nodeType: type,
+    tagName: tag ? String(tag).toLowerCase() : "",
+    children: [],
+    dataset: {},
+    _text: "",
+    appendChild(child) {
+      if (child.nodeType === 11) {
+        for (const item of child.children) {
+          this.children.push(item);
+        }
+        child.children = [];
+      } else {
+        this.children.push(child);
+      }
+      return child;
+    }
+  };
+  Object.defineProperty(node, "textContent", {
+    get() {
+      if (this.nodeType === 3) return this._text;
+      return this.children.map((c) => (c.nodeType === 3 ? c._text : c.textContent)).join("");
+    },
+    set(val) {
+      const str = String(val);
+      this._text = str;
+      this.children = [];
+      if (this.nodeType !== 3 && str) {
+        this.children.push(createText(str));
+      }
+    }
+  });
+  return node;
+}
+const mockDocument = {
+  createElement(tag) { return createNode(1, tag); },
+  createTextNode(text) { return createText(text); },
+  createDocumentFragment() { return createNode(11, ""); }
+};
+const sandbox = { document: mockDocument };
+vm.runInNewContext(payload.snippet, sandbox);
+function collectAnchors(root) {
+  const found = [];
+  function walk(node) {
+    if (node.nodeType === 1 && node.tagName === "a") {
+      found.push({
+        href: Object.prototype.hasOwnProperty.call(node, "href") ? node.href : null,
+        target: Object.prototype.hasOwnProperty.call(node, "target") ? node.target : null,
+        rel: Object.prototype.hasOwnProperty.call(node, "rel") ? node.rel : null,
+        text: node.textContent,
+        child_tags: node.children.filter((c) => c.nodeType === 1).map((c) => c.tagName)
+      });
+    }
+    for (const child of node.children || []) {
+      walk(child);
+    }
+  }
+  walk(root);
+  return found;
+}
+const results = payload.markdowns.map((md) => {
+  const container = mockDocument.createElement("div");
+  sandbox.renderMarkdownToDom(container, md);
+  return { text: container.textContent, anchors: collectAnchors(container) };
+});
+process.stdout.write(JSON.stringify(results));
+"""
+
+    markdowns = [str(item["md"]) for item in allowed_cases] + [
+        f"[{label}]({url})" for label, url in blocked_cases
+    ]
+    proc = subprocess.run(
+        ["node", "-e", runner_js],
+        input=json.dumps({"snippet": snippet, "markdowns": markdowns}),
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    rendered: list[dict[str, Any]] = json.loads(proc.stdout)
+    assert len(rendered) == len(markdowns)
+
+    for idx, expected in enumerate(allowed_cases):
+        anchors = rendered[idx]["anchors"]
+        assert len(anchors) == 1, expected["md"]
+        anchor = anchors[0]
+        assert anchor["href"] == expected["href"]
+        assert anchor["text"] == expected["text"]
+        assert anchor["target"] == expected["target"]
+        assert anchor["rel"] == expected["rel"]
+        assert anchor["child_tags"] == expected["child_tags"]
+
+    offset = len(allowed_cases)
+    for idx, (label, url) in enumerate(blocked_cases):
+        entry = rendered[offset + idx]
+        assert entry["anchors"] == [], url
+        assert entry["text"] == label, url
