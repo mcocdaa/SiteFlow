@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 from markupsafe import Markup
@@ -38,6 +39,7 @@ from app.surface import Capability
 from app.templating import static_url
 
 _builtins: dict[str, Extension] = {}
+_BODY_BLOG_MEDIA_URL_RE = re.compile(r"/media/blog/[a-z0-9][a-z0-9_-]{0,63}/[a-z0-9][a-z0-9_-]{0,63}\.webp")
 
 
 def _matches_scope(
@@ -586,11 +588,16 @@ def referenced_media_urls(
     posts = content.get("posts")
     if isinstance(posts, list):
         for post in posts:
-            meta = post.get("meta") if isinstance(post, dict) else None
+            if not isinstance(post, dict):
+                continue
+            meta = post.get("meta")
             if isinstance(meta, dict):
                 for value in meta.values():
                     if isinstance(value, str) and value.startswith(("/media/blog/", "/media/ext/")):
                         urls.add(value)
+            body = post.get("body")
+            if isinstance(body, str) and "/media/blog/" in body:
+                urls.update(_BODY_BLOG_MEDIA_URL_RE.findall(body))
     raw_ext = content.get("extensions")
     if isinstance(raw_ext, dict):
         for ext in all_extensions(target=target, capabilities=capabilities, config=config):

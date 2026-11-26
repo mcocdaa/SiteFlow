@@ -648,8 +648,8 @@ def save_cover(config: Config, raw: bytes, slug: str) -> str:
     return destination.name
 
 
-BLOG_MEDIA_KINDS = {"cover", "bg", "avatar"}
-PROJECT_MEDIA_KINDS = {"cover", "bg", "avatar"}
+BLOG_MEDIA_KINDS = {"cover", "bg", "avatar", "image"}
+PROJECT_MEDIA_KINDS = {"cover", "bg", "avatar", "image"}
 MAX_BLOG_MEDIA_FILES = 500
 _BLOG_SLUG_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
 _PROJECT_MEDIA_URL_RE = re.compile(
