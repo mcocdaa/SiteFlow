@@ -10,6 +10,21 @@ from app.auth import check_csrf, require_admin, require_same_origin, verify_api_
 from app.config import Config
 
 
+class ServiceError(Exception):
+    def __init__(
+        self,
+        message: str,
+        status_code: int = 400,
+        code: str = "bad_request",
+        hint: str = "",
+    ) -> None:
+        super().__init__(message)
+        self.message = message
+        self.status_code = status_code
+        self.code = code
+        self.hint = hint
+
+
 def get_config(request: Request) -> Config:
     return request.app.state.config
 
