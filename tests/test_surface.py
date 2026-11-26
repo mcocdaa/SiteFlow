@@ -9,7 +9,7 @@ from app import store
 from app.main import app
 from app.models import Project
 from app.plugins import registry
-from app.surface import AUDIENCES, CAPABILITIES, StaticSurface, SurfaceMeta, SurfaceProvider
+from app.surface import AUDIENCES, CAPABILITIES, StaticSurface, SurfaceItem, SurfaceMeta, SurfaceProvider
 from tests.test_apps import create_app
 from tests.test_flow import auth_headers, login
 
@@ -62,24 +62,85 @@ def test_blog_surface_post_context() -> None:
         csrf = login(client)
         blog = create_app(client, csrf, "blog", "博客").json()["project"]
         body = "正文" * 2000
+        long_excerpt_body = "第一段用于自动摘录的正文内容。" + "详情" * 120
         _save(
             client,
             csrf,
             blog["id"],
             {
                 "title": "我的博客",
-                "posts": [{"title": "第一篇", "slug": "first", "tags": ["t"], "body": body}],
+                "posts": [
+                    {
+                        "title": "第一篇",
+                        "slug": "first",
+                        "date": "2026-11-24",
+                        "tags": ["t"],
+                        "summary": "手动摘要",
+                        "body": body,
+                    },
+                    {
+                        "title": "无摘要篇",
+                        "slug": "second",
+                        "date": "2026-11-20",
+                        "tags": ["随笔"],
+                        "body": long_excerpt_body,
+                    },
+                ],
             },
         )
         listing = _surface(blog["id"])
         assert listing.capabilities == {"has_content", "has_posts", "has_items", "supports_layout"}
         assert listing.meta.title == "我的博客"
-        assert [item.url for item in listing.items("visitor")] == [f"/projects/{blog['slug']}/posts/first"]
+        assert [item.url for item in listing.items("visitor")] == [
+            f"/projects/{blog['slug']}/posts/first",
+            f"/projects/{blog['slug']}/posts/second",
+        ]
+        assert [item.date for item in listing.items("visitor")] == ["2026-11-24", "2026-11-20"]
+        assert [item.date for item in listing.items("ai")] == ["2026-11-24", "2026-11-20"]
+        assert listing.items("visitor")[1].summary == ""
+        ai_second_summary = listing.items("ai")[1].summary
+        assert ai_second_summary.startswith("第一段用于自动摘录的正文内容。")
+        assert ai_second_summary.endswith("…")
+        assert len(ai_second_summary) <= 160
         assert "post" not in listing.context("ai")
         post = _surface(blog["id"], sub="first")
         assert post.meta.url.endswith("/posts/first")
         assert len(post.context("ai")["post"]["body"]) == 1500
         assert post.context("visitor")["post"]["body"] == body
+
+
+def test_resume_surface_items_respect_ai_visibility() -> None:
+    with TestClient(app) as client:
+        csrf = login(client)
+        resume = create_app(client, csrf, "resume", "隐私简历").json()["project"]
+        _save(
+            client,
+            csrf,
+            resume["id"],
+            {
+                "basics": {"name": "李雷", "email": "lilei@example.com"},
+                "work": [{"name": "星云科技", "position": "架构师", "summary": "负责网关"}],
+                "education": [{"institution": "复旦大学", "area": "软件工程"}],
+                "projects": [{"name": "SiteFlow", "description": "制品画廊"}],
+                "skills": [{"name": "Python", "keywords": ["FastAPI"]}],
+                "ai_visibility": {
+                    "contact": False,
+                    "location": False,
+                    "work": False,
+                    "education": True,
+                    "projects": True,
+                    "skills": False,
+                },
+            },
+        )
+        surface = _surface(resume["id"])
+        assert [item.kind for item in surface.items("visitor")] == ["work", "education", "projects", "skills"]
+        assert [item.kind for item in surface.items("admin")] == ["work", "education", "projects", "skills"]
+        assert [item.kind for item in surface.items("ai")] == ["education", "projects"]
+        assert [item.kind for item in surface.items("plugin")] == ["education", "projects"]
+        ai_titles = [item.title for item in surface.items("ai")]
+        assert "星云科技" not in ai_titles
+        assert "Python" not in ai_titles
 
 
 def test_resume_ai_context_hides_contact() -> None:
@@ -143,6 +204,38 @@ def test_static_surface_plugin_and_ai_audience_fallback() -> None:
     )
     assert visitor_only.context("plugin") == {"k": "v"}
     assert visitor_only.context("ai") == {"k": "v"}
+
+    base_item = SurfaceItem(key="pub", title="公开条目", url="/p/pub")
+    filtered_item = SurfaceItem(key="ai", title="精简条目", url="/p/ai")
+    ai_items_surface = StaticSurface(
+        meta=meta,
+        capabilities=frozenset(),
+        contexts={},
+        item_list=(base_item,),
+        audience_items={"visitor": (base_item,), "ai": (filtered_item,)},
+    )
+    assert ai_items_surface.items("visitor") == (base_item,)
+    assert ai_items_surface.items("admin") == (base_item,)
+    assert ai_items_surface.items("ai") == (filtered_item,)
+    assert ai_items_surface.items("plugin") == (filtered_item,)
+
+    plugin_items_surface = StaticSurface(
+        meta=meta,
+        capabilities=frozenset(),
+        contexts={},
+        audience_items={"visitor": (base_item,), "plugin": (filtered_item,)},
+    )
+    assert plugin_items_surface.items("ai") == (filtered_item,)
+    assert plugin_items_surface.items("plugin") == (filtered_item,)
+
+    fallback_items_surface = StaticSurface(
+        meta=meta,
+        capabilities=frozenset(),
+        contexts={},
+        item_list=(base_item,),
+    )
+    assert fallback_items_surface.items("ai") == (base_item,)
+    assert fallback_items_surface.items("plugin") == (base_item,)
 
 
 def test_resume_plugin_has_no_mascot_coupling() -> None:

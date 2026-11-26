@@ -36,7 +36,7 @@ from app.extensions.mascot import (
 from app.models import Project
 from app.og import validate_public_host
 from app.plugins import registry as plugins_registry
-from app.surface import PageSurface
+from app.surface import PageSurface, SurfaceItem
 
 router = APIRouter()
 
@@ -50,6 +50,9 @@ _MAX_PAGE_CONTEXT_CHARS = 3000
 _MAX_CONTEXT_SCALAR_CHARS = 1500
 _MAX_CONTEXT_LIST_ITEMS = 20
 _MAX_CONTEXT_DEPTH = 4
+_MAX_ITEM_TITLE_CHARS = 120
+_MAX_ITEM_SUMMARY_CHARS = 200
+_MAX_ITEM_TAGS = 6
 _MAX_REPLY_CHARS = 16_000
 _MAX_THINKING_CHARS = 16_000
 _MAX_CHAT_KEYS = 10_000
@@ -330,6 +333,92 @@ def _serialize_mapping(
                 lines.append(f"{prefix}{label}：{scalar}")
 
 
+def _compact_text(value: str) -> str:
+    return " ".join(value.split())
+
+
+def _normalize_item_fields(item: SurfaceItem) -> tuple[str, str, str, list[str], str]:
+    title = _compact_text(item.title)[:_MAX_ITEM_TITLE_CHARS]
+    summary = _compact_text(item.summary)
+    date = _compact_text(item.date)[:40]
+    tags = [t[:24] for raw in item.tags[:_MAX_ITEM_TAGS] if (t := _compact_text(raw))]
+    url = item.url.strip()[:200]
+    return title, summary, date, tags, url
+
+
+def _item_has_new_info(item: SurfaceItem, existing_compact: str, page_url: str) -> bool:
+    title, summary, date, tags, url = _normalize_item_fields(item)
+    if not title:
+        return False
+    base_page = page_url.strip()
+    if base_page and url == base_page and title in existing_compact:
+        return False
+    if title not in existing_compact:
+        return True
+    for val in (summary[:_MAX_ITEM_SUMMARY_CHARS], date, *tags):
+        if val and val not in existing_compact:
+            return True
+    if url:
+        is_same_page_anchor = url.startswith("#") or (
+            bool(base_page) and (url == base_page or url.startswith(f"{base_page}#"))
+        )
+        if not is_same_page_anchor and url not in existing_compact:
+            return True
+    return False
+
+
+def _format_surface_item(item: SurfaceItem) -> list[str]:
+    title, summary, date, tags, url = _normalize_item_fields(item)
+    if not title:
+        return []
+    meta_parts: list[str] = []
+    if date:
+        meta_parts.append(date)
+    if tags:
+        meta_parts.append("标签：" + "、".join(tags))
+    header = f"- {title}（{'｜'.join(meta_parts)}）" if meta_parts else f"- {title}"
+    out = [header]
+    if summary:
+        shown_summary = (
+            summary[: _MAX_ITEM_SUMMARY_CHARS - 1].rstrip() + "…"
+            if len(summary) > _MAX_ITEM_SUMMARY_CHARS
+            else summary
+        )
+        out.append(f"  摘要：{shown_summary}")
+    if url:
+        out.append(f"  链接：{url}")
+    return out
+
+
+def _serialize_surface_items(
+    items: Sequence[SurfaceItem],
+    existing_lines: list[str],
+    page_url: str,
+) -> list[str]:
+    valid_items = [item for item in items if _compact_text(item.title)]
+    if not valid_items:
+        return []
+    total = len(valid_items)
+    existing_compact = _compact_text("\n".join(existing_lines))
+    new_items = [item for item in valid_items if _item_has_new_info(item, existing_compact, page_url)]
+    if not new_items:
+        return []
+    shown = new_items[:_MAX_CONTEXT_LIST_ITEMS]
+    if len(new_items) == total:
+        if len(shown) < total:
+            heading = f"页面条目（共 {total} 项，展示前 {len(shown)} 项）："
+        else:
+            heading = f"页面条目（共 {total} 项）："
+    elif len(shown) < len(new_items):
+        heading = f"其他条目（所属列表共 {total} 项，展示前 {len(shown)} 项）："
+    else:
+        heading = f"其他条目（所属列表共 {total} 项）："
+    out = [heading]
+    for item in shown:
+        out.extend(_format_surface_item(item))
+    return out
+
+
 def _build_page_context(surface: PageSurface) -> str:
     lines: list[str] = []
     meta_title = surface.meta.title.strip()[:200]
@@ -344,6 +433,9 @@ def _build_page_context(surface: PageSurface) -> str:
     ai_ctx = surface.context("ai")
     if isinstance(ai_ctx, Mapping):
         _serialize_mapping(ai_ctx, indent=0, depth=0, lines=lines, skip_exact=skip_exact)
+    ai_items = surface.items("ai")
+    if ai_items:
+        lines.extend(_serialize_surface_items(ai_items, lines, surface.meta.url))
     text = "\n".join(lines).strip()
     if len(text) > _MAX_PAGE_CONTEXT_CHARS:
         return text[: _MAX_PAGE_CONTEXT_CHARS - 1].rstrip() + "…"

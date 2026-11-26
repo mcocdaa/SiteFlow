@@ -35,7 +35,7 @@ from app.models import Project
 from app.plugins.base import InvalidContent
 from app.plugins.resume.plugin import DEFAULT_AI_VISIBILITY
 from app.plugins.resume.plugin import validate_content as validate_resume
-from app.surface import Capability, StaticSurface, SurfaceMeta
+from app.surface import Capability, StaticSurface, SurfaceItem, SurfaceMeta
 from tests.test_apps import create_app
 from tests.test_flow import ORIGIN, auth_headers, login
 from tests.test_mascot_chat import _parse_sse_events, _patch_upstream
@@ -169,6 +169,8 @@ def test_mascot_chat_resume_context_privacy_and_visibility_toggles(
         assert "138-0013-8000" not in sys_prompt
         assert "秘密城市上海" not in sys_prompt
         assert "浦东新区" not in sys_prompt
+        assert "页面条目" not in sys_prompt
+        assert "其他条目" not in sys_prompt
 
         hidden_sections_payload = _sample_resume_payload(
             {
@@ -300,7 +302,7 @@ def test_resume_ai_visibility_strict_validation() -> None:
 
 def test_mascot_chat_has_no_page_type_branches_and_generic_context_serializer() -> None:
     source = Path("app/extensions/mascot_chat.py").read_text(encoding="utf-8")
-    for literal in ('"blog"', "'blog'", '"space"', "'space'", '"resume"', "'resume'"):
+    for literal in ('"blog"', "'blog'", '"space"', "'space'", '"resume"', "'resume'", '"bottle"', "'bottle'"):
         assert literal not in source
     tree = ast.parse(source)
     for node in ast.walk(tree):
@@ -336,6 +338,64 @@ def test_mascot_chat_has_no_page_type_branches_and_generic_context_serializer() 
     assert "钢琴、古典" in serialized
     assert serialized.count("标题：深夜电台") == 1
     assert len(serialized) <= 3000
+
+    gallery_surface = StaticSurface(
+        meta=SurfaceMeta(
+            type="gallery",
+            slug="photo-wall",
+            title="摄影集",
+            description="城市街拍记录",
+            url="/projects/photo-wall/",
+        ),
+        capabilities=frozenset({"has_items"}),
+        contexts={"visitor": {"title": "摄影集", "description": "城市街拍记录"}},
+        item_list=(
+            SurfaceItem(
+                key="shanghai",
+                title="外滩夜色",
+                url="/projects/photo-wall/items/shanghai",
+                summary="黄浦江沿岸长曝光记录",
+                tags=("夜景", "胶片"),
+                date="2026-10-01",
+            ),
+            SurfaceItem(
+                key="kyoto",
+                title="鸭川清晨",
+                url="/projects/photo-wall/items/kyoto",
+                summary="清晨薄雾中的石桥与流水",
+                date="2026-09-18",
+            ),
+        ),
+    )
+    items_serialized = mascot_chat._build_page_context(gallery_surface)
+    assert "页面条目（共 2 项）：" in items_serialized
+    assert "外滩夜色（2026-10-01｜标签：夜景、胶片）" in items_serialized
+    assert "黄浦江沿岸长曝光记录" in items_serialized
+    assert "/projects/photo-wall/items/shanghai" in items_serialized
+    assert "鸭川清晨（2026-09-18）" in items_serialized
+    assert "/projects/photo-wall/items/kyoto" in items_serialized
+    assert len(items_serialized) <= 3000
+
+    many_surface = StaticSurface(
+        meta=SurfaceMeta(
+            type="catalog",
+            slug="many",
+            title="长列表",
+            description="",
+            url="/projects/many/",
+        ),
+        capabilities=frozenset({"has_items"}),
+        contexts={},
+        item_list=tuple(
+            SurfaceItem(key=f"k{i}", title=f"条目{i}", url=f"/projects/many/{i}") for i in range(22)
+        ),
+    )
+    many_serialized = mascot_chat._build_page_context(many_surface)
+    assert "页面条目（共 22 项，展示前 20 项）：" in many_serialized
+    assert "条目0" in many_serialized
+    assert "条目19" in many_serialized
+    assert "条目20" not in many_serialized
+    assert len(many_serialized) <= 3000
 
 
 def test_capability_matching_and_backward_compatibility() -> None:
